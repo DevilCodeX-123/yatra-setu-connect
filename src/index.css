@@ -2,104 +2,167 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* ============================================================
+   YATRA SETU — Government Transport Portal Design System
+   All colors in HSL. Deep Blue + Saffron + White theme.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core palette */
+    --background: 0 0% 98%;
+    --foreground: 220 35% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 35% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 35% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Deep Government Blue */
+    --primary: 220 68% 22%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 220 55% 35%;
+    --primary-muted: 220 40% 94%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Saffron Accent */
+    --accent: 32 100% 50%;
+    --accent-foreground: 220 68% 12%;
+    --accent-light: 36 100% 95%;
+    --accent-muted: 36 80% 88%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Neutrals */
+    --secondary: 210 25% 95%;
+    --secondary-foreground: 220 35% 20%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 15% 48%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Status colors */
+    --success: 145 60% 30%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 145 40% 92%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --warning: 40 90% 45%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 40 80% 94%;
 
+    --danger: 0 72% 42%;
+    --danger-foreground: 0 0% 100%;
+    --danger-light: 0 60% 94%;
+
+    --info: 205 80% 38%;
+    --info-foreground: 0 0% 100%;
+    --info-light: 205 60% 94%;
+
+    /* Structural */
+    --border: 215 20% 88%;
+    --input: 215 20% 88%;
+    --ring: 220 68% 22%;
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Government header */
+    --header-bg: 220 68% 18%;
+    --header-stripe: 32 100% 50%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Priority seat colors */
+    --seat-women: 330 70% 60%;
+    --seat-elderly: 260 60% 60%;
+    --seat-disabled: 200 70% 50%;
+    --seat-pregnant: 350 80% 65%;
+    --seat-general: 145 55% 45%;
+    --seat-booked: 215 15% 65%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Sidebar */
+    --sidebar-background: 220 68% 18%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 32 100% 50%;
+    --sidebar-primary-foreground: 220 68% 12%;
+    --sidebar-accent: 220 50% 28%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 220 40% 25%;
+    --sidebar-ring: 32 100% 50%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Shadows */
+    --shadow-card: 0 2px 8px 0 hsl(220 68% 22% / 0.08), 0 1px 3px 0 hsl(220 68% 22% / 0.06);
+    --shadow-elevated: 0 4px 16px 0 hsl(220 68% 22% / 0.12), 0 2px 6px 0 hsl(220 68% 22% / 0.08);
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Noto Sans', system-ui, sans-serif;
+    font-feature-settings: "kern" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Noto Sans', system-ui, sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+
+  .bg-primary-light { background-color: hsl(var(--primary-light)); }
+  .bg-primary-muted { background-color: hsl(var(--primary-muted)); }
+  .bg-accent-light { background-color: hsl(var(--accent-light)); }
+  .bg-accent-muted { background-color: hsl(var(--accent-muted)); }
+
+  .text-accent { color: hsl(var(--accent)); }
+  .text-primary-light { color: hsl(var(--primary-light)); }
+  .text-success { color: hsl(var(--success)); }
+  .text-danger { color: hsl(var(--danger)); }
+  .text-warning { color: hsl(var(--warning)); }
+  .text-info { color: hsl(var(--info)); }
+
+  .bg-success-light { background-color: hsl(var(--success-light)); }
+  .bg-warning-light { background-color: hsl(var(--warning-light)); }
+  .bg-danger-light { background-color: hsl(var(--danger-light)); }
+  .bg-info-light { background-color: hsl(var(--info-light)); }
+  .text-success { color: hsl(var(--success)); }
+  .text-warning { color: hsl(var(--warning)); }
+  .text-danger { color: hsl(var(--danger)); }
+  .text-info { color: hsl(var(--info)); }
+
+  .border-accent { border-color: hsl(var(--accent)); }
+  .border-primary-light { border-color: hsl(var(--primary-light)); }
+
+  /* Tricolor stripe like Indian government portals */
+  .gov-stripe {
+    height: 4px;
+    background: linear-gradient(
+      to right,
+      hsl(var(--accent)) 0%,
+      hsl(var(--accent)) 33.3%,
+      hsl(0 0% 100%)) 33.3%,
+      hsl(0 0% 100%) 66.6%,
+      hsl(145 55% 38%) 66.6%,
+      hsl(145 55% 38%) 100%
+    );
+  }
+
+  .live-pulse {
+    animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .portal-card {
+    @apply bg-card rounded-lg border border-border shadow-card;
+  }
+
+  .stat-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
   }
 }
