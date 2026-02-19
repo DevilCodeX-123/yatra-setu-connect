@@ -68,7 +68,7 @@ export default function Home() {
               <Radio className="w-3 h-3 live-pulse" />
               Live Bus Tracking Active
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+            <h1 className="text-3xl md:text-4xl leading-tight text-white mb-3 text-premium">
               यात्रा सेतु — Smart Bus Portal
             </h1>
             <p className="text-base opacity-80 max-w-xl mx-auto" style={{ color: "hsl(0 0% 90%)" }}>
@@ -80,7 +80,7 @@ export default function Home() {
           <div className="max-w-3xl mx-auto bg-card rounded-xl shadow-elevated p-5 md:p-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
               <div className="md:col-span-1">
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
+                <label className="block text-xs mb-1.5 text-premium opacity-60">
                   From
                 </label>
                 <div className="relative">
@@ -94,7 +94,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="md:col-span-1">
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
+                <label className="block text-xs mb-1.5 text-premium opacity-60">
                   To
                 </label>
                 <div className="relative">
@@ -108,7 +108,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="md:col-span-1">
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
+                <label className="block text-xs mb-1.5 text-premium opacity-60">
                   Date of Travel
                 </label>
                 <div className="relative">
@@ -122,7 +122,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="md:col-span-1">
-                <Button className="w-full font-semibold" onClick={handleSearch}
+                <Button className="w-full text-premium h-11" onClick={handleSearch}
                   style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
                   <Search className="w-4 h-4 mr-2" />
                   Search Buses
@@ -153,8 +153,8 @@ export default function Home() {
                   <stat.icon className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                 </div>
                 <div>
-                  <p className="text-lg font-bold leading-tight" style={{ color: "hsl(var(--primary))" }}>{stat.value}</p>
-                  <p className="text-xs leading-tight" style={{ color: "hsl(var(--muted-foreground))" }}>{stat.label}</p>
+                  <p className="text-xl leading-tight text-premium text-primary">{stat.value}</p>
+                  <p className="text-[10px] leading-tight font-bold uppercase tracking-widest text-slate-400">{stat.label}</p>
                 </div>
               </div>
             ))}
@@ -167,13 +167,12 @@ export default function Home() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full live-pulse" style={{ backgroundColor: "hsl(var(--success))" }} />
-              <h2 className="text-lg font-bold" style={{ color: "hsl(var(--primary))" }}>Live Running Buses Today</h2>
+              <span className="w-2 h-2 rounded-full live-pulse bg-emerald-500" />
+              <h2 className="text-lg text-premium text-primary">Live Running Buses Today</h2>
             </div>
             <p className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>Real-time bus availability and status</p>
           </div>
-          <Link to="/booking" className="flex items-center gap-1 text-sm font-semibold"
-            style={{ color: "hsl(var(--primary))" }}>
+          <Link to="/booking" className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary">
             View all <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -184,11 +183,10 @@ export default function Home() {
               {/* Route info */}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-bold" style={{ color: "hsl(var(--primary))" }}>{bus.from}</span>
-                  <ArrowRight className="w-4 h-4" style={{ color: "hsl(var(--accent))" }} />
-                  <span className="text-sm font-bold" style={{ color: "hsl(var(--primary))" }}>{bus.to}</span>
-                  <span className="px-2 py-0.5 rounded text-xs font-medium"
-                    style={{ backgroundColor: "hsl(var(--primary-muted))", color: "hsl(var(--primary))" }}>
+                  <span className="text-sm text-premium text-primary">{bus.from}</span>
+                  <ArrowRight className="w-4 h-4 text-primary opacity-30" />
+                  <span className="text-sm text-premium text-primary">{bus.to}</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter italic bg-primary-muted text-primary">
                     {bus.type}
                   </span>
                 </div>
@@ -197,32 +195,32 @@ export default function Home() {
                   <span>•</span>
                   <span>{bus.km} km</span>
                   <span>•</span>
-                  <span className="flex items-center gap-1">
+                  <Link to={`/tracking/${bus.id}`} className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer">
                     <Navigation className="w-3 h-3 live-pulse" style={{ color: "hsl(var(--success))" }} />
                     Live Tracking
-                  </span>
+                  </Link>
                 </div>
               </div>
 
               {/* Timings */}
               <div className="flex items-center gap-6 text-sm">
                 <div className="text-center">
-                  <p className="text-lg font-bold" style={{ color: "hsl(var(--foreground))" }}>{bus.departure}</p>
-                  <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{bus.from}</p>
+                  <p className="text-lg text-premium text-[#1E293B]">{bus.departure}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{bus.from}</p>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="w-16 h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
                   <Bus className="w-3 h-3 my-0.5" style={{ color: "hsl(var(--accent))" }} />
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold" style={{ color: "hsl(var(--foreground))" }}>{bus.arrival}</p>
-                  <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{bus.to}</p>
+                  <p className="text-lg text-premium text-[#1E293B]">{bus.arrival}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{bus.to}</p>
                 </div>
               </div>
 
               {/* Availability */}
               <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                <p className="text-xl font-bold" style={{ color: getAvailabilityColor(bus.available, bus.total) }}>
+                <p className="text-xl text-premium" style={{ color: getAvailabilityColor(bus.available, bus.total) }}>
                   {bus.available}
                 </p>
                 <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>of {bus.total} seats</p>
@@ -240,14 +238,19 @@ export default function Home() {
                 <span className={`stat-badge ${bus.status === "On Time" ? "bg-success-light text-success" : bus.status === "Full" ? "bg-danger-light text-danger" : "bg-warning-light text-warning"}`}>
                   {bus.status}
                 </span>
-                <Button size="sm" disabled={bus.available === 0}
-                  style={{
-                    backgroundColor: bus.available === 0 ? "hsl(var(--muted))" : "hsl(var(--primary))",
-                    color: bus.available === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))"
-                  }}
-                  asChild={bus.available > 0}>
-                  {bus.available > 0 ? <Link to="/booking">Book Now</Link> : <span>Not Available</span>}
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5" asChild>
+                    <Link to={`/tracking/${bus.id}`}>Track</Link>
+                  </Button>
+                  <Button size="sm" disabled={bus.available === 0}
+                    style={{
+                      backgroundColor: bus.available === 0 ? "hsl(var(--muted))" : "hsl(var(--primary))",
+                      color: bus.available === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))"
+                    }}
+                    asChild={bus.available > 0}>
+                    {bus.available > 0 ? <Link to="/booking">Book Now</Link> : <span>Not Available</span>}
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
@@ -258,7 +261,7 @@ export default function Home() {
       <section style={{ backgroundColor: "hsl(var(--primary-muted))" }} className="py-12">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold mb-2" style={{ color: "hsl(var(--primary))" }}>
+            <h2 className="text-2xl text-premium text-primary mb-2">
               Why Yatra Setu?
             </h2>
             <p className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
@@ -270,9 +273,9 @@ export default function Home() {
               <div key={f.title} className="portal-card p-5 text-center hover:shadow-elevated transition-shadow">
                 <div className="inline-flex p-3 rounded-xl mb-3"
                   style={{ backgroundColor: "hsl(var(--primary))" }}>
-                  <f.icon className="w-5 h-5" style={{ color: "hsl(var(--accent))" }} />
+                  <f.icon className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="font-semibold text-sm mb-1" style={{ color: "hsl(var(--primary))" }}>{f.title}</h3>
+                <h3 className="text-sm mb-1 text-premium text-primary">{f.title}</h3>
                 <p className="text-xs leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>{f.desc}</p>
               </div>
             ))}
@@ -288,8 +291,8 @@ export default function Home() {
               <Bus className="w-6 h-6" style={{ color: "hsl(var(--accent))" }} />
             </div>
             <div>
-              <h3 className="font-bold text-sm" style={{ color: "hsl(var(--primary))" }}>Book a Ticket</h3>
-              <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Advanced booking & seat selection</p>
+              <h3 className="text-sm text-premium text-primary">Book a Ticket</h3>
+              <p className="text-xs text-slate-400 font-medium">Advanced booking & seat selection</p>
             </div>
             <ChevronRight className="w-4 h-4 ml-auto" style={{ color: "hsl(var(--muted-foreground))" }} />
           </Link>
@@ -298,8 +301,8 @@ export default function Home() {
               <CheckCircle className="w-6 h-6 text-success" />
             </div>
             <div>
-              <h3 className="font-bold text-sm" style={{ color: "hsl(var(--primary))" }}>Verify Ticket</h3>
-              <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Check booking validity instantly</p>
+              <h3 className="text-sm text-premium text-primary">Verify Ticket</h3>
+              <p className="text-xs text-slate-400 font-medium">Check booking validity instantly</p>
             </div>
             <ChevronRight className="w-4 h-4 ml-auto" style={{ color: "hsl(var(--muted-foreground))" }} />
           </Link>
@@ -309,8 +312,8 @@ export default function Home() {
               <AlertCircle className="w-6 h-6 text-danger" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-danger">Emergency Help</h3>
-              <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>One-tap police/ambulance alert</p>
+              <h3 className="text-sm text-premium text-danger">Emergency Help</h3>
+              <p className="text-xs text-slate-400 font-medium">One-tap police/ambulance alert</p>
             </div>
             <ChevronRight className="w-4 h-4 ml-auto" style={{ color: "hsl(var(--muted-foreground))" }} />
           </Link>

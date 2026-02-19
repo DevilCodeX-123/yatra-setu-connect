@@ -36,9 +36,9 @@ export default function PassengerDashboard() {
             RK
           </div>
           <div>
-            <h2 className="font-bold text-base" style={{ color: "hsl(var(--foreground))" }}>Rajesh Kumar</h2>
-            <p className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>+91 98765 43210 • rajesh@email.com</p>
-            <span className="stat-badge bg-success-light text-success mt-1">Verified Passenger</span>
+            <h2 className="text-base text-premium text-primary">Rajesh Kumar</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">+91 98765 43210 • rajesh@email.com</p>
+            <span className="stat-badge bg-emerald-100 text-emerald-600 mt-1 uppercase font-black text-[9px] tracking-widest">Verified Passenger</span>
           </div>
         </div>
 
@@ -50,12 +50,12 @@ export default function PassengerDashboard() {
             { label: "CO₂ Saved", value: `${co2Saved} kg`, icon: Leaf, color: "success" },
             { label: "Fuel Saved (equiv.)", value: `${fuelSaved} L`, icon: BarChart2, color: "warning" },
           ].map(stat => (
-            <div key={stat.label} className="portal-card p-4">
+            <div key={stat.label} className="portal-card p-4 group hover:bg-slate-50 transition-all cursor-pointer">
               <div className="flex items-start justify-between mb-3">
-                <p className="text-xs font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>{stat.label}</p>
-                <stat.icon className="w-4 h-4" style={{ color: `hsl(var(--${stat.color}))` }} />
+                <p className="text-[10px] text-premium opacity-40">{stat.label}</p>
+                <stat.icon className="w-4 h-4 text-slate-300 group-hover:text-primary transition-colors" />
               </div>
-              <p className="text-2xl font-bold" style={{ color: `hsl(var(--${stat.color}))` }}>{stat.value}</p>
+              <p className="text-2xl text-premium text-primary">{stat.value}</p>
             </div>
           ))}
         </div>
@@ -64,8 +64,8 @@ export default function PassengerDashboard() {
         <div className="portal-card p-5"
           style={{ borderLeft: "4px solid hsl(var(--success))" }}>
           <div className="flex items-center gap-2 mb-3">
-            <Leaf className="w-5 h-5 text-success" />
-            <h3 className="font-bold text-sm" style={{ color: "hsl(var(--primary))" }}>Your Green Contribution</h3>
+            <Leaf className="w-5 h-5 text-emerald-500" />
+            <h3 className="text-sm text-premium text-primary">Your Green Contribution</h3>
           </div>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
@@ -86,15 +86,14 @@ export default function PassengerDashboard() {
         {/* Travel History */}
         <div className="portal-card overflow-hidden">
           <div className="px-5 py-4 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-            <h3 className="font-bold text-sm" style={{ color: "hsl(var(--primary))" }}>Travel History</h3>
+            <h3 className="text-sm text-premium text-primary">Travel History</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ backgroundColor: "hsl(var(--muted))" }}>
+                <tr className="bg-slate-50">
                   {["Date", "Route", "Distance", "Fare", "PNR"].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide"
-                      style={{ color: "hsl(var(--muted-foreground))" }}>
+                    <th key={h} className="px-4 py-3 text-left text-[10px] text-premium opacity-50 uppercase tracking-wide">
                       {h}
                     </th>
                   ))}

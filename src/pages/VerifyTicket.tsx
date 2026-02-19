@@ -34,15 +34,15 @@ export default function VerifyTicket() {
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-10">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold" style={{ color: "hsl(var(--primary))" }}>Verify Ticket</h1>
-          <p className="text-sm mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>
+          <h1 className="text-2xl text-premium text-primary">Verify Ticket</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">
             Enter your PNR number to check booking status
           </p>
         </div>
 
         {/* Search */}
         <div className="portal-card p-5 mb-6">
-          <label className="block text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>
+          <label className="block text-[10px] text-premium opacity-50 mb-2">
             PNR / Booking Reference
           </label>
           <div className="flex gap-2">
@@ -76,8 +76,8 @@ export default function VerifyTicket() {
                   style={{ backgroundColor: "hsl(var(--success-light))" }}>
                   <CheckCircle className="w-6 h-6 text-success" />
                   <div>
-                    <p className="font-bold text-success">Ticket Confirmed</p>
-                    <p className="text-xs text-success">Valid for travel on {mockTicket.date}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-success">Ticket Confirmed</p>
+                    <p className="text-[10px] font-bold text-success/60 uppercase">Valid for travel on {mockTicket.date}</p>
                   </div>
                   <span className="ml-auto px-3 py-1 rounded-full text-xs font-bold bg-success text-success-foreground">
                     {mockTicket.status}
@@ -90,8 +90,8 @@ export default function VerifyTicket() {
                   <div className="flex items-center gap-4 mb-5 p-4 rounded-lg"
                     style={{ backgroundColor: "hsl(var(--primary-muted))" }}>
                     <div className="text-center">
-                      <p className="text-2xl font-bold" style={{ color: "hsl(var(--primary))" }}>{mockTicket.from}</p>
-                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>{mockTicket.departure}</p>
+                      <p className="text-2xl text-premium text-primary">{mockTicket.from}</p>
+                      <p className="text-[10px] font-black uppercase opacity-40 text-primary">{mockTicket.departure}</p>
                     </div>
                     <div className="flex-1 flex flex-col items-center">
                       <div className="w-full h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
@@ -99,8 +99,8 @@ export default function VerifyTicket() {
                       <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{mockTicket.type}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold" style={{ color: "hsl(var(--primary))" }}>{mockTicket.to}</p>
-                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>{mockTicket.arrival}</p>
+                      <p className="text-2xl text-premium text-primary">{mockTicket.to}</p>
+                      <p className="text-[10px] font-black uppercase opacity-40 text-primary">{mockTicket.arrival}</p>
                     </div>
                   </div>
 

@@ -8,8 +8,9 @@ export default {
     container: { center: true, padding: "1rem", screens: { "2xl": "1400px" } },
     extend: {
       fontFamily: {
-        sans: ["Noto Sans", "system-ui", "sans-serif"],
-        serif: ["Noto Serif", "Georgia", "serif"],
+        sans: ["Roboto", "system-ui", "sans-serif"],
+        serif: ["Roboto Slab", "Georgia", "serif"],
+        mono: ["Roboto Mono", "ui-monospace", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",

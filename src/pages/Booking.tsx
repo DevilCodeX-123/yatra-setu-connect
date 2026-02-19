@@ -25,12 +25,12 @@ const seatData = Array.from({ length: 42 }, (_, i) => {
 });
 
 const seatColors: Record<string, { bg: string; text: string; border: string }> = {
-  women:    { bg: "hsl(var(--seat-women) / 0.15)",    text: "hsl(var(--seat-women))",    border: "hsl(var(--seat-women))" },
-  elderly:  { bg: "hsl(var(--seat-elderly) / 0.15)",  text: "hsl(var(--seat-elderly))",  border: "hsl(var(--seat-elderly))" },
+  women: { bg: "hsl(var(--seat-women) / 0.15)", text: "hsl(var(--seat-women))", border: "hsl(var(--seat-women))" },
+  elderly: { bg: "hsl(var(--seat-elderly) / 0.15)", text: "hsl(var(--seat-elderly))", border: "hsl(var(--seat-elderly))" },
   disabled: { bg: "hsl(var(--seat-disabled) / 0.15)", text: "hsl(var(--seat-disabled))", border: "hsl(var(--seat-disabled))" },
-  general:  { bg: "hsl(var(--seat-general) / 0.12)",  text: "hsl(var(--seat-general))",  border: "hsl(var(--seat-general))" },
-  booked:   { bg: "hsl(var(--seat-booked) / 0.15)",   text: "hsl(var(--seat-booked))",   border: "hsl(var(--seat-booked))" },
-  selected: { bg: "hsl(var(--primary))",               text: "hsl(var(--primary-foreground))", border: "hsl(var(--primary))" },
+  general: { bg: "hsl(var(--seat-general) / 0.12)", text: "hsl(var(--seat-general))", border: "hsl(var(--seat-general))" },
+  booked: { bg: "hsl(var(--seat-booked) / 0.15)", text: "hsl(var(--seat-booked))", border: "hsl(var(--seat-booked))" },
+  selected: { bg: "hsl(var(--primary))", text: "hsl(var(--primary-foreground))", border: "hsl(var(--primary))" },
 };
 
 const legendItems = [
@@ -63,8 +63,8 @@ export default function Booking() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold" style={{ color: "hsl(var(--primary))" }}>Book Bus Ticket</h1>
-          <p className="text-sm mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>Online Advance Ticket Booking — Yatra Setu Portal</p>
+          <h1 className="text-2xl text-premium text-primary">Book Bus Ticket</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Online Advance Ticket Booking — Yatra Setu Portal</p>
         </div>
 
         {/* Step indicator */}
@@ -80,7 +80,7 @@ export default function Booking() {
                   }}>
                   {stepKeys.indexOf(step) > i ? <Check className="w-4 h-4" /> : i + 1}
                 </div>
-                <span className="text-xs mt-1 whitespace-nowrap font-medium"
+                <span className="text-[10px] mt-1 whitespace-nowrap text-premium"
                   style={{ color: stepKeys.indexOf(step) >= i ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}>
                   {s}
                 </span>
@@ -96,24 +96,24 @@ export default function Booking() {
         {/* Step 1: Search */}
         {step === "search" && (
           <div className="portal-card p-6 animate-slide-up">
-            <h2 className="text-base font-semibold mb-4" style={{ color: "hsl(var(--primary))" }}>Bus Details</h2>
+            <h2 className="text-sm text-premium text-primary mb-4">Route Selection</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>From</label>
+                <label className="block text-[10px] text-premium opacity-50 mb-1.5">From</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                   <Input className="pl-9" defaultValue="Bengaluru" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>To</label>
+                <label className="block text-[10px] text-premium opacity-50 mb-1.5">To</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--accent))" }} />
                   <Input className="pl-9" defaultValue="Mysuru" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Date</label>
+                <label className="block text-[10px] text-premium opacity-50 mb-1.5">Date</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                   <Input type="date" className="pl-9" />
@@ -123,15 +123,14 @@ export default function Booking() {
 
             {/* Bus selection */}
             <div className="space-y-3 mt-4">
-              <h3 className="text-sm font-semibold" style={{ color: "hsl(var(--primary))" }}>Available Buses</h3>
+              <h3 className="text-sm text-premium text-primary">Available Buses</h3>
               <div className="portal-card p-4 flex flex-col md:flex-row md:items-center gap-4 cursor-pointer hover:shadow-elevated transition-shadow"
                 style={{ borderColor: "hsl(var(--primary) / 0.4)", borderWidth: 2 }}
                 onClick={() => setStep("seats")}>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-sm" style={{ color: "hsl(var(--primary))" }}>Bengaluru → Mysuru</span>
-                    <span className="px-2 py-0.5 rounded text-xs font-medium"
-                      style={{ backgroundColor: "hsl(var(--primary-muted))", color: "hsl(var(--primary))" }}>
+                    <span className="text-sm text-premium text-primary">Bengaluru → Mysuru</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter italic bg-primary-muted text-primary">
                       Express
                     </span>
                   </div>

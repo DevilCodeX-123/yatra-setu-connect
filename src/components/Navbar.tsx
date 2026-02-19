@@ -33,12 +33,40 @@ const navLinks = [
   { href: "/emergency", label: "Emergency", danger: true },
 ];
 
-export default function Navbar() {
+export default function Navbar({ minimal = false }: { minimal?: boolean }) {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState("en");
   const location = useLocation();
 
   const isActive = (href: string) => location.pathname === href;
+
+  if (minimal) {
+    return (
+      <header className="w-full">
+        <div className="flex items-center justify-end gap-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                <Globe className="w-3 h-3" />
+                {languages.find(l => l.code === lang)?.label}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[120px]">
+              {languages.map(l => (
+                <DropdownMenuItem key={l.code} onClick={() => setLang(l.code)} className="text-sm">
+                  {l.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="outline" size="sm" className="text-xs h-8 border-primary text-primary" asChild>
+            <Link to="/login">Login</Link>
+          </Button>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50">
@@ -84,10 +112,10 @@ export default function Navbar() {
           <Link to="/" className="flex items-center gap-3">
             <img src={logoImg} alt="Yatra Setu" className="h-10 w-10 object-contain" />
             <div>
-              <p className="text-lg font-bold leading-tight" style={{ color: "hsl(var(--primary))" }}>
+              <p className="text-lg leading-tight text-premium text-primary">
                 यात्रा सेतु
               </p>
-              <p className="text-[10px] font-medium leading-tight tracking-wide uppercase" style={{ color: "hsl(var(--muted-foreground))" }}>
+              <p className="text-[10px] font-bold leading-tight tracking-[0.3em] uppercase text-muted-foreground opacity-60">
                 Smart Public Bus Network
               </p>
             </div>
@@ -100,8 +128,7 @@ export default function Navbar() {
                 return (
                   <DropdownMenu key={link.label}>
                     <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-1 px-3 py-2 rounded text-sm font-medium transition-colors hover:bg-primary-muted"
-                        style={{ color: "hsl(var(--foreground))" }}>
+                      <button className="flex items-center gap-1 px-3 py-2 rounded text-xs font-black uppercase tracking-tighter italic transition-colors hover:bg-primary-muted text-foreground">
                         {link.label} <ChevronDown className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
@@ -118,24 +145,14 @@ export default function Navbar() {
               if (link.danger) {
                 return (
                   <Link key={link.href} to={link.href}
-                    className="px-3 py-1.5 rounded text-sm font-semibold border transition-colors"
-                    style={{
-                      color: "hsl(var(--danger))",
-                      borderColor: "hsl(var(--danger))",
-                      backgroundColor: isActive(link.href || "") ? "hsl(var(--danger-light))" : "transparent"
-                    }}>
+                    className="px-3 py-1.5 rounded text-xs font-black uppercase tracking-tighter italic border transition-colors border-danger text-danger">
                     {link.label}
                   </Link>
                 );
               }
               return (
                 <Link key={link.href} to={link.href!}
-                  className="px-3 py-2 rounded text-sm font-medium transition-colors"
-                  style={{
-                    color: isActive(link.href || "") ? "hsl(var(--primary))" : "hsl(var(--foreground))",
-                    backgroundColor: isActive(link.href || "") ? "hsl(var(--primary-muted))" : "transparent",
-                    fontWeight: isActive(link.href || "") ? "600" : "500",
-                  }}>
+                  className={`px-3 py-2 rounded text-xs transition-colors text-premium ${isActive(link.href || "") ? "bg-primary-muted text-primary" : "text-foreground hover:bg-slate-50"}`}>
                   {link.label}
                 </Link>
               );
@@ -145,7 +162,7 @@ export default function Navbar() {
           {/* Auth Button */}
           <div className="hidden lg:flex items-center gap-2">
             <Button variant="outline" size="sm" className="text-sm border-primary text-primary" asChild>
-              <Link to="/passenger">Login</Link>
+              <Link to="/login">Login</Link>
             </Button>
           </div>
 
