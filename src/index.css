@@ -92,6 +92,14 @@
 }
 
 @layer base {
+
+  :root,
+  html,
+  body,
+  #root {
+    font-family: 'Roboto', sans-serif !important;
+  }
+
   * {
     @apply border-border;
     font-family: inherit;
@@ -99,7 +107,6 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Roboto', system-ui, sans-serif;
     font-feature-settings: "kern" 1;
     -webkit-font-smoothing: antialiased;
   }
@@ -113,8 +120,11 @@
   button,
   input,
   textarea,
-  select {
-    font-family: 'Roboto', system-ui, sans-serif !important;
+  select,
+  span,
+  p,
+  div {
+    font-family: 'Roboto', sans-serif !important;
   }
 }
 

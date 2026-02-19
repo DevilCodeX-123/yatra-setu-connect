@@ -1,0 +1,105 @@
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, CreditCard, Landmark, ShieldCheck } from "lucide-react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+
+const transactions = [
+    { id: 1, type: "Credit", amount: 500, source: "Added via UPI", date: "18 Feb, 2024", status: "Success" },
+    { id: 2, type: "Debit", amount: 180, source: "Bus Ticket - Mysuru", date: "17 Feb, 2024", status: "Success" },
+    { id: 3, type: "Debit", amount: 450, source: "Bus Ticket - Mangaluru", date: "15 Feb, 2024", status: "Success" }
+];
+
+export default function ProfileWallet() {
+    return (
+        <DashboardLayout
+            title="Yatra Wallet"
+            subtitle="Digital citizen payments and travel credits"
+            sidebarItems={[]}
+        >
+            <div className="max-w-4xl space-y-8 animate-slide-up">
+                {/* Wallet Balance Card */}
+                <div className="portal-card p-10 bg-primary text-white relative overflow-hidden rounded-[40px] shadow-2xl shadow-primary/30">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-accent/20 blur-[100px] -mr-40 -mt-40 rounded-full" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 blur-[80px] -ml-32 -mb-32 rounded-full" />
+
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20">
+                                <Wallet className="w-6 h-6 text-accent" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">Current Credit</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1">
+                                    <ShieldCheck className="w-3 h-3" /> Secure Balance
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row md:items-end gap-6 md:justify-between">
+                            <div>
+                                <h2 className="text-6xl font-black italic tracking-tighter">₹ 1,350.00</h2>
+                                <p className="text-xs font-bold text-white/40 mt-2 uppercase tracking-widest">Linked to Aadhar-ID: YS-42XX-XXXX</p>
+                            </div>
+                            <Button className="h-14 px-8 bg-accent text-accent-foreground rounded-2xl text-[12px] font-black uppercase italic tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all">
+                                <Plus className="w-5 h-5 mr-2" /> Top Up Wallet
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="portal-card p-6 flex items-center justify-between group hover:bg-slate-50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-slate-100 rounded-2xl text-slate-400 group-hover:text-primary transition-colors">
+                                <CreditCard className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black italic text-primary uppercase tracking-tighter">Payment Methods</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">UPI, Cards, Net Banking</p>
+                            </div>
+                        </div>
+                        <Landmark className="w-5 h-5 text-slate-200 group-hover:text-slate-400 transition-colors" />
+                    </div>
+
+                    <div className="portal-card p-6 flex items-center justify-between group hover:bg-slate-50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-slate-100 rounded-2xl text-slate-400 group-hover:text-primary transition-colors">
+                                <History className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black italic text-primary uppercase tracking-tighter">Usage Limits</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Daily Limit: ₹ 5,000</p>
+                            </div>
+                        </div>
+                        <ShieldCheck className="w-5 h-5 text-slate-200 group-hover:text-slate-400 transition-colors" />
+                    </div>
+                </div>
+
+                {/* Transactions */}
+                <div className="space-y-4">
+                    <h3 className="text-lg text-premium text-primary">Recent Transactions</h3>
+                    <div className="grid gap-3">
+                        {transactions.map(t => (
+                            <div key={t.id} className="portal-card p-4 flex items-center justify-between hover:border-primary/20 transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-2.5 rounded-xl ${t.type === 'Credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                        {t.type === 'Credit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black italic text-[#1E293B] uppercase tracking-tighter">{t.source}</h4>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t.date}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-base font-black italic tracking-tighter ${t.type === 'Credit' ? 'text-emerald-500' : 'text-[#1E293B]'}`}>
+                                        {t.type === 'Credit' ? '+' : '-'} ₹ {t.amount}
+                                    </p>
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t.status}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </DashboardLayout>
+    );
+}

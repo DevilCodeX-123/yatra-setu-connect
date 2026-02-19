@@ -4,6 +4,7 @@ import {
     Settings, Flag, CircleDollarSign, Languages, Palette, Bell,
     UserSquare2, History, Home, Bus, CreditCard as PaymentIcon
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 
 const sidebarItems = [
@@ -16,8 +17,8 @@ const sidebarItems = [
 ];
 
 export default function Profile() {
-    const MenuItem = ({ icon: Icon, label, subtitle, trailing }: { icon: any; label: string; subtitle?: string; trailing?: string }) => (
-        <div className="portal-card flex items-center justify-between p-4 mb-2 hover:bg-slate-50 transition-all cursor-pointer group active:scale-[0.99] border-l-4 border-l-transparent hover:border-l-primary group">
+    const MenuItem = ({ icon: Icon, label, subtitle, trailing, to = "#" }: { icon: any; label: string; subtitle?: string; trailing?: string; to?: string }) => (
+        <Link to={to} className="portal-card flex items-center justify-between p-4 mb-2 hover:bg-slate-50 transition-all cursor-pointer group active:scale-[0.99] border-l-4 border-l-transparent hover:border-l-primary group block">
             <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:text-primary transition-colors">
                     <Icon className="w-5 h-5" />
@@ -31,7 +32,7 @@ export default function Profile() {
                 {trailing && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{trailing}</span>}
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
             </div>
-        </div>
+        </Link>
     );
 
     const SectionHeader = ({ label }: { label: string }) => (
@@ -73,9 +74,9 @@ export default function Profile() {
                             </div>
                         </div>
                         <div className="md:ml-auto flex gap-3">
-                            <button className="h-12 px-6 bg-white text-[#1E293B] rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">
+                            <Link to="/profile/info" className="h-12 px-6 bg-white text-[#1E293B] rounded-2xl text-[10px] font-black uppercase flex items-center justify-center tracking-[0.2em] shadow-xl active:scale-95 transition-all">
                                 Edit Profile
-                            </button>
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -84,27 +85,27 @@ export default function Profile() {
                     <div className="space-y-4">
                         {/* My Details */}
                         <SectionHeader label="My details" />
-                        <MenuItem icon={ClipboardList} label="Bookings" />
-                        <MenuItem icon={User} label="Personal information" />
-                        <MenuItem icon={Users} label="Passengers" />
-                        <MenuItem icon={Train} label="IRCTC details" />
+                        <MenuItem icon={ClipboardList} label="Bookings" to="/profile/bookings" />
+                        <MenuItem icon={User} label="Personal information" to="/profile/info" />
+                        <MenuItem icon={Users} label="Passengers" to="/profile/passengers" />
+                        <MenuItem icon={Train} label="IRCTC details" to="/profile/irctc" />
 
                         {/* Payments */}
                         <SectionHeader label="Payments" />
-                        <MenuItem icon={Wallet} label="Yatra Wallet" />
-                        <MenuItem icon={PaymentIcon} label="Payment methods" />
-                        <MenuItem icon={FileText} label="GST details" />
+                        <MenuItem icon={Wallet} label="Yatra Wallet" to="/profile/wallet" />
+                        <MenuItem icon={PaymentIcon} label="Payment methods" to="/profile/wallet" />
+                        <MenuItem icon={FileText} label="GST details" to="/profile/gst" />
                     </div>
 
                     <div className="space-y-4">
                         {/* More */}
                         <SectionHeader label="System & Support" />
-                        <MenuItem icon={Tag} label="Active Offers" />
-                        <MenuItem icon={UserPlus} label="Referrals" />
-                        <MenuItem icon={Info} label="Know about Yatra Setu" />
-                        <MenuItem icon={Star} label="Rate experience" />
-                        <MenuItem icon={HelpCircle} label="Help & Support" />
-                        <MenuItem icon={Settings} label="Account settings" />
+                        <MenuItem icon={Tag} label="Active Offers" to="/profile/offers" />
+                        <MenuItem icon={UserPlus} label="Referrals" to="/profile/referrals" />
+                        <MenuItem icon={Info} label="Know about Yatra Setu" to="/profile/about" />
+                        <MenuItem icon={Star} label="Rate experience" to="/profile/rate" />
+                        <MenuItem icon={HelpCircle} label="Help & Support" to="/support" />
+                        <MenuItem icon={Settings} label="Account settings" to="/account" />
 
                         {/* Preferences */}
                         <SectionHeader label="Preferences" />

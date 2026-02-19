@@ -18,6 +18,11 @@ import Transactions from "./pages/Transactions";
 import Account from "./pages/Account";
 import Lentings from "./pages/Lentings";
 import Profile from "./pages/Profile";
+import ProfileBookings from "./pages/ProfileBookings";
+import ProfileInfo from "./pages/ProfileInfo";
+import ProfilePassengers from "./pages/ProfilePassengers";
+import ProfileWallet from "./pages/ProfileWallet";
+import ProfilePlaceholder from "./pages/ProfilePlaceholder";
 import Support from "./pages/Support";
 import BusTracking from "./pages/BusTracking";
 import Login from "./pages/Login";
@@ -42,6 +47,16 @@ const AppShell = () => {
         <Route path="/account" element={<Account />} />
         <Route path="/lentings" element={<Lentings />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/bookings" element={<ProfileBookings />} />
+        <Route path="/profile/info" element={<ProfileInfo />} />
+        <Route path="/profile/passengers" element={<ProfilePassengers />} />
+        <Route path="/profile/wallet" element={<ProfileWallet />} />
+        <Route path="/profile/gst" element={<ProfilePlaceholder title="GST Details" />} />
+        <Route path="/profile/irctc" element={<ProfilePlaceholder title="IRCTC Details" />} />
+        <Route path="/profile/offers" element={<ProfilePlaceholder title="Active Offers" />} />
+        <Route path="/profile/referrals" element={<ProfilePlaceholder title="Referral Program" />} />
+        <Route path="/profile/about" element={<ProfilePlaceholder title="About Yatra Setu" />} />
+        <Route path="/profile/rate" element={<ProfilePlaceholder title="Rate Experience" />} />
         <Route path="/support" element={<Support />} />
         <Route path="/tracking/:id" element={<BusTracking />} />
         <Route path="/passenger" element={<PassengerDashboard />} />
