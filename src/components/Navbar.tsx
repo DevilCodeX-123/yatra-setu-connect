@@ -109,13 +109,13 @@ export default function Navbar({ minimal = false }: { minimal?: boolean }) {
       <nav className="bg-card border-b border-border shadow-card">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logoImg} alt="Yatra Setu" className="h-10 w-10 object-contain" />
+          <Link to="/" className="flex items-center gap-2 sm:gap-3">
+            <img src={logoImg} alt="Yatra Setu" className="h-8 w-8 sm:h-10 sm:w-10 object-contain" />
             <div>
-              <p className="text-lg leading-tight text-premium text-primary">
+              <p className="text-base sm:text-lg leading-tight text-premium text-primary">
                 यात्रा सेतु
               </p>
-              <p className="text-[10px] font-bold leading-tight tracking-[0.3em] uppercase text-muted-foreground opacity-60">
+              <p className="text-[8px] sm:text-[10px] font-bold leading-tight tracking-[0.2em] sm:tracking-[0.3em] uppercase text-muted-foreground opacity-60">
                 Smart Public Bus Network
               </p>
             </div>

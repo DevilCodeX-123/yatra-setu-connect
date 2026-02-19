@@ -5,14 +5,14 @@ import { HelpCircle } from "lucide-react";
 export default function FAQ() {
     return (
         <Layout>
-            <div className="space-y-6">
+            <div className="space-y-6 pb-12 md:pb-0">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary rounded-xl">
-                        <HelpCircle className="w-8 h-8 text-primary-foreground" />
+                    <div className="p-2.5 sm:p-3 bg-primary rounded-xl">
+                        <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 text-primary-foreground" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Help Center & FAQ</h1>
-                        <p className="text-muted-foreground">Find answers to common questions about Yatra Setu.</p>
+                        <h1 className="text-2xl sm:text-3xl text-premium text-primary mb-0.5">Help Center & FAQ</h1>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Find answers to common questions about Yatra Setu.</p>
                     </div>
                 </div>
 

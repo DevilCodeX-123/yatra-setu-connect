@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Search, MapPin, Calendar, Clock, Users, ArrowRight,
@@ -9,14 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/Layout";
-
-const liveBuses = [
-  { id: "KA-01-F-1234", route: "Bengaluru → Mysuru", from: "Bengaluru", to: "Mysuru", departure: "06:30", arrival: "09:15", available: 12, total: 42, status: "On Time", km: 145, type: "Express" },
-  { id: "KA-01-F-5678", route: "Mysuru → Bengaluru", from: "Mysuru", to: "Bengaluru", departure: "07:00", arrival: "09:45", available: 3, total: 42, status: "Delayed 10 min", km: 145, type: "Ordinary" },
-  { id: "KA-01-F-9012", route: "Bengaluru → Mangaluru", from: "Bengaluru", to: "Mangaluru", departure: "07:30", arrival: "13:00", available: 28, total: 52, status: "On Time", km: 352, type: "Volvo AC" },
-  { id: "KA-01-F-3456", route: "Hubballi → Belgaum", from: "Hubballi", to: "Belgaum", departure: "08:00", arrival: "10:30", available: 0, total: 40, status: "Full", km: 98, type: "Express" },
-  { id: "KA-01-F-7890", route: "Bengaluru → Tumkur", from: "Bengaluru", to: "Tumkur", departure: "08:15", arrival: "09:45", available: 19, total: 42, status: "On Time", km: 77, type: "Ordinary" },
-];
+import { api } from "@/lib/api";
 
 const stats = [
   { label: "Buses Running Today", value: "4,218", icon: Bus, color: "primary" },
@@ -33,13 +26,40 @@ const features = [
 ];
 
 export default function Home() {
+  const [liveBuses, setLiveBuses] = useState<any[]>([]);
   const [fromCity, setFromCity] = useState("");
   const [toCity, setToCity] = useState("");
   const [date, setDate] = useState("");
   const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSearch = () => {
-    if (fromCity && toCity && date) setSearched(true);
+  useEffect(() => {
+    const fetchBuses = async () => {
+      try {
+        const data = await api.getBuses();
+        setLiveBuses(data);
+      } catch (err) {
+        console.error("Failed to fetch buses:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBuses();
+  }, []);
+
+  const handleSearch = async () => {
+    if (fromCity && toCity && date) {
+      setLoading(true);
+      try {
+        const data = await api.searchBuses(fromCity, toCity, date);
+        setLiveBuses(data);
+        setSearched(true);
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -68,10 +88,10 @@ export default function Home() {
               <Radio className="w-3 h-3 live-pulse" />
               Live Bus Tracking Active
             </div>
-            <h1 className="text-3xl md:text-4xl leading-tight text-white mb-3 text-premium">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl leading-tight text-white mb-3 text-premium">
               यात्रा सेतु — Smart Bus Portal
             </h1>
-            <p className="text-base opacity-80 max-w-xl mx-auto" style={{ color: "hsl(0 0% 90%)" }}>
+            <p className="text-sm sm:text-base opacity-80 max-w-xl mx-auto" style={{ color: "hsl(0 0% 90%)" }}>
               Book tickets, track buses live, and travel safely across India's public bus network.
             </p>
           </div>
@@ -145,8 +165,8 @@ export default function Home() {
 
       {/* Stats Bar */}
       <section className="bg-card border-b border-border shadow-card">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 md:py-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 divide-x divide-border">
             {stats.map(stat => (
               <div key={stat.label} className="flex items-center gap-3 px-4 py-2">
                 <div className="p-2 rounded-lg" style={{ backgroundColor: "hsl(var(--primary-muted))" }}>
@@ -178,24 +198,28 @@ export default function Home() {
         </div>
 
         <div className="grid gap-3">
-          {liveBuses.map(bus => (
-            <div key={bus.id} className="portal-card p-4 flex flex-col md:flex-row md:items-center gap-4 hover:shadow-elevated transition-shadow">
+          {loading ? (
+            <div className="text-center py-10 opacity-50">Loading live bus data...</div>
+          ) : liveBuses.length === 0 ? (
+            <div className="text-center py-10 opacity-50">No buses found for this route.</div>
+          ) : liveBuses.map(bus => (
+            <div key={bus._id} className="portal-card p-4 flex flex-col md:flex-row md:items-center gap-4 hover:shadow-elevated transition-shadow">
               {/* Route info */}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm text-premium text-primary">{bus.from}</span>
+                  <span className="text-sm text-premium text-primary">{bus.route.from}</span>
                   <ArrowRight className="w-4 h-4 text-primary opacity-30" />
-                  <span className="text-sm text-premium text-primary">{bus.to}</span>
+                  <span className="text-sm text-premium text-primary">{bus.route.to}</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter italic bg-primary-muted text-primary">
                     {bus.type}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                  <span className="font-mono">{bus.id}</span>
+                  <span className="font-mono">{bus.busNumber}</span>
                   <span>•</span>
                   <span>{bus.km} km</span>
                   <span>•</span>
-                  <Link to={`/tracking/${bus.id}`} className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer">
+                  <Link to={`/tracking/${bus.busNumber}`} className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer">
                     <Navigation className="w-3 h-3 live-pulse" style={{ color: "hsl(var(--success))" }} />
                     Live Tracking
                   </Link>
@@ -205,30 +229,30 @@ export default function Home() {
               {/* Timings */}
               <div className="flex items-center gap-6 text-sm">
                 <div className="text-center">
-                  <p className="text-lg text-premium text-[#1E293B]">{bus.departure}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{bus.from}</p>
+                  <p className="text-lg text-premium text-[#1E293B]">{bus.departureTime}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{bus.route.from}</p>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="w-16 h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
                   <Bus className="w-3 h-3 my-0.5" style={{ color: "hsl(var(--accent))" }} />
                 </div>
                 <div className="text-center">
-                  <p className="text-lg text-premium text-[#1E293B]">{bus.arrival}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{bus.to}</p>
+                  <p className="text-lg text-premium text-[#1E293B]">{bus.arrivalTime}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{bus.route.to}</p>
                 </div>
               </div>
 
               {/* Availability */}
               <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                <p className="text-xl text-premium" style={{ color: getAvailabilityColor(bus.available, bus.total) }}>
-                  {bus.available}
+                <p className="text-xl text-premium" style={{ color: getAvailabilityColor(bus.availableSeats, bus.totalSeats) }}>
+                  {bus.availableSeats}
                 </p>
-                <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>of {bus.total} seats</p>
+                <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>of {bus.totalSeats} seats</p>
                 <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--muted))" }}>
                   <div className="h-full rounded-full transition-all"
                     style={{
-                      width: `${Math.min(100, ((bus.total - bus.available) / bus.total) * 100)}%`,
-                      backgroundColor: getAvailabilityColor(bus.available, bus.total)
+                      width: `${Math.min(100, ((bus.totalSeats - bus.availableSeats) / bus.totalSeats) * 100)}%`,
+                      backgroundColor: getAvailabilityColor(bus.availableSeats, bus.totalSeats)
                     }} />
                 </div>
               </div>
@@ -240,15 +264,15 @@ export default function Home() {
                 </span>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5" asChild>
-                    <Link to={`/tracking/${bus.id}`}>Track</Link>
+                    <Link to={`/tracking/${bus.busNumber}`}>Track</Link>
                   </Button>
-                  <Button size="sm" disabled={bus.available === 0}
+                  <Button size="sm" disabled={bus.availableSeats === 0}
                     style={{
-                      backgroundColor: bus.available === 0 ? "hsl(var(--muted))" : "hsl(var(--primary))",
-                      color: bus.available === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))"
+                      backgroundColor: bus.availableSeats === 0 ? "hsl(var(--muted))" : "hsl(var(--primary))",
+                      color: bus.availableSeats === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))"
                     }}
-                    asChild={bus.available > 0}>
-                    {bus.available > 0 ? <Link to="/booking">Book Now</Link> : <span>Not Available</span>}
+                    asChild={bus.availableSeats > 0}>
+                    {bus.availableSeats > 0 ? <Link to="/booking">Book Now</Link> : <span>Not Available</span>}
                   </Button>
                 </div>
               </div>

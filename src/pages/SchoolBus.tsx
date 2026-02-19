@@ -150,15 +150,15 @@ export default function SchoolBus() {
         </div>
 
         {/* Parent lookup */}
-        <div className="portal-card p-5 mt-4">
-          <h3 className="font-bold text-sm mb-3" style={{ color: "hsl(var(--primary))" }}>
-            <Users className="w-4 h-4 inline mr-2" />Parent Lookup — Track Your Child's Bus
+        <div className="portal-card p-4 sm:p-5 mt-4">
+          <h3 className="font-bold text-xs sm:text-sm mb-3 text-premium text-primary">
+            <Users className="w-3.5 h-3.5 inline mr-2" />Parent Lookup — Track Your Child's Bus
           </h3>
-          <div className="flex gap-2">
-            <input className="flex-1 h-9 px-3 rounded-md border text-sm"
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input className="flex-1 h-10 px-3 rounded-md border text-sm"
               style={{ borderColor: "hsl(var(--border))", backgroundColor: "hsl(var(--background))", color: "hsl(var(--foreground))" }}
-              placeholder="Enter child's admission number or parent mobile..." />
-            <Button size="sm"
+              placeholder="Admission No. / Mobile No." />
+            <Button size="sm" className="h-10 sm:h-auto"
               style={{ backgroundColor: "hsl(var(--primary))", color: "white" }}>
               Track Bus
             </Button>

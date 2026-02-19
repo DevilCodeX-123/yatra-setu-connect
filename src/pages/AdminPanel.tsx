@@ -140,20 +140,20 @@ export default function AdminPanel() {
         </div>
 
         {/* Route management */}
-        <div className="portal-card p-5">
-          <h3 className="font-bold text-sm mb-3" style={{ color: "hsl(var(--primary))" }}>
+        <div className="portal-card p-5 pb-10 md:pb-5">
+          <h3 className="text-sm text-premium text-primary mb-3">
             <Route className="w-4 h-4 inline mr-2" />Route Management
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: "Active Routes", value: 892, color: "success" },
               { label: "Suspended Routes", value: 14, color: "warning" },
               { label: "Event/Rented", value: 6, color: "info" },
             ].map(r => (
-              <div key={r.label} className="flex items-center justify-between p-3 rounded-lg"
+              <div key={r.label} className="flex items-center justify-between p-3 rounded-xl border border-border"
                 style={{ backgroundColor: `hsl(var(--${r.color}-light))` }}>
-                <span className="text-sm font-medium">{r.label}</span>
-                <span className="text-xl font-bold" style={{ color: `hsl(var(--${r.color}))` }}>{r.value}</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{r.label}</span>
+                <span className="text-xl text-premium" style={{ color: `hsl(var(--${r.color}))` }}>{r.value}</span>
               </div>
             ))}
           </div>

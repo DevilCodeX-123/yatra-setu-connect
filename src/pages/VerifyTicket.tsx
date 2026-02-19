@@ -34,8 +34,8 @@ export default function VerifyTicket() {
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-10">
         <div className="mb-6">
-          <h1 className="text-2xl text-premium text-primary">Verify Ticket</h1>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl text-premium text-primary leading-tight">Verify Ticket</h1>
+          <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">
             Enter your PNR number to check booking status
           </p>
         </div>
@@ -87,20 +87,20 @@ export default function VerifyTicket() {
                 {/* Ticket details */}
                 <div className="p-5">
                   {/* Route display */}
-                  <div className="flex items-center gap-4 mb-5 p-4 rounded-lg"
+                  <div className="flex items-center gap-3 sm:gap-4 mb-5 p-3 sm:p-4 rounded-lg"
                     style={{ backgroundColor: "hsl(var(--primary-muted))" }}>
                     <div className="text-center">
-                      <p className="text-2xl text-premium text-primary">{mockTicket.from}</p>
-                      <p className="text-[10px] font-black uppercase opacity-40 text-primary">{mockTicket.departure}</p>
+                      <p className="text-xl sm:text-2xl text-premium text-primary">{mockTicket.from}</p>
+                      <p className="text-[9px] sm:text-[10px] font-black uppercase opacity-40 text-primary">{mockTicket.departure}</p>
                     </div>
                     <div className="flex-1 flex flex-col items-center">
                       <div className="w-full h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
-                      <Bus className="w-5 h-5 my-1" style={{ color: "hsl(var(--accent))" }} />
-                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{mockTicket.type}</p>
+                      <Bus className="w-4 h-4 sm:w-5 sm:h-5 my-1" style={{ color: "hsl(var(--accent))" }} />
+                      <p className="text-[10px] sm:text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{mockTicket.type}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl text-premium text-primary">{mockTicket.to}</p>
-                      <p className="text-[10px] font-black uppercase opacity-40 text-primary">{mockTicket.arrival}</p>
+                      <p className="text-xl sm:text-2xl text-premium text-primary">{mockTicket.to}</p>
+                      <p className="text-[9px] sm:text-[10px] font-black uppercase opacity-40 text-primary">{mockTicket.arrival}</p>
                     </div>
                   </div>
 

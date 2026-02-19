@@ -36,37 +36,39 @@ const AppShell = () => {
   const showSidebar = !noSidebarRoutes.includes(location.pathname);
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full overflow-hidden">
       {showSidebar && <AppSidebar />}
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/booking" element={<Booking />} />
-        <Route path="/verify" element={<VerifyTicket />} />
-        <Route path="/transactions" element={<Transactions />} />
-        <Route path="/account" element={<Account />} />
-        <Route path="/lentings" element={<Lentings />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profile/bookings" element={<ProfileBookings />} />
-        <Route path="/profile/info" element={<ProfileInfo />} />
-        <Route path="/profile/passengers" element={<ProfilePassengers />} />
-        <Route path="/profile/wallet" element={<ProfileWallet />} />
-        <Route path="/profile/gst" element={<ProfilePlaceholder title="GST Details" />} />
-        <Route path="/profile/irctc" element={<ProfilePlaceholder title="IRCTC Details" />} />
-        <Route path="/profile/offers" element={<ProfilePlaceholder title="Active Offers" />} />
-        <Route path="/profile/referrals" element={<ProfilePlaceholder title="Referral Program" />} />
-        <Route path="/profile/about" element={<ProfilePlaceholder title="About Yatra Setu" />} />
-        <Route path="/profile/rate" element={<ProfilePlaceholder title="Rate Experience" />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/tracking/:id" element={<BusTracking />} />
-        <Route path="/passenger" element={<PassengerDashboard />} />
-        <Route path="/driver" element={<DriverPanel />} />
-        <Route path="/owner" element={<OwnerPanel />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/school-bus" element={<SchoolBus />} />
-        <Route path="/emergency" element={<Emergency />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <div className="flex-1 flex flex-col min-w-0 overflow-auto">
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/booking" element={<Booking />} />
+          <Route path="/verify" element={<VerifyTicket />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/lentings" element={<Lentings />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/bookings" element={<ProfileBookings />} />
+          <Route path="/profile/info" element={<ProfileInfo />} />
+          <Route path="/profile/passengers" element={<ProfilePassengers />} />
+          <Route path="/profile/wallet" element={<ProfileWallet />} />
+          <Route path="/profile/gst" element={<ProfilePlaceholder title="GST Details" />} />
+          <Route path="/profile/irctc" element={<ProfilePlaceholder title="IRCTC Details" />} />
+          <Route path="/profile/offers" element={<ProfilePlaceholder title="Active Offers" />} />
+          <Route path="/profile/referrals" element={<ProfilePlaceholder title="Referral Program" />} />
+          <Route path="/profile/about" element={<ProfilePlaceholder title="About Yatra Setu" />} />
+          <Route path="/profile/rate" element={<ProfilePlaceholder title="Rate Experience" />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/tracking/:id" element={<BusTracking />} />
+          <Route path="/passenger" element={<PassengerDashboard />} />
+          <Route path="/driver" element={<DriverPanel />} />
+          <Route path="/owner" element={<OwnerPanel />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/school-bus" element={<SchoolBus />} />
+          <Route path="/emergency" element={<Emergency />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
     </div>
   );
 };

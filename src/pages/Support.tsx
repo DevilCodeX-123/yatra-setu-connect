@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { HelpCircle, MessageSquareWarning, Lightbulb, MessageSquareQuote } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 const traveledBuses = [
     { id: "KA-01-F-1234", lastTravel: "2026-02-15" },
@@ -22,6 +23,8 @@ export default function Support() {
     const [travelDate, setTravelDate] = useState("");
     const [category, setCategory] = useState("");
     const [staffRole, setStaffRole] = useState("driver");
+    const [description, setDescription] = useState("");
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (selectedBus) {
@@ -32,31 +35,45 @@ export default function Support() {
         }
     }, [selectedBus]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        toast.success("Thank you for your feedback! Our team will review it.");
+        setLoading(true);
+        try {
+            await api.createSupportTicket({
+                subject: `${category} issue on bus ${selectedBus}`,
+                description,
+                category: category === 'safety' ? 'Bus Issue' : category === 'condition' ? 'Bus Issue' : 'Other',
+                priority: category === 'safety' ? 'High' : 'Medium'
+            });
+            toast.success("Thank you for your feedback! Our team will review it.");
+            setDescription("");
+        } catch (err) {
+            toast.error("Failed to submit ticket.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <Layout>
             <div className="space-y-8 max-w-5xl mx-auto pb-12">
                 <header className="space-y-1">
-                    <h1 className="text-3xl text-premium text-primary mb-1">Support & Feedback</h1>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    <h1 className="text-2xl sm:text-3xl text-premium text-primary mb-1 leading-tight">Support & Feedback</h1>
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
                         Get help with your travels, report issues, or suggest improvements to the smart network.
                     </p>
                 </header>
 
                 <Tabs defaultValue="faq" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-8">
-                        <TabsTrigger value="faq" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-6 py-3">
-                            <HelpCircle className="w-4 h-4" /> FAQ
+                    <TabsList className="flex w-full overflow-x-auto justify-start md:grid md:grid-cols-3 mb-8 bg-slate-100 p-1 rounded-xl scrollbar-none">
+                        <TabsTrigger value="faq" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+                            <HelpCircle className="w-3.5 h-3.5" /> FAQ
                         </TabsTrigger>
-                        <TabsTrigger value="complaints" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-6 py-3">
-                            <MessageSquareWarning className="w-4 h-4" /> Complaints
+                        <TabsTrigger value="complaints" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+                            <MessageSquareWarning className="w-3.5 h-3.5" /> Complaints
                         </TabsTrigger>
-                        <TabsTrigger value="suggestions" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-6 py-3">
-                            <Lightbulb className="w-4 h-4" /> Suggestions
+                        <TabsTrigger value="suggestions" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+                            <Lightbulb className="w-3.5 h-3.5" /> Suggestions
                         </TabsTrigger>
                     </TabsList>
 
@@ -167,10 +184,14 @@ export default function Support() {
                                         <Textarea
                                             placeholder="Please describe what went wrong during your journey..."
                                             className="min-h-[120px] focus:ring-2 focus:ring-primary"
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
                                             required
                                         />
                                     </div>
-                                    <Button type="submit" className="w-full font-bold h-11">Submit Complaint</Button>
+                                    <Button type="submit" className="w-full font-bold h-11" disabled={loading}>
+                                        {loading ? "Submitting..." : "Submit Complaint"}
+                                    </Button>
                                 </form>
                             </CardContent>
                         </Card>

@@ -30,9 +30,9 @@ router.get('/search', async (req, res) => {
 // Seed some data (Utility route)
 router.post('/seed', async (req, res) => {
     const buses = [
-        { busId: "KA-01-F-1234", route: { from: "Bengaluru", to: "Mysuru" }, departureTime: "06:30", arrivalTime: "09:15", type: "Express", totalSeats: 42, availableSeats: 12, km: 145, status: "On Time" },
-        { busId: "KA-01-F-5678", route: { from: "Mysuru", to: "Bengaluru" }, departureTime: "07:00", arrivalTime: "09:45", type: "Ordinary", totalSeats: 42, availableSeats: 3, km: 145, status: "Delayed 10 min" },
-        { busId: "KA-01-F-9012", route: { from: "Bengaluru", to: "Mangaluru" }, departureTime: "07:30", arrivalTime: "13:00", type: "Volvo AC", totalSeats: 52, availableSeats: 28, km: 352, status: "On Time" },
+        { busNumber: "KA-01-F-1234", operator: "KSRTC", route: { from: "Bengaluru", to: "Mysuru", stops: ["Mandya"] }, departureTime: "06:30", arrivalTime: "09:15", type: "Express", totalSeats: 42, availableSeats: 12, km: 145, status: "On Time", price: 180 },
+        { busNumber: "KA-01-F-5678", operator: "KSRTC", route: { from: "Mysuru", to: "Bengaluru", stops: ["Ramanagara"] }, departureTime: "07:00", arrivalTime: "09:45", type: "Ordinary", totalSeats: 42, availableSeats: 3, km: 145, status: "Delayed 10 min", price: 120 },
+        { busNumber: "KA-01-F-9012", operator: "KSRTC", route: { from: "Bengaluru", to: "Mangaluru", stops: ["Hassan", "Sakleshpur"] }, departureTime: "07:30", arrivalTime: "13:00", type: "Volvo AC", totalSeats: 52, availableSeats: 28, km: 352, status: "On Time", price: 750 },
     ];
 
     try {

@@ -1,14 +1,46 @@
+import { useEffect, useState } from "react";
 import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, CreditCard, Landmark, ShieldCheck } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-
-const transactions = [
-    { id: 1, type: "Credit", amount: 500, source: "Added via UPI", date: "18 Feb, 2024", status: "Success" },
-    { id: 2, type: "Debit", amount: 180, source: "Bus Ticket - Mysuru", date: "17 Feb, 2024", status: "Success" },
-    { id: 3, type: "Debit", amount: 450, source: "Bus Ticket - Mangaluru", date: "15 Feb, 2024", status: "Success" }
-];
+import { api } from "@/lib/api";
 
 export default function ProfileWallet() {
+    const [profile, setProfile] = useState<any>(null);
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [profileData, txData] = await Promise.all([
+                    api.getProfile(),
+                    api.getTransactions()
+                ]);
+                setProfile(profileData);
+                setTransactions(txData);
+            } catch (err) {
+                console.error("Failed to fetch wallet data:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const handleTopUp = async () => {
+        const amount = prompt("Enter amount to top up:");
+        if (amount && !isNaN(Number(amount))) {
+            try {
+                const result = await api.topupWallet(Number(amount), "Added via UPI");
+                setProfile(result.user);
+                setTransactions([result.transaction, ...transactions]);
+                alert("Top up successful!");
+            } catch (err) {
+                alert("Top up failed.");
+            }
+        }
+    };
+
     return (
         <DashboardLayout
             title="Yatra Wallet"
@@ -36,10 +68,15 @@ export default function ProfileWallet() {
 
                         <div className="flex flex-col md:flex-row md:items-end gap-6 md:justify-between">
                             <div>
-                                <h2 className="text-6xl font-black italic tracking-tighter">₹ 1,350.00</h2>
-                                <p className="text-xs font-bold text-white/40 mt-2 uppercase tracking-widest">Linked to Aadhar-ID: YS-42XX-XXXX</p>
+                                <h2 className="text-6xl font-black italic tracking-tighter">
+                                    ₹ {loading ? "..." : profile?.walletBalance?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </h2>
+                                <p className="text-xs font-bold text-white/40 mt-2 uppercase tracking-widest">Linked to Account: {profile?.email || "..."}</p>
                             </div>
-                            <Button className="h-14 px-8 bg-accent text-accent-foreground rounded-2xl text-[12px] font-black uppercase italic tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all">
+                            <Button
+                                onClick={handleTopUp}
+                                className="h-14 px-8 bg-accent text-accent-foreground rounded-2xl text-[12px] font-black uppercase italic tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all"
+                            >
                                 <Plus className="w-5 h-5 mr-2" /> Top Up Wallet
                             </Button>
                         </div>
@@ -78,15 +115,21 @@ export default function ProfileWallet() {
                 <div className="space-y-4">
                     <h3 className="text-lg text-premium text-primary">Recent Transactions</h3>
                     <div className="grid gap-3">
-                        {transactions.map(t => (
-                            <div key={t.id} className="portal-card p-4 flex items-center justify-between hover:border-primary/20 transition-colors">
+                        {loading ? (
+                            <div className="text-center py-10 opacity-50">Loading transactions...</div>
+                        ) : transactions.length === 0 ? (
+                            <div className="text-center py-10 opacity-50">No transactions yet.</div>
+                        ) : transactions.map(t => (
+                            <div key={t._id} className="portal-card p-4 flex items-center justify-between hover:border-primary/20 transition-colors">
                                 <div className="flex items-center gap-4">
                                     <div className={`p-2.5 rounded-xl ${t.type === 'Credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                                         {t.type === 'Credit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-black italic text-[#1E293B] uppercase tracking-tighter">{t.source}</h4>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t.date}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                            {new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="text-right">

@@ -12,12 +12,12 @@ export default function More() {
 
     return (
         <Layout>
-            <div className="space-y-6">
+            <div className="space-y-6 pb-12 md:pb-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">More Options</h1>
-                    <p className="text-muted-foreground">Additional features and information.</p>
+                    <h1 className="text-2xl sm:text-3xl text-premium text-primary mb-1">More Options</h1>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Additional features and information.</p>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                     {sections.map((s) => (
                         <Card key={s.title} className="hover:bg-muted/50 transition-colors cursor-pointer">
                             <CardHeader className="flex flex-row items-center gap-4">

@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { ArrowRight, MapPin, Calendar, Users, ChevronLeft, ChevronRight, Check, Bus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, MapPin, Calendar, Users, ChevronLeft, ChevronRight, Check, Bus as BusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/Layout";
+import { api } from "@/lib/api";
 
-type Step = "search" | "seats" | "details" | "confirm";
+type Step = "search" | "seats" | "details" | "confirm" | "success";
 
 const seatData = Array.from({ length: 42 }, (_, i) => {
   const num = i + 1;
@@ -44,8 +45,34 @@ const legendItems = [
 
 export default function Booking() {
   const [step, setStep] = useState<Step>("search");
+  const [buses, setBuses] = useState<any[]>([]);
+  const [selectedBus, setSelectedBus] = useState<any>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [formData, setFormData] = useState({ name: "", phone: "", age: "", gender: "male" });
+  const [loading, setLoading] = useState(false);
+  const [bookingResult, setBookingResult] = useState<any>(null);
+
+  const [searchFrom, setSearchFrom] = useState("Bengaluru");
+  const [searchTo, setSearchTo] = useState("Mysuru");
+  const [searchDate, setSearchDate] = useState("");
+
+  const fetchAvailableBuses = async () => {
+    setLoading(true);
+    try {
+      const data = await api.searchBuses(searchFrom, searchTo, searchDate);
+      setBuses(data);
+    } catch (err) {
+      console.error("Search failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (step === "search") {
+      fetchAvailableBuses();
+    }
+  }, [step]);
 
   const toggleSeat = (num: number) => {
     const seat = seatData.find(s => s.num === num);
@@ -53,6 +80,31 @@ export default function Booking() {
     setSelectedSeats(prev =>
       prev.includes(num) ? prev.filter(s => s !== num) : prev.length < 4 ? [...prev, num] : prev
     );
+  };
+
+  const handleBooking = async () => {
+    setLoading(true);
+    try {
+      const passengers = selectedSeats.map(seat => ({
+        name: formData.name, // Simplified for demo, usually one entry per seat
+        age: Number(formData.age),
+        gender: formData.gender,
+        seatNumber: seat.toString()
+      }));
+
+      const result = await api.createBooking({
+        busId: selectedBus._id,
+        passengers,
+        date: new Date(),
+        amount: selectedSeats.length * selectedBus.price
+      });
+      setBookingResult(result);
+      setStep("success");
+    } catch (err) {
+      alert("Booking failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const steps = ["Search", "Select Seat", "Passenger Details", "Confirm"];
@@ -68,9 +120,9 @@ export default function Booking() {
         </div>
 
         {/* Step indicator */}
-        <div className="flex items-center gap-0 mb-8 overflow-x-auto">
+        <div className="flex items-center gap-0 mb-8 overflow-x-auto pb-4 scrollbar-none justify-start md:justify-center">
           {steps.map((s, i) => (
-            <div key={s} className="flex items-center">
+            <div key={s} className="flex items-center flex-shrink-0">
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all`}
                   style={{
@@ -87,7 +139,7 @@ export default function Booking() {
               </div>
               {i < steps.length - 1 && (
                 <div className="w-12 md:w-20 h-0.5 mt-[-12px] mx-1"
-                  style={{ backgroundColor: stepKeys.indexOf(step) > i ? "hsl(var(--primary))" : "hsl(var(--border))" }} />
+                  style={{ backgroundColor: (stepKeys.indexOf(step) > i || step === "success") ? "hsl(var(--primary))" : "hsl(var(--border))" }} />
               )}
             </div>
           ))}
@@ -102,67 +154,81 @@ export default function Booking() {
                 <label className="block text-[10px] text-premium opacity-50 mb-1.5">From</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
-                  <Input className="pl-9" defaultValue="Bengaluru" />
+                  <Input className="pl-9" value={searchFrom} onChange={e => setSearchFrom(e.target.value)} />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-premium opacity-50 mb-1.5">To</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--accent))" }} />
-                  <Input className="pl-9" defaultValue="Mysuru" />
+                  <Input className="pl-9" value={searchTo} onChange={e => setSearchTo(e.target.value)} />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-premium opacity-50 mb-1.5">Date</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
-                  <Input type="date" className="pl-9" />
+                  <Input type="date" className="pl-9" value={searchDate} onChange={e => setSearchDate(e.target.value)} />
                 </div>
               </div>
             </div>
+            <Button className="w-full mb-6" onClick={fetchAvailableBuses} disabled={loading}>
+              {loading ? "Searching..." : "Search Available Buses"}
+            </Button>
 
             {/* Bus selection */}
             <div className="space-y-3 mt-4">
               <h3 className="text-sm text-premium text-primary">Available Buses</h3>
-              <div className="portal-card p-4 flex flex-col md:flex-row md:items-center gap-4 cursor-pointer hover:shadow-elevated transition-shadow"
-                style={{ borderColor: "hsl(var(--primary) / 0.4)", borderWidth: 2 }}
-                onClick={() => setStep("seats")}>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm text-premium text-primary">Bengaluru → Mysuru</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter italic bg-primary-muted text-primary">
-                      Express
-                    </span>
+              {buses.length === 0 && !loading && (
+                <p className="text-center py-4 opacity-50">No buses found for this route.</p>
+              )}
+              {buses.map(bus => (
+                <div key={bus._id} className={`portal-card p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:shadow-elevated transition-shadow ${selectedBus?._id === bus._id ? 'border-primary' : ''}`}
+                  onClick={() => {
+                    setSelectedBus(bus);
+                    setStep("seats");
+                  }}>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm sm:text-base text-premium text-primary leading-tight">{bus.route.from} → {bus.route.to}</span>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter italic bg-primary-muted text-primary flex-shrink-0">
+                        {bus.type}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono opacity-60 uppercase tracking-widest">{bus.busNumber}</span>
                   </div>
-                  <span className="text-xs font-mono" style={{ color: "hsl(var(--muted-foreground))" }}>KA-01-F-1234</span>
-                </div>
-                <div className="flex gap-6 text-sm">
-                  <div className="text-center">
-                    <p className="font-bold text-lg">06:30</p>
-                    <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Departure</p>
+                  <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 text-sm py-2 sm:py-0 border-y sm:border-0 border-slate-100">
+                    <div className="text-center sm:text-left">
+                      <p className="font-bold text-base sm:text-lg">{bus.departureTime}</p>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Dep</p>
+                    </div>
+                    <div className="flex items-center opacity-30">
+                      <div className="w-8 sm:w-12 h-px bg-slate-400" />
+                      <BusIcon className="w-3 h-3 mx-1" />
+                      <div className="w-8 sm:w-12 h-px bg-slate-400" />
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <p className="font-bold text-base sm:text-lg">{bus.arrivalTime}</p>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Arr</p>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-12 h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
-                    <Bus className="w-3 h-3 mx-1" style={{ color: "hsl(var(--accent))" }} />
-                    <div className="w-12 h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
+                  <div className="flex items-center justify-between sm:flex-col sm:justify-center gap-1">
+                    <div className="text-left sm:text-center">
+                      <p className="font-bold text-lg text-success leading-none">{bus.availableSeats}</p>
+                      <p className="text-[9px] uppercase font-bold text-slate-400">Seats</p>
+                    </div>
+                    <div className="text-right sm:text-center">
+                      <p className="font-bold text-lg text-primary leading-none">₹{bus.price}</p>
+                      <p className="text-[9px] uppercase font-bold text-slate-400">Fare</p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="font-bold text-lg">09:15</p>
-                    <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Arrival</p>
+                  <div className="sm:text-right">
+                    <Button size="sm" className="w-full sm:w-auto" onClick={(e) => { e.stopPropagation(); setSelectedBus(bus); setStep("seats"); }}>
+                      Select
+                    </Button>
                   </div>
                 </div>
-                <div className="text-center">
-                  <p className="font-bold text-lg text-success">12</p>
-                  <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Seats available</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg" style={{ color: "hsl(var(--primary))" }}>₹ 180</p>
-                  <Button size="sm" onClick={() => setStep("seats")}
-                    style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
-                    Select Seats
-                  </Button>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         )}
@@ -194,49 +260,28 @@ export default function Booking() {
               ))}
             </div>
 
-            {/* Priority notice */}
-            <div className="mb-4 p-3 rounded-lg text-xs flex items-start gap-2"
-              style={{ backgroundColor: "hsl(var(--accent-light))", borderLeft: "3px solid hsl(var(--accent))" }}>
-              <span style={{ color: "hsl(var(--accent))" }}>ℹ️</span>
-              <span style={{ color: "hsl(var(--foreground))" }}>
-                Priority seats (W/E/D) are reserved until 30 min before departure. After that, they open for all passengers.
-              </span>
-            </div>
-
-            {/* Bus layout */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {/* Driver side */}
-              <div className="shrink-0 flex flex-col justify-end mb-2">
-                <div className="w-10 h-10 rounded border-2 flex items-center justify-center text-xs font-bold"
-                  style={{ backgroundColor: "hsl(var(--primary))", color: "white", borderColor: "hsl(var(--primary))" }}>
-                  🚌
-                </div>
-              </div>
-
-              {/* Seat grid */}
-              <div className="flex-1">
-                <div className="grid gap-1.5"
-                  style={{ gridTemplateColumns: "repeat(7, minmax(36px, 1fr))" }}>
-                  {seatData.map(seat => {
-                    const isSelected = selectedSeats.includes(seat.num);
-                    const colors = isSelected ? seatColors.selected : seatColors[seat.type];
-                    return (
-                      <button
-                        key={seat.num}
-                        onClick={() => toggleSeat(seat.num)}
-                        disabled={!seat.available}
-                        className="w-9 h-9 rounded border-2 text-[10px] font-bold transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70"
-                        style={{
-                          backgroundColor: colors.bg,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        }}
-                        title={`Seat ${seat.num} — ${seat.type}`}>
-                        {seat.label}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Bus layout (Conceptual) */}
+            <div className="flex gap-2 overflow-x-auto pb-6 justify-center">
+              <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(6, 40px)" }}>
+                {seatData.map(seat => {
+                  const isSelected = selectedSeats.includes(seat.num);
+                  const colors = isSelected ? seatColors.selected : seatColors[seat.type];
+                  return (
+                    <button
+                      key={seat.num}
+                      onClick={() => toggleSeat(seat.num)}
+                      disabled={!seat.available}
+                      className="w-10 h-10 rounded border-2 text-[10px] font-bold transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70"
+                      style={{
+                        backgroundColor: colors.bg,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      }}
+                    >
+                      {seat.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -246,7 +291,7 @@ export default function Booking() {
               </Button>
               <div className="text-right">
                 <p className="text-sm mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>
-                  Seats: {selectedSeats.join(", ") || "—"} | Total: ₹{selectedSeats.length * 180}
+                  Seats: {selectedSeats.join(", ") || "—"} | Total: ₹{selectedSeats.length * (selectedBus?.price || 0)}
                 </p>
                 <Button disabled={selectedSeats.length === 0} onClick={() => setStep("details")}
                   style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
@@ -282,7 +327,7 @@ export default function Booking() {
                   onChange={e => setFormData(p => ({ ...p, gender: e.target.value }))}>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
-                  <option value="other">Other / Prefer not to say</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
             </div>
@@ -306,10 +351,9 @@ export default function Booking() {
               <h2 className="text-base font-semibold mb-4" style={{ color: "hsl(var(--primary))" }}>Booking Summary</h2>
               <div className="space-y-3">
                 {[
-                  ["Route", "Bengaluru → Mysuru"],
-                  ["Bus No.", "KA-01-F-1234 (Express)"],
-                  ["Date", "Tomorrow"],
-                  ["Departure", "06:30"],
+                  ["Route", `${selectedBus.route.from} → ${selectedBus.route.to}`],
+                  ["Bus No.", `${selectedBus.busNumber} (${selectedBus.type})`],
+                  ["Departure", selectedBus.departureTime],
                   ["Seats", selectedSeats.join(", ")],
                   ["Passenger", formData.name || "—"],
                   ["Mobile", formData.phone || "—"],
@@ -322,7 +366,7 @@ export default function Booking() {
                 ))}
                 <div className="flex items-center justify-between py-2">
                   <span className="text-base font-bold" style={{ color: "hsl(var(--primary))" }}>Total Amount</span>
-                  <span className="text-xl font-bold" style={{ color: "hsl(var(--primary))" }}>₹ {selectedSeats.length * 180}</span>
+                  <span className="text-xl font-bold" style={{ color: "hsl(var(--primary))" }}>₹ {selectedSeats.length * selectedBus.price}</span>
                 </div>
               </div>
             </div>
@@ -330,10 +374,41 @@ export default function Booking() {
               <Button variant="outline" size="sm" onClick={() => setStep("details")}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
-              <Button size="lg"
+              <Button size="lg" onClick={handleBooking} disabled={loading}
                 style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
                 <Check className="w-4 h-4 mr-2" />
-                Confirm & Pay ₹{selectedSeats.length * 180}
+                {loading ? "Processing..." : `Confirm & Pay ₹${selectedSeats.length * selectedBus.price}`}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Success */}
+        {step === "success" && (
+          <div className="portal-card p-10 text-center animate-scale-in">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check className="w-10 h-10" />
+            </div>
+            <h2 className="text-2xl font-black italic text-primary mb-2 uppercase tracking-tighter">Booking Successful!</h2>
+            <p className="text-slate-400 text-sm mb-8">Your ticket has been confirmed and stored in the database.</p>
+
+            <div className="bg-slate-50 rounded-2xl p-6 mb-8 text-left border border-slate-100">
+              <div className="flex justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">PNR Number</span>
+                <span className="text-sm font-mono font-black text-primary">{bookingResult?.pnr}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Paid</span>
+                <span className="text-sm font-black text-emerald-600">₹{bookingResult?.amount}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" asChild>
+                <Link to="/">Back to Home</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/verify">Verify Ticket</Link>
               </Button>
             </div>
           </div>

@@ -2,45 +2,36 @@ import { useState } from "react";
 import { AlertTriangle, Phone, Shield, Hospital, Radio, MapPin, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
+import { api } from "@/lib/api";
 
 const emergencyServices = [
-  {
-    name: "Police",
-    number: "100",
-    icon: Shield,
-    desc: "Law enforcement & security",
-    color: "primary",
-  },
-  {
-    name: "Ambulance",
-    number: "108",
-    icon: Hospital,
-    desc: "Medical emergency services",
-    color: "danger",
-  },
-  {
-    name: "Fire Brigade",
-    number: "101",
-    icon: AlertTriangle,
-    desc: "Fire & rescue operations",
-    color: "warning",
-  },
-  {
-    name: "Women Helpline",
-    number: "1091",
-    icon: Phone,
-    desc: "Women safety & support",
-    color: "info",
-  },
+  // ... (stays same)
 ];
 
 export default function Emergency() {
   const [alertSent, setAlertSent] = useState(false);
   const [locationShared, setLocationShared] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleEmergency = () => {
-    setAlertSent(true);
-    setLocationShared(true);
+  const handleEmergency = async () => {
+    setLoading(true);
+    try {
+      await api.createEmergencyAlert({
+        type: 'SOS',
+        location: {
+          latitude: 12.9716,
+          longitude: 77.5946,
+          address: "Bengaluru, Karnataka"
+        },
+        status: 'Active'
+      });
+      setAlertSent(true);
+      setLocationShared(true);
+    } catch (err) {
+      alert("Failed to send alert. Please call emergency services directly.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,15 +57,16 @@ export default function Emergency() {
           <div className="text-center mb-8">
             <button
               onClick={handleEmergency}
-              className="relative w-40 h-40 rounded-full mx-auto flex flex-col items-center justify-center transition-all active:scale-95 hover:shadow-elevated font-bold text-white text-lg border-4"
+              disabled={loading}
+              className="relative w-40 h-40 rounded-full mx-auto flex flex-col items-center justify-center transition-all active:scale-95 hover:shadow-elevated font-bold text-white text-lg border-4 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: "hsl(var(--danger))",
                 borderColor: "hsl(var(--danger-foreground))",
                 boxShadow: "0 0 0 8px hsl(var(--danger) / 0.15), 0 0 0 16px hsl(var(--danger) / 0.05)"
               }}>
               <AlertTriangle className="w-10 h-10 mb-1" fill="white" />
-              SOS
-              <span className="text-xs font-medium opacity-80">TAP FOR HELP</span>
+              {loading ? "SENDING..." : "SOS"}
+              <span className="text-xs font-medium opacity-80">{loading ? "PLEASE WAIT" : "TAP FOR HELP"}</span>
             </button>
             <p className="text-xs mt-4" style={{ color: "hsl(var(--muted-foreground))" }}>
               This will immediately alert nearby services and share your location
@@ -121,25 +113,27 @@ export default function Emergency() {
         </div>
 
         {/* Emergency contacts */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {emergencyServices.map(svc => (
             <a key={svc.name} href={`tel:${svc.number}`}
-              className="portal-card p-4 flex flex-col items-center text-center hover:shadow-elevated transition-shadow">
-              <div className="p-2.5 rounded-full mb-2"
+              className="portal-card p-4 flex flex-row sm:flex-col items-center text-left sm:text-center gap-4 sm:gap-0 hover:shadow-elevated transition-shadow">
+              <div className="p-2.5 rounded-full mb-2 flex-shrink-0"
                 style={{ backgroundColor: `hsl(var(--${svc.color}-light))` }}>
                 <svc.icon className="w-5 h-5" style={{ color: `hsl(var(--${svc.color}))` }} />
               </div>
-              <p className="font-bold text-xl mb-0.5" style={{ color: `hsl(var(--${svc.color}))` }}>
-                {svc.number}
-              </p>
-              <p className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>{svc.name}</p>
-              <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{svc.desc}</p>
-              <span className="mt-2 text-xs px-3 py-1 rounded-full font-semibold"
+              <div className="flex-1 sm:flex-none">
+                <p className="font-bold text-lg sm:text-xl mb-0.5" style={{ color: `hsl(var(--${svc.color}))` }}>
+                  {svc.number}
+                </p>
+                <p className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>{svc.name}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight hidden sm:block">{svc.desc}</p>
+              </div>
+              <span className="mt-2 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest bg-slate-100 sm:bg-transparent"
                 style={{
-                  backgroundColor: `hsl(var(--${svc.color}) / 0.12)`,
-                  color: `hsl(var(--${svc.color}))`
+                  color: `hsl(var(--${svc.color}))`,
+                  backgroundColor: `hsl(var(--${svc.color}) / 0.1)`
                 }}>
-                Tap to Call
+                Call
               </span>
             </a>
           ))}

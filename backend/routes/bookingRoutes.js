@@ -17,14 +17,14 @@ router.get('/', async (req, res) => {
 
 // Create a new booking
 router.post('/', async (req, res) => {
-    const { busId, passengerDetails, date, seatNumber, amount } = req.body;
+    const { busId, passengers, date, amount } = req.body;
 
     try {
         const user = await User.findOne({ email: 'john.doe@government.in' });
         const bus = await Bus.findById(busId);
 
-        if (!bus || bus.availableSeats <= 0) {
-            return res.status(400).json({ message: 'Bus not available' });
+        if (!bus || bus.availableSeats < passengers.length) {
+            return res.status(400).json({ message: 'Bus not available or not enough seats' });
         }
 
         const pnr = 'YS' + Date.now().toString().slice(-10);
@@ -33,16 +33,16 @@ router.post('/', async (req, res) => {
             pnr,
             user: user._id,
             bus: bus._id,
-            passengerDetails,
+            passengers, // Now an array of { name, age, gender, seatNumber }
             date,
-            seatNumber,
-            amount
+            amount,
+            paymentStatus: 'Completed' // Assuming payment is done for now
         });
 
         await booking.save();
 
         // Update bus availability
-        bus.availableSeats -= 1;
+        bus.availableSeats -= passengers.length;
         await bus.save();
 
         res.status(201).json(booking);
