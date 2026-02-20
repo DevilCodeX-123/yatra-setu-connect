@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, MapPin, Calendar, Users, ChevronLeft, ChevronRight, Check, Bus as BusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
 
-type Step = "search" | "seats" | "details" | "confirm" | "success";
+type Step = "search" | "seats" | "details" | "confirm" | "payment" | "success";
 
 const seatData = Array.from({ length: 42 }, (_, i) => {
   const num = i + 1;
@@ -16,12 +16,10 @@ const seatData = Array.from({ length: 42 }, (_, i) => {
     { range: [7, 8], type: "disabled", label: "D" },
   ];
   const special = types.find(t => num >= t.range[0] && num <= t.range[1]);
-  const booked = [3, 6, 9, 10, 15, 18, 21, 24, 27, 35, 38].includes(num);
   return {
     num,
-    type: booked ? "booked" : special ? special.type : "general",
+    type: special ? special.type : "general",
     label: special ? special.label : `${num}`,
-    available: !booked,
   };
 });
 
@@ -44,13 +42,65 @@ const legendItems = [
 ];
 
 export default function Booking() {
+  const [searchParams] = useSearchParams();
+  const busIdParam = searchParams.get("busId");
+
   const [step, setStep] = useState<Step>("search");
   const [buses, setBuses] = useState<any[]>([]);
   const [selectedBus, setSelectedBus] = useState<any>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
-  const [formData, setFormData] = useState({ name: "", phone: "", age: "", gender: "male" });
+  const [activeLocks, setActiveLocks] = useState<{ seatNumber: number, lockerId: string }[]>([]);
+  const [lockerId] = useState(() => {
+    const existing = sessionStorage.getItem("lockerId");
+    if (existing) return existing;
+    const newId = Math.random().toString(36).substring(2, 15);
+    sessionStorage.setItem("lockerId", newId);
+    return newId;
+  });
+  const [pendingSeat, setPendingSeat] = useState<any>(null);
+  const [confirmationChecked, setConfirmationChecked] = useState(false);
+  const [passengers, setPassengers] = useState<{ seatNum: number; name: string; phone: string; age: string; gender: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [bookingResult, setBookingResult] = useState<any>(null);
+  const [paymentTimer, setPaymentTimer] = useState(300); // 5 minutes in seconds
+
+  useEffect(() => {
+    let timer: number;
+    if (step === "payment" && paymentTimer > 0) {
+      timer = window.setInterval(() => {
+        setPaymentTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, paymentTimer]);
+
+  useEffect(() => {
+    if (step === "payment") {
+      setPaymentTimer(300);
+    }
+  }, [step]);
+
+  useEffect(() => {
+    setPassengers(prev => {
+      // Keep existing data for seats that are still selected
+      const current = selectedSeats.map(num => {
+        const existing = prev.find(p => p.seatNum === num);
+        if (existing) return existing;
+
+        const seat = seatData.find(s => s.num === num);
+        const isWomenReserved = seat?.type === "women";
+
+        return {
+          seatNum: num,
+          name: "",
+          phone: "+91 ",
+          age: "",
+          gender: isWomenReserved ? "female" : "male"
+        };
+      });
+      return current;
+    });
+  }, [selectedSeats]);
 
   const [searchFrom, setSearchFrom] = useState("Bengaluru");
   const [searchTo, setSearchTo] = useState("Mysuru");
@@ -68,36 +118,119 @@ export default function Booking() {
     }
   };
 
+  const fetchBusRealTime = async (id: string) => {
+    try {
+      const bus = await api.getBusById(id);
+      if (bus) {
+        setSelectedBus(bus);
+        setActiveLocks(bus.activeLocks || []);
+      }
+    } catch (err) {
+      console.error("Failed to poll bus:", err);
+    }
+  };
+
   useEffect(() => {
+    if (step === "seats" && selectedBus?._id) {
+      const interval = setInterval(() => fetchBusRealTime(selectedBus._id), 2000); // Poll every 2 seconds
+      return () => clearInterval(interval);
+    }
+  }, [step, selectedBus?._id]);
+
+  useEffect(() => {
+    if (busIdParam && step === "search") {
+      const loadDirectBus = async () => {
+        setLoading(true);
+        try {
+          const bus = await api.getBusById(busIdParam);
+          if (bus) {
+            setSelectedBus(bus);
+            setActiveLocks(bus.activeLocks || []);
+            setStep("seats");
+          }
+        } catch (err) {
+          console.error("Failed to load direct bus:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadDirectBus();
+      return;
+    }
+
     if (step === "search") {
       fetchAvailableBuses();
     }
-  }, [step]);
+  }, [step, busIdParam]);
 
-  const toggleSeat = (num: number) => {
+  const toggleSeat = async (num: number) => {
     const seat = seatData.find(s => s.num === num);
-    if (!seat?.available) return;
-    setSelectedSeats(prev =>
-      prev.includes(num) ? prev.filter(s => s !== num) : prev.length < 4 ? [...prev, num] : prev
-    );
+    const isBooked = selectedBus?.bookedSeats?.includes(num);
+    if (!seat || isBooked) return;
+
+    // Check if seat is locked by someone else
+    const lock = activeLocks.find(l => l.seatNumber === num);
+    if (lock && lock.lockerId !== lockerId) {
+      alert("This seat is currently held by another passenger. Please try again in 5 minutes.");
+      return;
+    }
+
+    if (selectedSeats.includes(num)) {
+      try {
+        await api.unlockSeat(selectedBus._id, num, lockerId);
+        setSelectedSeats(prev => prev.filter(s => s !== num));
+        setActiveLocks(prev => prev.filter(l => l.seatNumber !== num));
+      } catch (err) {
+        console.error("Failed to unlock seat:", err);
+      }
+      return;
+    }
+
+    try {
+      const res = await api.lockSeat(selectedBus._id, num, lockerId);
+      if (res.message === "Seat already locked") {
+        // Silently refresh rather than blocking with alert
+        fetchBusRealTime(selectedBus._id);
+        return;
+      }
+      setSelectedSeats(prev => [...prev, num]);
+      setActiveLocks(prev => [...prev, { seatNumber: num, lockerId }]);
+    } catch (err) {
+      console.error("Failed to lock seat:", err);
+      fetchBusRealTime(selectedBus._id);
+    }
   };
+
+  const selectedReservedTypes = selectedBus ? Array.from(new Set(
+    selectedSeats
+      .map(num => seatData.find(s => s.num === num))
+      .filter(s => ["women", "elderly", "disabled"].includes(s?.type || ""))
+      .map(s => s?.type)
+  )) : [];
+
+  const isConfirmationRequired = selectedReservedTypes.length > 0;
+
+  useEffect(() => {
+    if (!isConfirmationRequired) {
+      setConfirmationChecked(false);
+    }
+  }, [isConfirmationRequired]);
 
   const handleBooking = async () => {
     setLoading(true);
     try {
-      const passengers = selectedSeats.map(seat => ({
-        name: formData.name, // Simplified for demo, usually one entry per seat
-        age: Number(formData.age),
-        gender: formData.gender,
-        seatNumber: seat.toString()
-      }));
-
       const result = await api.createBooking({
         busId: selectedBus._id,
-        passengers,
+        passengers: passengers.map(p => ({
+          name: p.name,
+          age: Number(p.age),
+          gender: p.gender,
+          seatNumber: p.seatNum.toString()
+        })),
         date: new Date(),
         amount: selectedSeats.length * selectedBus.price
       });
+      setSelectedSeats([]);
       setBookingResult(result);
       setStep("success");
     } catch (err) {
@@ -107,8 +240,8 @@ export default function Booking() {
     }
   };
 
-  const steps = ["Search", "Select Seat", "Passenger Details", "Confirm"];
-  const stepKeys: Step[] = ["search", "seats", "details", "confirm"];
+  const steps = ["Search", "Select Seat", "Passenger Details", "Confirm", "Payment"];
+  const stepKeys: Step[] = ["search", "seats", "details", "confirm", "payment"];
 
   return (
     <Layout>
@@ -239,7 +372,7 @@ export default function Booking() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold" style={{ color: "hsl(var(--primary))" }}>Select Your Seat(s)</h2>
               <span className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
-                {selectedSeats.length} selected (max 4)
+                {selectedSeats.length} selected
               </span>
             </div>
 
@@ -261,28 +394,63 @@ export default function Booking() {
             </div>
 
             {/* Bus layout (Conceptual) */}
-            <div className="flex gap-2 overflow-x-auto pb-6 justify-center">
-              <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(6, 40px)" }}>
-                {seatData.map(seat => {
-                  const isSelected = selectedSeats.includes(seat.num);
-                  const colors = isSelected ? seatColors.selected : seatColors[seat.type];
-                  return (
-                    <button
-                      key={seat.num}
-                      onClick={() => toggleSeat(seat.num)}
-                      disabled={!seat.available}
-                      className="w-10 h-10 rounded border-2 text-[10px] font-bold transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70"
-                      style={{
-                        backgroundColor: colors.bg,
-                        borderColor: colors.border,
-                        color: colors.text,
-                      }}
-                    >
-                      {seat.label}
-                    </button>
-                  );
-                })}
+            <div className="flex flex-col items-center">
+              <div className="flex gap-2 overflow-x-auto pb-6 justify-center w-full">
+                <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(6, 40px)" }}>
+                  {seatData.map(seat => {
+                    const isSelected = selectedSeats.includes(seat.num);
+                    const locker = activeLocks.find(l => l.seatNumber === seat.num);
+                    const isLockedByOthers = locker && locker.lockerId !== lockerId;
+                    const isBooked = selectedBus?.bookedSeats?.includes(seat.num);
+
+                    let type = seat.type;
+                    if (isBooked || isLockedByOthers) type = "booked";
+
+                    const colors = isSelected ? seatColors.selected : seatColors[type];
+                    return (
+                      <button
+                        key={seat.num}
+                        onClick={() => toggleSeat(seat.num)}
+                        disabled={isBooked || isLockedByOthers}
+                        className="w-10 h-10 rounded border-2 text-[10px] font-bold transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70"
+                        style={{
+                          backgroundColor: colors.bg,
+                          borderColor: colors.border,
+                          color: colors.text,
+                        }}
+                      >
+                        {seat.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              {isConfirmationRequired && (
+                <div className="w-full mt-2 animate-slide-up">
+                  <div className="portal-card p-4 border-primary/30 bg-primary/5 flex items-center gap-4">
+                    <div
+                      onClick={() => setConfirmationChecked(!confirmationChecked)}
+                      className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center cursor-pointer transition-all duration-300 ${confirmationChecked
+                        ? "bg-primary border-primary shadow-sm"
+                        : "bg-card border-slate-300 hover:border-primary/50"
+                        }`}
+                    >
+                      {confirmationChecked && <Check className="w-4 h-4 text-white stroke-[4px]" />}
+                    </div>
+                    <p className="text-[11px] font-medium text-premium leading-tight">
+                      I confirm that I am booking restricted seat(s) for
+                      <span className="font-bold text-primary mx-1">
+                        {selectedReservedTypes.map((t, i) => {
+                          const label = t === "women" ? "Women" : t === "elderly" ? "Elderly" : "Disabled";
+                          return i === 0 ? label : i === selectedReservedTypes.length - 1 ? ` and ${label}` : `, ${label}`;
+                        }).join("")}
+                      </span>
+                      passengers accordingly.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 flex items-center justify-between">
@@ -293,8 +461,8 @@ export default function Booking() {
                 <p className="text-sm mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>
                   Seats: {selectedSeats.join(", ") || "—"} | Total: ₹{selectedSeats.length * (selectedBus?.price || 0)}
                 </p>
-                <Button disabled={selectedSeats.length === 0} onClick={() => setStep("details")}
-                  style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+                <Button disabled={selectedSeats.length === 0 || (isConfirmationRequired && !confirmationChecked)} onClick={() => setStep("details")}
+                  style={{ backgroundColor: (selectedSeats.length === 0 || (isConfirmationRequired && !confirmationChecked)) ? "hsl(var(--muted))" : "hsl(var(--primary))", color: (selectedSeats.length === 0 || (isConfirmationRequired && !confirmationChecked)) ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))" }}>
                   Continue <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
@@ -304,40 +472,121 @@ export default function Booking() {
 
         {/* Step 3: Passenger Details */}
         {step === "details" && (
-          <div className="portal-card p-6 animate-slide-up">
+          <div className="portal-card p-6 animate-slide-up space-y-8">
             <h2 className="text-base font-semibold mb-4" style={{ color: "hsl(var(--primary))" }}>Passenger Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Full Name</label>
-                <Input placeholder="As per Aadhaar / ID" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Mobile Number</label>
-                <Input type="tel" placeholder="+91 XXXXX XXXXX" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Age</label>
-                <Input type="number" placeholder="Age" value={formData.age} onChange={e => setFormData(p => ({ ...p, age: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Gender</label>
-                <select className="w-full h-9 px-3 border rounded-md text-sm"
-                  style={{ borderColor: "hsl(var(--border))", backgroundColor: "hsl(var(--background))", color: "hsl(var(--foreground))" }}
-                  value={formData.gender}
-                  onChange={e => setFormData(p => ({ ...p, gender: e.target.value }))}>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
+
+            {passengers.map((passenger, index) => {
+              const seat = seatData.find(s => s.num === passenger.seatNum);
+              const isWomenReserved = seat?.type === "women";
+
+              return (
+                <div key={passenger.seatNum} className="space-y-4 pb-6 border-b border-slate-100 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-6 h-6 rounded bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                      {passenger.seatNum}
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Passenger for Seat {passenger.seatNum}</span>
+                    {isWomenReserved && (
+                      <span className="text-[9px] font-bold bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full uppercase ml-auto border border-pink-200">Women Reserved</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Full Name</label>
+                      <Input
+                        placeholder="As per Aadhaar / ID"
+                        value={passenger.name}
+                        onChange={e => {
+                          const newPass = [...passengers];
+                          newPass[index].name = e.target.value;
+                          setPassengers(newPass);
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Mobile Number</label>
+                      <Input
+                        type="tel"
+                        placeholder="+91 XXXXX XXXXX"
+                        value={passenger.phone}
+                        onChange={e => {
+                          let val = e.target.value;
+                          if (!val.startsWith("+91")) val = "+91 " + val.replace(/\D/g, "");
+                          const digitsOnly = val.replace(/\D/g, "").substring(2);
+                          if (digitsOnly.length <= 10) {
+                            const newPass = [...passengers];
+                            newPass[index].phone = "+91 " + digitsOnly;
+                            setPassengers(newPass);
+                          }
+                        }}
+                      />
+                      {passenger.phone && passenger.phone.replace(/\D/g, "").substring(2).length > 0 && passenger.phone.replace(/\D/g, "").substring(2).length < 10 && (
+                        <p className="text-[10px] text-danger mt-1 font-medium">Please enter a valid number</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Age</label>
+                      <Input
+                        type="number"
+                        placeholder="Age"
+                        min="1"
+                        max="120"
+                        value={passenger.age}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val.length <= 3) {
+                            const newPass = [...passengers];
+                            newPass[index].age = val;
+                            setPassengers(newPass);
+                          }
+                        }}
+                      />
+                      {passenger.age && (parseInt(passenger.age) < 1 || parseInt(passenger.age) > 120) && (
+                        <p className="text-[10px] text-danger mt-1 font-medium">Please enter a valid age</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Gender</label>
+                      <select
+                        className={`w-full h-9 px-3 border rounded-md text-sm ${isWomenReserved ? "bg-slate-100 cursor-not-allowed opacity-80" : ""}`}
+                        style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))" }}
+                        value={passenger.gender}
+                        disabled={isWomenReserved}
+                        onChange={e => {
+                          const newPass = [...passengers];
+                          newPass[index].gender = e.target.value;
+                          setPassengers(newPass);
+                        }}>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                      {isWomenReserved && (
+                        <p className="text-[9px] text-primary/60 mt-1 font-medium italic">Gender locked for reserved seat</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="flex items-center justify-between pt-4">
               <Button variant="outline" size="sm" onClick={() => setStep("seats")}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <Button onClick={() => setStep("confirm")}
-                disabled={!formData.name || !formData.phone}
-                style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+                disabled={passengers.some(p =>
+                  !p.name ||
+                  p.phone.replace(/\D/g, "").substring(2).length !== 10 ||
+                  !p.age ||
+                  parseInt(p.age) < 1 ||
+                  parseInt(p.age) > 120
+                )}
+                style={{
+                  backgroundColor: passengers.some(p => !p.name || p.phone.replace(/\D/g, "").substring(2).length !== 10 || !p.age || parseInt(p.age) < 1 || parseInt(p.age) > 120) ? "hsl(var(--muted))" : "hsl(var(--primary))",
+                  color: passengers.some(p => !p.name || p.phone.replace(/\D/g, "").substring(2).length !== 10 || !p.age || parseInt(p.age) < 1 || parseInt(p.age) > 120) ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))"
+                }}>
                 Review Booking <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -349,14 +598,12 @@ export default function Booking() {
           <div className="animate-slide-up space-y-4">
             <div className="portal-card p-6">
               <h2 className="text-base font-semibold mb-4" style={{ color: "hsl(var(--primary))" }}>Booking Summary</h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {[
                   ["Route", `${selectedBus.route.from} → ${selectedBus.route.to}`],
                   ["Bus No.", `${selectedBus.busNumber} (${selectedBus.type})`],
                   ["Departure", selectedBus.departureTime],
                   ["Seats", selectedSeats.join(", ")],
-                  ["Passenger", formData.name || "—"],
-                  ["Mobile", formData.phone || "—"],
                 ].map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between py-2 border-b"
                     style={{ borderColor: "hsl(var(--border))" }}>
@@ -364,7 +611,25 @@ export default function Booking() {
                     <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>{value}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between py-2">
+
+                <div className="pt-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-400 block mb-3">Passenger List</span>
+                  <div className="space-y-2">
+                    {passengers.map(p => (
+                      <div key={p.seatNum} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-premium">{p.name}</span>
+                          <span className="text-[10px] text-slate-500">{p.gender} | {p.age} Yrs | {p.phone}</span>
+                        </div>
+                        <span className="w-6 h-6 rounded bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center border border-primary/20">
+                          {p.seatNum}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-4 mt-4 border-t-2 border-dashed border-slate-100">
                   <span className="text-base font-bold" style={{ color: "hsl(var(--primary))" }}>Total Amount</span>
                   <span className="text-xl font-bold" style={{ color: "hsl(var(--primary))" }}>₹ {selectedSeats.length * selectedBus.price}</span>
                 </div>
@@ -374,11 +639,81 @@ export default function Booking() {
               <Button variant="outline" size="sm" onClick={() => setStep("details")}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
-              <Button size="lg" onClick={handleBooking} disabled={loading}
+              <Button size="lg" onClick={() => setStep("payment")}
                 style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
                 <Check className="w-4 h-4 mr-2" />
-                {loading ? "Processing..." : `Confirm & Pay ₹${selectedSeats.length * selectedBus.price}`}
+                Go to Payment (₹{selectedSeats.length * selectedBus.price})
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Payment */}
+        {step === "payment" && selectedBus && (
+          <div className="animate-slide-up space-y-4 max-w-md mx-auto">
+            <div className="portal-card p-8 text-center border-primary/20 shadow-xl overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-3 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest border-l border-b border-primary/10">
+                Secure Gateway
+              </div>
+
+              <h2 className="text-xl font-black text-premium mb-1">Scan & Pay</h2>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-6">UPI Payment for Seat Booking</p>
+
+              <div className="bg-white p-4 rounded-2xl shadow-inner border border-slate-100 inline-block mb-6 relative group">
+                {/* 
+                  UPI QR Generator
+                  Standard UPI URI: upi://pay?pa={VPA}&pn={NAME}&am={AMOUNT}&cu=INR&tn={NOTE}
+                */}
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${selectedBus.ownerUPI || '8302391227-2@ybl'}&pn=${selectedBus.operator}&am=${selectedSeats.length * selectedBus.price}&cu=INR&tn=YatraSetuBooking`)}`}
+                  alt="UPI QR Code"
+                  className="w-48 h-48 mx-auto"
+                />
+                <div className="absolute inset-0 border-2 border-primary/20 rounded-2xl pointer-events-none group-hover:border-primary/40 transition-colors"></div>
+              </div>
+
+              <div className="space-y-4 mb-8">
+                <div className="flex flex-col items-center">
+                  <span className="text-3xl font-black text-primary">₹{selectedSeats.length * selectedBus.price}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Payable Amount</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[8px] font-black text-slate-400 uppercase block mb-1">Receiver</span>
+                    <span className="text-[10px] font-bold text-premium truncate block">{selectedBus.operator}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[8px] font-black text-slate-400 uppercase block mb-1">UPI ID</span>
+                    <span className="text-[10px] font-bold text-premium truncate block">{selectedBus.ownerUPI || '8302391227-2@ybl'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 mb-6 text-amber-600 bg-amber-50 py-2 rounded-lg border border-amber-100">
+                <span className="text-[11px] font-black uppercase tracking-wider">Session Expires:</span>
+                <span className="text-sm font-mono font-black">{Math.floor(paymentTimer / 60)}:{(paymentTimer % 60).toString().padStart(2, '0')}</span>
+              </div>
+
+              <p className="text-[9px] text-slate-400 italic mb-6">Please do not refresh or go back after scanning the QR code.</p>
+
+              <Button
+                size="lg"
+                className="w-full h-12 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
+                onClick={handleBooking}
+                disabled={loading || paymentTimer <= 0}
+              >
+                {loading ? "Verifying Transaction..." : "I Have Paid — Confirm Booking"}
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => setStep("confirm")}
+                className="text-[10px] font-black uppercase text-slate-400 hover:text-primary transition-colors flex items-center gap-1"
+              >
+                <ChevronLeft className="w-3 h-3" /> Edit Booking
+              </button>
             </div>
           </div>
         )}

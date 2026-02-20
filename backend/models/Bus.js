@@ -25,7 +25,9 @@ const BusSchema = new mongoose.Schema({
         latitude: { type: Number },
         longitude: { type: Number },
         lastUpdated: { type: Date }
-    } // Added live location tracking
+    }, // Added live location tracking
+    date: { type: String }, // Added date field for searching (YYYY-MM-DD)
+    ownerUPI: { type: String, default: '8302391227-2@ybl' } // Added UPI ID for payment
 }, { timestamps: true });
 
 module.exports = mongoose.model('Bus', BusSchema);

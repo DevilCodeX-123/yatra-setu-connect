@@ -7,8 +7,32 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/buses`);
         return res.json();
     },
+    getBusById: async (id: string) => {
+        const res = await fetch(`${API_BASE_URL}/buses/by-id/${id}`);
+        return res.json();
+    },
     searchBuses: async (from: string, to: string, date: string) => {
         const res = await fetch(`${API_BASE_URL}/buses/search?from=${from}&to=${to}&date=${date}`);
+        return res.json();
+    },
+    lockSeat: async (busId: string, seatNumber: number, lockerId: string) => {
+        const res = await fetch(`${API_BASE_URL}/buses/${busId}/lock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seatNumber, lockerId })
+        });
+        return res.json();
+    },
+    unlockSeat: async (busId: string, seatNumber: number, lockerId: string) => {
+        const res = await fetch(`${API_BASE_URL}/buses/${busId}/unlock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seatNumber, lockerId })
+        });
+        return res.json();
+    },
+    getCities: async () => {
+        const res = await fetch(`${API_BASE_URL}/buses/cities`);
         return res.json();
     },
 
@@ -63,6 +87,10 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(alertData)
         });
+        return res.json();
+    },
+    getStats: async () => {
+        const res = await fetch(`${API_BASE_URL}/stats`);
         return res.json();
     }
 };
