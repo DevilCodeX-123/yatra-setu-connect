@@ -4,8 +4,18 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
-// Load environment variables from the root .env file
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// Load environment variables
+const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
+
+const envPath = path.join(__dirname, '../.env');
+if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    console.log('📝 Loaded environment variables from .env file');
+} else {
+    console.log('🌐 No .env file found, using system environment variables');
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,6 +25,12 @@ app.use(cors());
 app.use(express.json());
 
 const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+    console.error('❌ FATAL ERROR: MONGODB_URI is not defined.');
+    console.error('👉 Please set MONGODB_URI in your Render / Vercel Environment Variables.');
+    process.exit(1);
+}
 
 const startServer = async () => {
     try {
