@@ -15,10 +15,17 @@ async function testConnection() {
         });
         console.log('✅ Connected!');
 
-        console.log('Running test query on "users" collection...');
-        // We use the raw collection to avoid model overhead if it's not defined
-        const count = await mongoose.connection.db.collection('users').countDocuments();
-        console.log('✅ Query success! User count:', count);
+        const isMaster = await mongoose.connection.db.admin().command({ isMaster: 1 });
+        console.log('Is Primary:', isMaster.ismaster);
+        console.log('Me:', isMaster.me);
+
+        console.log('Running test write on "buses" collection...');
+        await mongoose.connection.db.collection('buses').updateOne(
+            { busNumber: "TEST-123" },
+            { $set: { lastTested: new Date() } },
+            { upsert: true }
+        );
+        console.log('✅ Write success!');
 
         process.exit(0);
     } catch (err) {

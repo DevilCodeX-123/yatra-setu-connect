@@ -136,7 +136,7 @@ export default function OwnerPanel() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => navigate("/owner/route-selection")}>
+                            <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => navigate(`/owner/route-selection?busNumber=${bus.id}`)}>
                               <MapPin className="w-3 h-3 mr-1" /> Route
                             </Button>
                             <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-accent border-accent" onClick={() => toast.success("Bus marked for Rent!")}>

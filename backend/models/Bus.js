@@ -6,7 +6,11 @@ const BusSchema = new mongoose.Schema({
     route: {
         from: { type: String, required: true },
         to: { type: String, required: true },
-        stops: [{ type: String }] // Added stops array
+        stops: [{
+            name: { type: String, required: true },
+            lat: { type: Number, required: true },
+            lng: { type: Number, required: true }
+        }]
     },
     departureTime: { type: String, required: true },
     arrivalTime: { type: String, required: true },

@@ -72,8 +72,43 @@ export default function RouteSelection() {
     // Map state
     const [markers, setMarkers] = useState<any[]>([]);
     const [routePoints, setRoutePoints] = useState("");
+    const [busNumber, setBusNumber] = useState<string | null>(null);
 
-    // Persist stops
+    // Initial load from backend
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const bNum = params.get("busNumber");
+        if (bNum) {
+            setBusNumber(bNum);
+            fetchBusData(bNum);
+        }
+    }, []);
+
+    const fetchBusData = async (bNum: string) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/buses/${bNum}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.route && data.route.stops && data.route.stops.length > 0) {
+                    const formattedStops = data.route.stops.map((s: any, i: number) => ({
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: s.name,
+                        order: i,
+                        lat: s.lat,
+                        lng: s.lng
+                    }));
+                    setStops(formattedStops);
+                }
+            } else {
+                toast.error("Bus details not found. Using default stops.");
+            }
+        } catch (err) {
+            console.error("Fetch failed:", err);
+            toast.error("Failed to fetch bus data from server.");
+        }
+    };
+
+    // Persist stops locally as backup
     useEffect(() => {
         localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
     }, [stops]);
@@ -226,14 +261,42 @@ export default function RouteSelection() {
         }, 1500);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (stops.length < 2) {
             toast.error("Please add at least 2 stops");
             return;
         }
-        localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
-        toast.success("Route path saved successfully!");
-        setTimeout(() => navigate("/owner"), 1000);
+
+        if (busNumber) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/buses/${busNumber}/route`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        from: stops[0].name,
+                        to: stops[stops.length - 1].name,
+                        stops: stops.map(s => ({ name: s.name, lat: s.lat, lng: s.lng }))
+                    })
+                });
+
+                if (response.ok) {
+                    toast.success("Route path saved to database successfully!");
+                    localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
+                    setTimeout(() => navigate("/owner"), 1000);
+                } else {
+                    const data = await response.json();
+                    toast.error(data.message || "Failed to save route to database");
+                }
+            } catch (err) {
+                console.error("Save failed:", err);
+                toast.error("Connection error. Could not save to database.");
+            }
+        } else {
+            // Fallback for when no bus context is present
+            localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
+            toast.success("Route path saved locally (No bus selected)");
+            setTimeout(() => navigate("/owner"), 1000);
+        }
     };
 
     return (
