@@ -6,8 +6,23 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bus, Mail, User, Calendar, PersonStanding, Lock, Eye, EyeOff } from "lucide-react";
+import { Bus, Mail, User, Calendar, PersonStanding, Lock, Eye, EyeOff, Building2, Briefcase, UserCheck, Check } from "lucide-react";
 import { toast } from "sonner";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -15,6 +30,10 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showOrgModal, setShowOrgModal] = useState(false);
+    const [mainRole, setMainRole] = useState("Passenger");
+    const [orgRole, setOrgRole] = useState("Owner");
+
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -25,30 +44,17 @@ export default function Login() {
         isPhysicallyAbled: false,
     });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        console.log("Submitting form...", { isLogin, email: formData.email });
-
-        if (isLoading) return;
-
-        if (!isLogin && formData.password !== formData.confirmPassword) {
-            toast.error("Passwords do not match");
-            return;
-        }
-
+    const triggerSignup = async (finalRole: string) => {
         setIsLoading(true);
-        const endpoint = isLogin ? '/api/users/login' : '/api/users/signup';
-
-        // Prepare payload, converting types where necessary
-        const payload = isLogin
-            ? { email: formData.email, password: formData.password }
-            : {
-                ...formData,
-                age: formData.age ? parseInt(formData.age) : undefined
-            };
+        const endpoint = '/api/users/signup';
+        const payload = {
+            ...formData,
+            role: finalRole,
+            age: formData.age ? parseInt(formData.age) : undefined
+        };
 
         try {
-            console.log("Sending request to:", endpoint);
+            console.log("Sending signup request with role:", finalRole);
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -57,14 +63,12 @@ export default function Login() {
                 body: JSON.stringify(payload),
             });
 
-            console.log("Response status:", response.status);
             const data = await response.json();
-            console.log("Response data:", data);
 
             if (response.ok) {
-                toast.success(isLogin ? "Login Successful!" : "Account Created Successfully!");
+                toast.success("Account Created Successfully!");
                 localStorage.setItem('user', JSON.stringify(data));
-                navigate("/profile");
+                redirectUserByRole(finalRole);
             } else {
                 toast.error(data.message || "Failed to sign up");
             }
@@ -76,9 +80,64 @@ export default function Login() {
         }
     };
 
+    const redirectUserByRole = (role: string) => {
+        if (role === 'Passenger') {
+            navigate("/profile");
+        } else if (role === 'Owner') {
+            navigate("/owner");
+        } else if (role === 'Driver') {
+            navigate("/driver");
+        } else if (role === 'Owner+Driver') {
+            navigate("/owner");
+        } else {
+            navigate("/profile");
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (isLoading) return;
+
+        if (isLogin) {
+            setIsLoading(true);
+            try {
+                const response = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: formData.email, password: formData.password }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    toast.success("Login Successful!");
+                    localStorage.setItem('user', JSON.stringify(data));
+                    redirectUserByRole(data.role || 'Passenger');
+                } else {
+                    toast.error(data.message || "Invalid credentials");
+                }
+            } catch (err) {
+                toast.error("Failed to connect to server");
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
+        if (mainRole === 'Organization') {
+            setShowOrgModal(true);
+        } else {
+            await triggerSignup('Passenger');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-primary/90 to-slate-900 flex">
-            {/* Left branding panel — desktop only */}
+            {/* Left branding panel */}
             <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 flex-col items-center justify-center p-12 relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23ffffff%22 fill-opacity=%220.03%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50" />
                 <div className="relative text-center text-white space-y-6">
@@ -119,6 +178,8 @@ export default function Login() {
                         </div>
                         <CardContent className="space-y-6 pt-8 px-6 sm:px-8">
                             <form onSubmit={handleSubmit} className="space-y-4">
+
+
                                 <div className="space-y-2">
                                     <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                         <Mail className="w-3 h-3" /> Email Address
@@ -182,6 +243,23 @@ export default function Login() {
                                             </div>
                                         </div>
                                     </>
+                                )}
+
+                                {!isLogin && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                            <Building2 className="w-3 h-3" /> Select Role
+                                        </Label>
+                                        <Select value={mainRole} onValueChange={setMainRole}>
+                                            <SelectTrigger className="h-12 rounded-xl bg-slate-100 border-none focus-visible:ring-primary/20">
+                                                <SelectValue placeholder="Choose your role" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Passenger">Passenger</SelectItem>
+                                                <SelectItem value="Organization">Bus Organization</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 )}
 
                                 <div className="space-y-2">
@@ -280,6 +358,62 @@ export default function Login() {
                     </Card>
                 </div>
             </div>
+
+            {/* Organization Sub-role Dialog */}
+            <Dialog open={showOrgModal} onOpenChange={setShowOrgModal}>
+                <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl p-8">
+                    <DialogHeader className="space-y-3 pb-4">
+                        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                            <Building2 className="w-8 h-8 text-primary" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center italic">Organization Details</DialogTitle>
+                        <DialogDescription className="text-center font-medium">
+                            Please specify your professional role within the bus organization to access your dedicated panel.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <RadioGroup value={orgRole} onValueChange={setOrgRole} className="grid grid-cols-1 gap-4">
+                            {[
+                                { id: "Owner", label: "Bus Owner", desc: "Manage fleet, staff, and financial reports.", icon: <UserCheck className="w-4 h-4" /> },
+                                { id: "Driver", label: "Bus Driver", desc: "Access routes, schedules, and attendance.", icon: <Briefcase className="w-4 h-4" /> },
+                                { id: "Owner+Driver", label: "Owner + Driver", desc: "Complete access to all fleet and driving tools.", icon: <Bus className="w-4 h-4" /> }
+                            ].map((item) => (
+                                <div key={item.id} className="relative group">
+                                    <RadioGroupItem value={item.id} id={item.id} className="peer sr-only" />
+                                    <Label
+                                        htmlFor={item.id}
+                                        className="flex flex-col p-4 bg-slate-50 rounded-2xl border-2 border-transparent cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-white group-hover:bg-slate-100"
+                                    >
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm font-black uppercase tracking-tighter flex items-center gap-2">
+                                                {item.icon} {item.label}
+                                            </span>
+                                            <div className={`w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center bg-transparent ${orgRole === item.id ? "border-primary" : "border-slate-300"}`}>
+                                                <Check className={`w-3 h-3 text-primary transition-all ${orgRole === item.id ? "opacity-100 scale-100" : "opacity-0 scale-50"}`} />
+                                            </div>
+                                        </div>
+                                        <span className="text-[11px] text-slate-500 font-medium leading-tight">{item.desc}</span>
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                    </div>
+
+                    <DialogFooter className="pt-4">
+                        <Button
+                            type="button"
+                            className="w-full h-14 rounded-2xl text-lg font-black uppercase italic tracking-tighter bg-primary shadow-lg shadow-primary/20"
+                            onClick={async () => {
+                                setShowOrgModal(false);
+                                await triggerSignup(orgRole);
+                            }}
+                        >
+                            Confirm & Join
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

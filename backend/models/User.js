@@ -16,7 +16,7 @@ const UserSchema = new mongoose.Schema({
     gender: { type: String },
     isPhysicallyAbled: { type: Boolean, default: false },
     phone: { type: String },
-    role: { type: String, enum: ['Passenger', 'Driver', 'Admin', 'Owner'], default: 'Passenger' }, // Added roles
+    role: { type: String, enum: ['Passenger', 'Driver', 'Admin', 'Owner', 'Owner+Driver'], default: 'Passenger' }, // Added roles
     walletBalance: { type: Number, default: 0 },
     identityVerified: { type: Boolean, default: false },
     address: {

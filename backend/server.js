@@ -59,11 +59,13 @@ const busRoutes = require('./routes/busRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const userRoutes = require('./routes/userRoutes');
 const miscRoutes = require('./routes/miscRoutes');
+const mapRoutes = require('./routes/mapRoutes');
 
 // Use Routes
 app.use('/api/buses', busRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/maps', mapRoutes);
 app.use('/api', miscRoutes);
 
 startServer();

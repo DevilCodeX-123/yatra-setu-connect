@@ -16,11 +16,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import Layout from "@/components/Layout";
 import { toast } from "sonner";
+import MapplsMap from "@/components/MapplsMap";
 
 const routesData = {
     "KA-01-F-1234": {
         origin: "Bengaluru",
         destination: "Mysuru",
+        coordinates: "77.5946,12.9716;76.6394,12.2958",
+        markers: [
+            { lat: 12.9716, lon: 77.5946, label: "Bengaluru" },
+            { lat: 12.2958, lon: 76.6394, label: "Mysuru" }
+        ],
         stops: [
             { name: "Bengaluru (Majestic)", arrival: "---", departure: "06:30 AM", km: 0, platform: "12", status: "Departed" },
             { name: "Kengeri", arrival: "06:55 AM", departure: "07:00 AM", km: 15, platform: "2", status: "Departed" },
@@ -35,6 +41,11 @@ const routesData = {
     "default": {
         origin: "Origin",
         destination: "Destination",
+        coordinates: "77.0,28.0;77.5,28.5", // Dummy coordinates
+        markers: [
+            { lat: 28.0, lon: 77.0, label: "Origin" },
+            { lat: 28.5, lon: 77.5, label: "Destination" }
+        ],
         stops: [
             { name: "Start Point", arrival: "---", departure: "08:00 AM", km: 0, platform: "1", status: "Departed" },
             { name: "Middle Station", arrival: "09:30 AM", departure: "09:45 AM", km: 45, platform: "2", status: "In Transit" },
@@ -215,39 +226,21 @@ export default function BusTracking() {
                         <div className="px-5 pt-6 pb-4">
                             <div className="w-full bg-white border border-slate-200 rounded-[30px] overflow-hidden shadow-sm border-b-4 border-slate-200/50">
 
-                                {/* Map Section (Clickable for Google Maps) */}
-                                <button
-                                    onClick={openGoogleMaps}
-                                    className="w-full h-28 bg-[#F8FAFC] relative flex items-center justify-center p-6 border-b border-slate-100 active:bg-slate-100 transition-colors group"
-                                >
-                                    <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-30" />
-                                    <div className="relative z-10 flex items-center justify-between w-full max-w-sm px-4">
-                                        <div className="flex flex-col items-center gap-1.5">
-                                            <div className="w-9 h-9 bg-[#1E293B] rounded-2xl flex items-center justify-center shadow-lg border-2 border-white">
-                                                <MapPin className="w-4 h-4 text-emerald-400" />
-                                            </div>
-                                            <span className="text-[9px] font-black text-[#1E293B] uppercase tracking-tighter">{busData.origin}</span>
-                                        </div>
-
-                                        <div className="flex-1 flex flex-col items-center gap-0.5 mx-4">
-                                            <div className="w-full h-1 bg-slate-200 rounded-full relative overflow-hidden">
-                                                <div className="absolute top-0 left-0 w-1/2 h-full bg-[#1E293B] rounded-full" />
-                                            </div>
-                                            <Navigation2 className="w-3 h-3 text-emerald-500 mt-1 rotate-90" />
-                                        </div>
-
-                                        <div className="flex flex-col items-center gap-1.5">
-                                            <div className="w-9 h-9 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg border-2 border-white">
-                                                <Navigation className="w-4 h-4 text-white rotate-45" />
-                                            </div>
-                                            <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">{busData.destination}</span>
-                                        </div>
+                                {/* Map Section */}
+                                <div className="w-full h-48 relative border-b border-slate-100 overflow-hidden">
+                                    <MapplsMap
+                                        markers={busData.markers || []}
+                                        routePoints={busData.coordinates}
+                                        className="absolute inset-0"
+                                    />
+                                    {/* Overlay to allow clicking/dragging map while still having our layout feel */}
+                                    {!isInside && (
+                                        <div className="absolute inset-0 bg-transparent pointer-events-none" />
+                                    )}
+                                    <div className="absolute bottom-2 right-4 flex items-center gap-1 text-[8px] font-black text-blue-500 uppercase tracking-tighter bg-white/80 px-2 py-1 rounded-full backdrop-blur-sm shadow-sm">
+                                        <MapIcon className="w-3 h-3" /> Interactive Map
                                     </div>
-                                    {/* Floating indication */}
-                                    <div className="absolute bottom-2 right-4 flex items-center gap-1 text-[8px] font-black text-blue-500 uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <ArrowRight className="w-3 h-3" /> External Map
-                                    </div>
-                                </button>
+                                </div>
 
                                 {/* SMART HUB CONTROLS footer */}
                                 <div className="p-4 bg-white space-y-4">

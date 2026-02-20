@@ -26,6 +26,7 @@ import ProfilePlaceholder from "./pages/ProfilePlaceholder";
 import Support from "./pages/Support";
 import BusTracking from "./pages/BusTracking";
 import Login from "./pages/Login";
+import RouteSelection from "./pages/RouteSelection";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const AppShell = () => {
           <Route path="/passenger" element={<PassengerDashboard />} />
           <Route path="/driver" element={<DriverPanel />} />
           <Route path="/owner" element={<OwnerPanel />} />
+          <Route path="/owner/route-selection" element={<RouteSelection />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/school-bus" element={<SchoolBus />} />
           <Route path="/emergency" element={<Emergency />} />

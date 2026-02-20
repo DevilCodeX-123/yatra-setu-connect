@@ -16,7 +16,7 @@ router.post('/signup', async (req, res) => {
     }
 
     try {
-        const { name, email, password, age, gender, isPhysicallyAbled } = req.body;
+        const { name, email, password, age, gender, isPhysicallyAbled, role } = req.body;
 
         // Check if user already exists
         let user = await User.findOne({ email });
@@ -37,11 +37,15 @@ router.post('/signup', async (req, res) => {
             gender,
             isPhysicallyAbled, // Note: Ensure this is in the model if you want to save it
             walletBalance: 0,
-            role: 'Passenger'
+            role: role || 'Passenger'
         });
 
         await user.save();
-        res.status(201).json({ message: 'User created successfully', userId: user._id });
+
+        const userData = user.toObject();
+        delete userData.password;
+
+        res.status(201).json(userData);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -49,21 +53,28 @@ router.post('/signup', async (req, res) => {
 
 // Login Route
 router.post('/login', async (req, res) => {
-    console.log("POST /api/users/login", req.body.email);
+    console.log("POST /api/users/login START for:", req.body.email);
     try {
         const { email, password } = req.body;
 
         // Find user by email
         const user = await User.findOne({ email });
         if (!user) {
+            console.warn(`⚠️ Login Failed: User with email ${email} NOT FOUND`);
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
+        console.log(`✅ User found: ${user.name} (Role: ${user.role})`);
+
         // Compare password
+        console.log("⏳ Comparing passwords...");
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            console.warn(`⚠️ Login Failed: Password mismatch for ${email}`);
             return res.status(400).json({ message: 'Invalid credentials' });
         }
+
+        console.log(`🎉 Login SUCCESS for ${email}`);
 
         // Return user data (excluding password)
         const userData = user.toObject();
@@ -71,6 +82,7 @@ router.post('/login', async (req, res) => {
 
         res.json(userData);
     } catch (err) {
+        console.error("❌ Login Route Error:", err.message);
         res.status(500).json({ message: err.message });
     }
 });
