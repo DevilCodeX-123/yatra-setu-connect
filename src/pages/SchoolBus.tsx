@@ -1,6 +1,7 @@
 import { School, Bell, MapPin, Radio, Shield, Clock, Users, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
+import MapplsMap from "@/components/MapplsMap";
 
 const schoolBuses = [
   {
@@ -63,31 +64,21 @@ export default function SchoolBus() {
           ))}
         </div>
 
-        {/* Live map placeholder */}
+        {/* Live map */}
         <div className="portal-card overflow-hidden mb-6">
           <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: "hsl(var(--border))" }}>
             <Radio className="w-4 h-4 live-pulse text-success" />
             <h3 className="font-bold text-sm" style={{ color: "hsl(var(--primary))" }}>Live Map — School Bus Locations</h3>
           </div>
-          <div className="relative h-48" style={{ backgroundColor: "hsl(var(--info-light))" }}>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-sm font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>
-                🗺️ Live GPS Map — Tracking Active
-              </p>
-            </div>
-            {schoolBuses.map(bus => (
-              <div key={bus.id} className="absolute"
-                style={{ top: bus.position.top, left: bus.position.left, transform: "translate(-50%,-50%)" }}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-elevated border-2 border-white"
-                  style={{ backgroundColor: bus.status === "Reached School" ? "hsl(var(--success))" : "hsl(var(--info))" }}>
-                  <School className="w-4 h-4 text-white" />
-                </div>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={{ backgroundColor: "hsl(var(--primary))", color: "white" }}>
-                  {bus.id}
-                </div>
-              </div>
-            ))}
+          <div className="h-48">
+            <MapplsMap
+              markers={schoolBuses.map(bus => ({
+                lat: 12.9716 + (Math.random() * 0.1 - 0.05), // Slightly randomized around Bangalore for demo
+                lon: 77.5946 + (Math.random() * 0.1 - 0.05),
+                label: bus.id
+              }))}
+              className="h-full rounded-none border-none shadow-none"
+            />
           </div>
         </div>
 
