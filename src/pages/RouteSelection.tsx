@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import API_BASE_URL from '@/lib/api';
 import {
     ArrowLeft, MapPin, Plus, Trash2, GripVertical, Save, Sparkles, Navigation, Map as MapIcon,
     Search, Loader2
@@ -117,7 +118,7 @@ export default function RouteSelection() {
 
         setIsSearching(true);
         try {
-            const res = await fetch(`/api/maps/search?q=${encodeURIComponent(query)}`);
+            const res = await fetch(`${API_BASE_URL}/maps/search?q=${encodeURIComponent(query)}`);
             const data = await res.json();
 
             if (data.suggestions && data.suggestions.length > 0) {

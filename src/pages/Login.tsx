@@ -1,3 +1,4 @@
+import API_BASE_URL from '@/lib/api';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ export default function Login() {
 
     const triggerSignup = async (finalRole: string) => {
         setIsLoading(true);
-        const endpoint = '/api/users/signup';
+        const endpoint = `${API_BASE_URL}/users/signup`;
         const payload = {
             ...formData,
             role: finalRole,
@@ -102,7 +103,7 @@ export default function Login() {
         if (isLogin) {
             setIsLoading(true);
             try {
-                const response = await fetch('/api/users/login', {
+                const response = await fetch(`${API_BASE_URL}/users/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: formData.email, password: formData.password }),
