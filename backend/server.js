@@ -3,11 +3,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 
 // Load environment variables
-const dotenv = require('dotenv');
-const path = require('path');
-const fs = require('fs');
 
 const envPath = path.join(__dirname, '../.env');
 if (fs.existsSync(envPath)) {
