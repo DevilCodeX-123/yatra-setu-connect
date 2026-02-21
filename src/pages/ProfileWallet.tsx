@@ -59,8 +59,8 @@ export default function ProfileWallet() {
                                 <Wallet className="w-6 h-6 text-accent" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">Current Credit</p>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1">
+                                <p className="text-[10px] font-black tracking-[0.4em] text-white/60">Current Credit</p>
+                                <p className="text-[10px] font-black text-emerald-400 flex items-center gap-1">
                                     <ShieldCheck className="w-3 h-3" /> Secure Balance
                                 </p>
                             </div>
@@ -68,14 +68,14 @@ export default function ProfileWallet() {
 
                         <div className="flex flex-col md:flex-row md:items-end gap-6 md:justify-between">
                             <div>
-                                <h2 className="text-6xl font-black italic tracking-tighter">
+                                <h2 className="text-6xl font-black ">
                                     ₹ {loading ? "..." : profile?.walletBalance?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </h2>
-                                <p className="text-xs font-bold text-white/40 mt-2 uppercase tracking-widest">Linked to Account: {profile?.email || "..."}</p>
+                                <p className="text-xs font-bold text-white/40 mt-2 ">Linked to Account: {profile?.email || "..."}</p>
                             </div>
                             <Button
                                 onClick={handleTopUp}
-                                className="h-14 px-8 bg-accent text-accent-foreground rounded-2xl text-[12px] font-black uppercase italic tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all"
+                                className="h-14 px-8 bg-accent text-accent-foreground rounded-2xl text-[12px] font-black tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all"
                             >
                                 <Plus className="w-5 h-5 mr-2" /> Top Up Wallet
                             </Button>
@@ -90,8 +90,8 @@ export default function ProfileWallet() {
                                 <CreditCard className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-sm font-black italic text-primary uppercase tracking-tighter">Payment Methods</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">UPI, Cards, Net Banking</p>
+                                <p className="text-sm font-black text-primary ">Payment Methods</p>
+                                <p className="text-[10px] font-bold text-slate-400 ">UPI, Cards, Net Banking</p>
                             </div>
                         </div>
                         <Landmark className="w-5 h-5 text-slate-200 group-hover:text-slate-400 transition-colors" />
@@ -103,8 +103,8 @@ export default function ProfileWallet() {
                                 <History className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-sm font-black italic text-primary uppercase tracking-tighter">Usage Limits</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Daily Limit: ₹ 5,000</p>
+                                <p className="text-sm font-black text-primary ">Usage Limits</p>
+                                <p className="text-[10px] font-bold text-slate-400 ">Daily Limit: ₹ 5,000</p>
                             </div>
                         </div>
                         <ShieldCheck className="w-5 h-5 text-slate-200 group-hover:text-slate-400 transition-colors" />
@@ -126,17 +126,17 @@ export default function ProfileWallet() {
                                         {t.type === 'Credit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black italic text-[#1E293B] uppercase tracking-tighter">{t.source}</h4>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                        <h4 className="text-sm font-black text-[#1E293B] ">{t.source}</h4>
+                                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">
                                             {new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-black italic tracking-tighter ${t.type === 'Credit' ? 'text-emerald-500' : 'text-[#1E293B]'}`}>
+                                    <p className={`text-base font-black ${t.type === 'Credit' ? 'text-emerald-500' : 'text-[#1E293B]'}`}>
                                         {t.type === 'Credit' ? '+' : '-'} ₹ {t.amount}
                                     </p>
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t.status}</span>
+                                    <span className="text-[8px] font-black text-slate-400">{t.status}</span>
                                 </div>
                             </div>
                         ))}

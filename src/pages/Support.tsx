@@ -59,20 +59,20 @@ export default function Support() {
             <div className="space-y-8 max-w-5xl mx-auto pb-12">
                 <header className="space-y-1">
                     <h1 className="text-2xl sm:text-3xl text-premium text-primary mb-1 leading-tight">Support & Feedback</h1>
-                    <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+                    <p className="text-[9px] sm:text-[10px] font-bold tracking-[0.15em] text-slate-400">
                         Get help with your travels, report issues, or suggest improvements to the smart network.
                     </p>
                 </header>
 
                 <Tabs defaultValue="faq" className="w-full">
                     <TabsList className="flex w-full overflow-x-auto justify-start md:grid md:grid-cols-3 mb-8 bg-slate-100 p-1 rounded-xl scrollbar-none">
-                        <TabsTrigger value="faq" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+                        <TabsTrigger value="faq" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
                             <HelpCircle className="w-3.5 h-3.5" /> FAQ
                         </TabsTrigger>
-                        <TabsTrigger value="complaints" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+                        <TabsTrigger value="complaints" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
                             <MessageSquareWarning className="w-3.5 h-3.5" /> Complaints
                         </TabsTrigger>
-                        <TabsTrigger value="suggestions" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+                        <TabsTrigger value="suggestions" className="flex-1 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap">
                             <Lightbulb className="w-3.5 h-3.5" /> Suggestions
                         </TabsTrigger>
                     </TabsList>
@@ -81,7 +81,7 @@ export default function Support() {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-lg text-premium text-primary">Frequently Asked Questions</CardTitle>
-                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Quick answers to common questions about Yatra Setu.</CardDescription>
+                                <CardDescription className="text-[10px] font-bold text-slate-400">Quick answers to common questions about Yatra Setu.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <Accordion type="single" collapsible className="w-full">
@@ -112,7 +112,7 @@ export default function Support() {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-lg text-premium text-primary">Report an Issue</CardTitle>
-                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">File a complaint against a bus or service you've recently used.</CardDescription>
+                                <CardDescription className="text-[10px] font-bold text-slate-400">File a complaint against a bus or service you've recently used.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <form onSubmit={handleSubmit} className="space-y-5">
@@ -201,7 +201,7 @@ export default function Support() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-lg text-premium text-primary">Make a Suggestion</CardTitle>
-                                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">We're always looking to improve our network and services.</CardDescription>
+                                    <CardDescription className="text-[10px] font-bold text-slate-400">We're always looking to improve our network and services.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <form onSubmit={handleSubmit} className="space-y-4">

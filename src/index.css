@@ -1,93 +1,152 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ============================================================
-   YATRA SETU — Government Transport Portal Design System
-   All colors in HSL. Deep Blue + Saffron + White theme.
+   YATRA SETU — Blue & White Professional Design System
+   All colors in HSL. Deep Blue + White theme.
    ============================================================ */
 
 @layer base {
   :root {
     /* Core palette */
-    --background: 0 0% 98%;
-    --foreground: 220 35% 12%;
+    --background: 214 60% 97%;
+    /* #EFF6FF — Soft Blue-White */
+    --foreground: 222 47% 11%;
+    /* #1E293B — Dark Navy Text */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 35% 12%;
+    /* #FFFFFF — Pure White */
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 35% 12%;
+    --popover-foreground: 222 47% 11%;
 
-    /* Deep Government Blue */
-    --primary: 220 68% 22%;
+    /* Deep Navy Blue — brand primary */
+    --primary: 224 71% 33%;
+    /* #1E3A8A — Deep Blue */
     --primary-foreground: 0 0% 100%;
-    --primary-light: 220 55% 35%;
-    --primary-muted: 220 40% 94%;
+    /* White */
+    --primary-light: 221 83% 53%;
+    /* #2563EB — Button Blue */
+    --primary-muted: 214 100% 96%;
+    /* #DBEAFE — Light Blue Tint */
 
-    /* Saffron Accent */
-    --accent: 32 100% 50%;
-    --accent-foreground: 220 68% 12%;
-    --accent-light: 36 100% 95%;
-    --accent-muted: 36 80% 88%;
+    /* Accent = same blue family */
+    --accent: 221 83% 53%;
+    /* #2563EB */
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 214 100% 93%;
+    /* #BFDBFE */
+    --accent-muted: 214 100% 96%;
+    /* #DBEAFE */
 
     /* Neutrals */
-    --secondary: 210 25% 95%;
-    --secondary-foreground: 220 35% 20%;
+    --secondary: 214 32% 93%;
+    /* #E2EAF4 */
+    --secondary-foreground: 222 47% 25%;
 
-    --muted: 210 20% 94%;
-    --muted-foreground: 215 15% 48%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 25% 44%;
+    /* #475569 */
 
-    /* Status colors */
-    --success: 145 60% 30%;
+    /* Status — keep functional colors */
+    --success: 142 71% 30%;
     --success-foreground: 0 0% 100%;
-    --success-light: 145 40% 92%;
+    --success-light: 141 79% 92%;
 
-    --warning: 40 90% 45%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --warning-light: 40 80% 94%;
+    --warning-light: 48 96% 92%;
 
-    --danger: 0 72% 42%;
+    --danger: 0 72% 51%;
     --danger-foreground: 0 0% 100%;
-    --danger-light: 0 60% 94%;
+    --danger-light: 0 86% 95%;
 
-    --info: 205 80% 38%;
+    --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
-    --info-light: 205 60% 94%;
+    --info-light: 204 100% 93%;
 
     /* Structural */
-    --border: 215 20% 88%;
-    --input: 215 20% 88%;
-    --ring: 220 68% 22%;
-    --radius: 0.5rem;
+    --border: 214 32% 88%;
+    --input: 214 32% 90%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
 
-    /* Government header */
-    --header-bg: 220 68% 18%;
-    --header-stripe: 32 100% 50%;
+    /* Sidebar — Deep Navy */
+    --sidebar-background: 224 71% 22%;
+    /* #102057 deep navy */
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 221 83% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 60% 30%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 224 50% 28%;
+    --sidebar-ring: 221 83% 53%;
 
     /* Priority seat colors */
-    --seat-women: 330 70% 60%;
+    --seat-women: 270 50% 60%;
     --seat-elderly: 260 60% 60%;
     --seat-disabled: 200 70% 50%;
-    --seat-pregnant: 350 80% 65%;
-    --seat-general: 145 55% 45%;
+    --seat-pregnant: 310 70% 60%;
+    --seat-general: 221 83% 53%;
     --seat-booked: 215 15% 65%;
 
-    /* Sidebar */
-    --sidebar-background: 220 68% 18%;
-    --sidebar-foreground: 0 0% 92%;
-    --sidebar-primary: 32 100% 50%;
-    --sidebar-primary-foreground: 220 68% 12%;
-    --sidebar-accent: 220 50% 28%;
-    --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 220 40% 25%;
-    --sidebar-ring: 32 100% 50%;
-
     /* Shadows */
-    --shadow-card: 0 2px 8px 0 hsl(220 68% 22% / 0.08), 0 1px 3px 0 hsl(220 68% 22% / 0.06);
-    --shadow-elevated: 0 4px 16px 0 hsl(220 68% 22% / 0.12), 0 2px 6px 0 hsl(220 68% 22% / 0.08);
+    --shadow-card: 0 2px 12px 0 hsl(221 83% 53% / 0.08), 0 1px 3px 0 hsl(221 83% 53% / 0.05);
+    --shadow-elevated: 0 6px 24px 0 hsl(221 83% 53% / 0.12), 0 2px 8px 0 hsl(221 83% 53% / 0.08);
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    /* #0F172A — Dark Navy */
+    --foreground: 210 40% 98%;
+    /* #F8FAFC */
+
+    --card: 222 47% 15%;
+    /* #1E293B */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    /* #3B82F6 — Bright Blue */
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 213 94% 68%;
+    /* #60A5FA */
+    --primary-muted: 222 47% 20%;
+
+    --accent: 213 94% 68%;
+    /* #60A5FA */
+    --accent-foreground: 222 47% 7%;
+    --accent-light: 222 47% 22%;
+    --accent-muted: 222 47% 18%;
+
+    --secondary: 222 47% 19%;
+    --secondary-foreground: 210 40% 90%;
+
+    --muted: 222 47% 17%;
+    --muted-foreground: 215 20% 65%;
+    /* #CBD5E1 */
+
+    --border: 222 47% 22%;
+    --input: 222 47% 20%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 18%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 222 47% 17%;
+    --sidebar-ring: 217 91% 60%;
+
+    --shadow-card: 0 4px 20px 0 rgba(0, 0, 0, 0.4);
+    --shadow-elevated: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -97,7 +156,7 @@
   html,
   body,
   #root {
-    font-family: 'Roboto', sans-serif !important;
+    font-family: 'Poppins', system-ui, sans-serif !important;
   }
 
   * {
@@ -123,8 +182,10 @@
   select,
   span,
   p,
-  div {
-    font-family: 'Roboto', sans-serif !important;
+  div,
+  a,
+  label {
+    font-family: 'Poppins', system-ui, sans-serif !important;
   }
 }
 
@@ -193,22 +254,6 @@
     background-color: hsl(var(--info-light));
   }
 
-  .text-success {
-    color: hsl(var(--success));
-  }
-
-  .text-warning {
-    color: hsl(var(--warning));
-  }
-
-  .text-danger {
-    color: hsl(var(--danger));
-  }
-
-  .text-info {
-    color: hsl(var(--info));
-  }
-
   .border-accent {
     border-color: hsl(var(--accent));
   }
@@ -217,16 +262,13 @@
     border-color: hsl(var(--primary-light));
   }
 
-  /* Tricolor stripe like Indian government portals */
+  /* Blue top stripe — brand accent */
   .gov-stripe {
     height: 4px;
     background: linear-gradient(to right,
-        hsl(var(--accent)) 0%,
-        hsl(var(--accent)) 33.3%,
-        hsl(0 0% 100%) 33.3%,
-        hsl(0 0% 100%) 66.6%,
-        hsl(145 55% 38%) 66.6%,
-        hsl(145 55% 38%) 100%);
+        hsl(224, 71%, 33%) 0%,
+        hsl(221, 83%, 53%) 50%,
+        hsl(213, 94%, 68%) 100%);
   }
 
   .live-pulse {
@@ -245,16 +287,24 @@
     }
   }
 
+  @keyframes sos-pulse {
+
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+    }
+
+    50% {
+      box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+    }
+  }
+
+  .sos-pulse {
+    animation: sos-pulse 1.5s ease-in-out infinite;
+  }
+
   .portal-card {
-    @apply bg-card rounded-lg border border-border shadow-card;
-  }
-
-  .text-premium {
-    @apply font-black italic uppercase tracking-tighter;
-  }
-
-  .stat-badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
+    @apply bg-card rounded-2xl border border-border shadow-card;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -266,7 +316,7 @@
     scrollbar-width: none;
   }
 
-  /* Print Styles for E-Tickets */
+  /* Print Styles */
   @media print {
     body * {
       visibility: hidden;
@@ -287,7 +337,6 @@
       box-shadow: none !important;
     }
 
-    /* Hide UI elements within the ticket card that shouldn't be printed */
     .print\:hidden {
       display: none !important;
     }

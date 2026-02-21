@@ -15,7 +15,7 @@ export default function More() {
             <div className="space-y-6 pb-12 md:pb-0">
                 <div>
                     <h1 className="text-2xl sm:text-3xl text-premium text-primary mb-1">More Options</h1>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Additional features and information.</p>
+                    <p className="text-[10px] font-bold text-slate-400">Additional features and information.</p>
                 </div>
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                     {sections.map((s) => (

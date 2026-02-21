@@ -16,7 +16,7 @@ const UserSchema = new mongoose.Schema({
     gender: { type: String },
     isPhysicallyAbled: { type: Boolean, default: false },
     phone: { type: String },
-    role: { type: String, enum: ['Passenger', 'Driver', 'Admin', 'Owner', 'Owner+Driver'], default: 'Passenger' }, // Added roles
+    role: { type: String, enum: ['Passenger', 'Employee', 'Admin', 'Owner', 'Owner+Employee'], default: 'Passenger' }, // Updated roles
     walletBalance: { type: Number, default: 0 },
     identityVerified: { type: Boolean, default: false },
     address: {
@@ -24,8 +24,11 @@ const UserSchema = new mongoose.Schema({
         state: { type: String }
     },
     profileImage: { type: String },
+    upiId: { type: String },
+    activationCode: { type: String },
+    assignedBus: { type: mongoose.Schema.Types.ObjectId, ref: 'Bus' },
     savedPassengers: [PassengerSchema],
-    pnrHistory: [{ type: String }] // Store PNR numbers of bookings
+    pnrHistory: [{ type: String }]
 }, {
     timestamps: true,
     bufferCommands: false // Disable buffering on this schema

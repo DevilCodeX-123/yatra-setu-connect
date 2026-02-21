@@ -17,7 +17,7 @@ export default function ProfileInfo() {
                     <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-[80px] -mr-32 -mt-32 rounded-full" />
 
                     <div className="relative group shrink-0">
-                        <div className="w-32 h-32 rounded-[40px] bg-white text-[#1E293B] flex items-center justify-center text-5xl font-black italic shadow-2xl border-4 border-white/20">
+                        <div className="w-32 h-32 rounded-[40px] bg-white text-[#1E293B] flex items-center justify-center text-5xl font-black shadow-2xl border-4 border-white/20">
                             JD
                         </div>
                         <button className="absolute bottom-0 right-0 p-2.5 bg-accent text-accent-foreground rounded-2xl shadow-xl hover:scale-110 active:scale-90 transition-all border-4 border-[#1E293B]">
@@ -26,8 +26,8 @@ export default function ProfileInfo() {
                     </div>
 
                     <div className="flex-1 text-center md:text-left">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent mb-2">Citizen Identity</p>
-                        <h2 className="text-4xl font-black italic tracking-tighter uppercase mb-4">John Doe</h2>
+                        <p className="text-[10px] font-black tracking-[0.4em] text-accent mb-2">Citizen Identity</p>
+                        <h2 className="text-4xl font-black mb-4">John Doe</h2>
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                             <div className="flex items-center gap-2 text-xs font-bold text-white/60">
                                 <Shield className="w-4 h-4 text-emerald-400" />
@@ -41,7 +41,7 @@ export default function ProfileInfo() {
                 <div className="portal-card p-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</Label>
+                            <Label className="text-[10px] font-black text-slate-400">Full Name</Label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <Input defaultValue="John Doe" className="pl-10 h-12 bg-slate-50 border-none rounded-xl font-bold" />
@@ -49,7 +49,7 @@ export default function ProfileInfo() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
+                            <Label className="text-[10px] font-black text-slate-400">Email Address</Label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <Input defaultValue="john.doe@government.in" className="pl-10 h-12 bg-slate-50 border-none rounded-xl font-bold" />
@@ -57,7 +57,7 @@ export default function ProfileInfo() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mobile Number</Label>
+                            <Label className="text-[10px] font-black text-slate-400">Mobile Number</Label>
                             <div className="relative">
                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <Input defaultValue="+91 98765 43210" className="pl-10 h-12 bg-slate-50 border-none rounded-xl font-bold" />
@@ -65,7 +65,7 @@ export default function ProfileInfo() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date of Birth</Label>
+                            <Label className="text-[10px] font-black text-slate-400">Date of Birth</Label>
                             <div className="relative">
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <Input defaultValue="1990-05-15" type="date" className="pl-10 h-12 bg-slate-50 border-none rounded-xl font-bold" />
@@ -74,7 +74,7 @@ export default function ProfileInfo() {
                     </div>
 
                     <div className="mt-8 pt-8 border-t space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Address Override</Label>
+                        <Label className="text-[10px] font-black text-slate-400">Address Override</Label>
                         <div className="relative">
                             <MapPin className="absolute left-3 top-4 w-4 h-4 text-slate-400" />
                             <textarea
@@ -85,7 +85,7 @@ export default function ProfileInfo() {
                     </div>
 
                     <div className="mt-10 flex justify-end">
-                        <Button className="h-14 px-10 text-[12px] font-black uppercase italic tracking-[0.2em] shadow-xl shadow-primary/20 rounded-2xl group transition-all hover:scale-105 active:scale-95">
+                        <Button className="h-14 px-10 text-[12px] font-black tracking-[0.2em] shadow-xl shadow-primary/20 rounded-2xl group transition-all hover:scale-105 active:scale-95">
                             <Save className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
                             Archive Changes
                         </Button>

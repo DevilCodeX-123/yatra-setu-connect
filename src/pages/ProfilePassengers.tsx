@@ -19,7 +19,7 @@ export default function ProfilePassengers() {
             <div className="max-w-4xl space-y-6 animate-slide-up">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg text-premium text-primary">Your Passenger List</h3>
-                    <Button className="rounded-xl h-10 text-[10px] font-black uppercase tracking-widest italic bg-accent text-accent-foreground shadow-lg shadow-accent/20">
+                    <Button className="rounded-xl h-10 text-[10px] font-black bg-accent text-accent-foreground shadow-lg shadow-accent/20">
                         <UserPlus className="w-4 h-4 mr-2" /> Add New
                     </Button>
                 </div>
@@ -32,8 +32,8 @@ export default function ProfilePassengers() {
                                     <Users className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h4 className="text-base font-black italic text-primary uppercase tracking-tighter">{p.name}</h4>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                    <h4 className="text-base font-black text-primary ">{p.name}</h4>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">
                                         {p.gender} • {p.age} Yrs • {p.relation}
                                     </p>
                                 </div>
@@ -41,11 +41,11 @@ export default function ProfilePassengers() {
 
                             <div className="flex items-center gap-6">
                                 <div className="flex flex-col items-end">
-                                    <Badge variant={p.status === 'Verified' ? 'default' : 'secondary'} className={`rounded-full px-3 text-[8px] font-black uppercase tracking-tighter ${p.status === 'Verified' ? 'bg-emerald-500' : ''}`}>
+                                    <Badge variant={p.status === 'Verified' ? 'default' : 'secondary'} className={`rounded-full px-3 text-[8px] font-black ${p.status === 'Verified' ? 'bg-emerald-500' : ''}`}>
                                         {p.status}
                                     </Badge>
                                     {p.status === 'Verified' && (
-                                        <span className="flex items-center gap-1 text-[8px] font-bold text-emerald-500 mt-1 uppercase">
+                                        <span className="flex items-center gap-1 text-[8px] font-bold text-emerald-500 mt-1 ">
                                             <ShieldCheck className="w-3 h-3" /> Identity Confirmed
                                         </span>
                                     )}
@@ -70,7 +70,7 @@ export default function ProfilePassengers() {
                         <ShieldCheck className="w-5 h-5" />
                     </div>
                     <div>
-                        <h5 className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Government Mandate</h5>
+                        <h5 className="text-[10px] font-black text-primary mb-1">Government Mandate</h5>
                         <p className="text-xs text-slate-500 leading-relaxed font-medium">
                             As per government regulations, any passenger listed here must have a valid identity card for travel verification. Verified passengers benefit from 1-click insurance coverage on all trips.
                         </p>

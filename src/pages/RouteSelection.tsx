@@ -257,7 +257,7 @@ export default function RouteSelection() {
             setStops(suggested.map((s, i) => ({ ...s, order: i })));
             setIsSuggesting(false);
             toast.dismiss();
-            toast.success("Smart Path Suggested!", { icon: <Sparkles className="w-4 h-4 text-amber-500" /> });
+            toast.success("Smart Path Suggested!", { icon: <Sparkles className="w-4 h-4 text-primary-light" /> });
         }, 1500);
     };
 
@@ -300,53 +300,53 @@ export default function RouteSelection() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+        <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-4xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigate("/owner")} className="rounded-full hover:bg-white shadow-sm border">
-                            <ArrowLeft className="w-5 h-5 text-slate-600" />
+                        <Button variant="ghost" size="icon" onClick={() => navigate("/owner")} className="rounded-full hover:bg-card shadow-sm border border-border">
+                            <ArrowLeft className="w-5 h-5 text-foreground opacity-60" />
                         </Button>
                         <div>
-                            <h1 className="text-3xl font-black italic uppercase tracking-tighter text-primary">Route Selection</h1>
-                            <p className="text-sm text-slate-500 font-medium">Design and optimize your bus route paths</p>
+                            <h1 className="text-3xl font-black text-primary">Route Selection</h1>
+                            <p className="text-sm text-muted-foreground font-black opacity-60">Design and optimize your bus route paths</p>
                         </div>
                     </div>
-                    <Button className="rounded-2xl h-12 px-8 font-bold gap-2 shadow-lg shadow-primary/20" onClick={handleSave}>
+                    <Button className="rounded-2xl h-12 px-8 font-black gap-2 shadow-lg shadow-primary/20 " onClick={handleSave}>
                         <Save className="w-4 h-4" /> Save Route
                     </Button>
                 </div>
 
                 {/* Interactive Map Hero */}
-                <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-slate-200" style={{ height: '450px' }}>
+                <Card className="border border-border shadow-card rounded-3xl overflow-hidden bg-secondary h-[450px]">
                     <MapplsMap markers={markers} routePoints={routePoints} className="h-full" />
                 </Card>
 
                 <div className="grid md:grid-cols-5 gap-6">
                     {/* Stops List */}
                     <div className="md:col-span-3 space-y-4">
-                        <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
-                            <CardHeader className="bg-primary text-white pb-6">
+                        <Card className="border border-border shadow-card rounded-3xl overflow-hidden">
+                            <CardHeader className="bg-primary text-primary-foreground pb-6">
                                 <div className="flex items-center justify-between">
-                                    <CardTitle className="text-xl font-bold uppercase italic flex items-center gap-2">
+                                    <CardTitle className="text-xl font-black flex items-center gap-2">
                                         <Navigation className="w-5 h-5" /> Manage Stops
                                     </CardTitle>
-                                    <span className="text-xs font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest leading-none">
+                                    <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full leading-none">
                                         {stops.length} STATIONS
                                     </span>
                                 </div>
-                                <CardDescription className="text-white/70">Search and add locations from Mappls for accurate mapping.</CardDescription>
+                                <CardDescription className="text-primary-foreground/70 font-black text-[10px]">Search and add locations from Mappls for accurate mapping.</CardDescription>
                             </CardHeader>
                             <CardContent className="pt-6 space-y-4">
                                 {/* ===== SEARCH INPUT WITH AUTOCOMPLETE ===== */}
                                 <div ref={searchRef} className="relative">
                                     <div className="flex gap-2">
                                         <div className="relative flex-1">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-40" />
                                             <Input
-                                                placeholder="Search for a location (e.g., Majestic, Electronic City)..."
-                                                className="pl-10 h-12 bg-slate-50 border-none rounded-xl pr-10"
+                                                placeholder="Search for a location..."
+                                                className="pl-10 h-12 bg-secondary border border-border rounded-xl pr-10 font-black text-[10px] placeholder:opacity-40"
                                                 value={searchQuery}
                                                 onChange={(e) => handleSearchInput(e.target.value)}
                                                 onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
@@ -377,27 +377,27 @@ export default function RouteSelection() {
 
                                     {/* ===== SUGGESTIONS DROPDOWN ===== */}
                                     {showSuggestions && suggestions.length > 0 && (
-                                        <div className="absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+                                        <div className="absolute z-50 w-full mt-2 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
                                             {suggestions.map((s, i) => (
                                                 <button
                                                     key={i}
-                                                    className="w-full flex items-start gap-3 px-4 py-3 hover:bg-blue-50 transition-colors text-left border-b border-slate-50 last:border-none"
+                                                    className="w-full flex items-start gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left border-b border-border last:border-none"
                                                     onClick={() => addStopFromSuggestion(s)}
                                                 >
                                                     <MapPin className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="font-bold text-sm text-slate-800 truncate">{s.placeName}</p>
-                                                        <p className="text-xs text-slate-400 truncate">{s.placeAddress}</p>
+                                                        <p className="font-black text-xs text-foreground truncate ">{s.placeName}</p>
+                                                        <p className="text-[10px] text-muted-foreground truncate font-black opacity-40">{s.placeAddress}</p>
                                                     </div>
-                                                    <span className="text-[9px] font-bold text-slate-300 uppercase mt-1">{s.type}</span>
+                                                    <span className="text-[9px] font-black text-muted-foreground mt-1 opacity-40">{s.type}</span>
                                                 </button>
                                             ))}
                                         </div>
                                     )}
 
                                     {showSuggestions && searchQuery.length >= 2 && suggestions.length === 0 && !isSearching && (
-                                        <div className="absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 text-center">
-                                            <p className="text-sm text-slate-400">No locations found. Try a different search term.</p>
+                                        <div className="absolute z-50 w-full mt-2 bg-card rounded-2xl shadow-2xl border border-border p-4 text-center">
+                                            <p className="text-xs text-muted-foreground font-black opacity-40">No locations found. Try a different search term.</p>
                                         </div>
                                     )}
                                 </div>
@@ -411,21 +411,21 @@ export default function RouteSelection() {
                                             onDragStart={(e) => onDragStart(e, index)}
                                             onDragOver={(e) => onDragOver(e, index)}
                                             onDragEnd={onDragEnd}
-                                            className={`flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border-2 transition-all group cursor-grab active:cursor-grabbing ${draggedIndex === index ? "opacity-30 border-dashed border-primary" : "border-transparent hover:border-primary/20"
+                                            className={`flex items-center gap-3 p-4 bg-secondary rounded-2xl border border-border transition-all group cursor-grab active:cursor-grabbing ${draggedIndex === index ? "opacity-30 border-dashed border-primary" : "hover:border-primary/20"
                                                 }`}
                                         >
                                             <div className="flex flex-col gap-0 items-center">
-                                                <div className="p-1 px-2 text-slate-300 group-hover:text-primary transition-colors cursor-grab">
+                                                <div className="p-1 px-2 text-muted-foreground opacity-20 group-hover:text-primary group-hover:opacity-100 transition-all cursor-grab">
                                                     <GripVertical className="w-5 h-5" />
                                                 </div>
                                             </div>
 
                                             <div className="flex-1 flex flex-col min-w-0">
-                                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-0.5">
+                                                <span className="text-[9px] font-black text-muted-foreground mb-0.5 opacity-40">
                                                     {index === 0 ? "STARTING POINT" : index === stops.length - 1 ? "FINAL DESTINATION" : `STOP ${index}`}
                                                 </span>
-                                                <span className="font-bold text-slate-700 truncate">{stop.name}</span>
-                                                <span className="text-[10px] text-slate-400">
+                                                <span className="font-black text-sm text-foreground truncate ">{stop.name}</span>
+                                                <span className="text-[9px] text-muted-foreground font-black opacity-40">
                                                     {stop.lat.toFixed(4)}°N, {stop.lng.toFixed(4)}°E
                                                 </span>
                                             </div>
@@ -433,7 +433,7 @@ export default function RouteSelection() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="w-8 h-8 text-slate-400 hover:text-red-500 hover:bg-red-50 flex-shrink-0"
+                                                className="w-8 h-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex-shrink-0 opacity-40 hover:opacity-100"
                                                 onClick={() => removeStop(stop.id)}
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -447,52 +447,52 @@ export default function RouteSelection() {
 
                     {/* Path Suggestion & Info */}
                     <div className="md:col-span-2 space-y-6">
-                        <Card className="border-none shadow-xl rounded-3xl bg-slate-900 text-white overflow-hidden">
+                        <Card className="border border-border shadow-card rounded-3xl bg-card text-foreground overflow-hidden">
                             <CardHeader>
-                                <CardTitle className="text-lg font-black uppercase italic tracking-tighter flex items-center gap-2">
-                                    <Sparkles className="w-5 h-5 text-amber-400" /> Smart Suggester
+                                <CardTitle className="text-lg font-black flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 text-primary-light" /> Smart Suggester
                                 </CardTitle>
-                                <CardDescription className="text-slate-400 font-medium">Automatic path optimization powered by Yatra Core AI.</CardDescription>
+                                <CardDescription className="text-muted-foreground font-black text-[9px] opacity-60">Automatic path optimization powered by Yatra Core AI.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                                <div className="p-4 bg-secondary rounded-2xl border border-border space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-400">TOTAL STOPS</span>
-                                        <span className="text-sm font-black text-amber-400 uppercase">{stops.length}</span>
+                                        <span className="text-[10px] font-black text-muted-foreground opacity-40">TOTAL STOPS</span>
+                                        <span className="text-xs font-black text-primary dark:text-primary-light ">{stops.length}</span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-400">ROUTE TYPE</span>
-                                        <span className="text-sm font-black text-amber-400 uppercase">Road Following</span>
+                                        <span className="text-[10px] font-black text-muted-foreground opacity-40">ROUTE TYPE</span>
+                                        <span className="text-xs font-black text-primary dark:text-primary-light ">Road Following</span>
                                     </div>
                                 </div>
 
                                 <Button
-                                    className="w-full h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 font-bold gap-2 text-white shadow-lg shadow-amber-500/20"
+                                    className="w-full h-14 rounded-2xl bg-primary-light hover:bg-primary font-black gap-2 text-white shadow-lg shadow-blue-500/20 "
                                     onClick={autoSuggestPath}
                                     disabled={isSuggesting}
                                 >
                                     {isSuggesting ? "Optimizing..." : "Suggest Smart Path"}
                                 </Button>
 
-                                <div className="pt-4 border-t border-white/10">
-                                    <div className="flex items-center gap-3 text-sm text-slate-400 font-medium">
+                                <div className="pt-4 border-t border-border">
+                                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-black opacity-60">
                                         <MapIcon className="w-4 h-4" />
-                                        <span>Selected path will be applied to </span>
-                                        <span className="text-white font-bold underline decoration-amber-500">KA-01-F-1234</span>
+                                        <span>Applying to </span>
+                                        <span className="text-foreground underline decoration-amber-500">KA-01-F-1234</span>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
 
                         <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10">
-                            <h4 className="font-bold text-primary mb-2 flex items-center gap-2">
+                            <h4 className="font-black text-primary mb-3 flex items-center gap-2 text-xs">
                                 <Navigation className="w-4 h-4" /> How It Works
                             </h4>
-                            <ul className="text-xs text-slate-600 font-medium leading-relaxed space-y-2">
-                                <li>🔍 <strong>Search</strong> for any location using the search bar</li>
-                                <li>📍 <strong>Select</strong> from Mappls suggestions for exact coordinates</li>
-                                <li>🔄 <strong>Drag</strong> stops to reorder the route</li>
-                                <li>🗺️ <strong>Map updates</strong> automatically with markers and route</li>
+                            <ul className="text-[9px] text-muted-foreground font-black tracking-wider leading-relaxed space-y-3 opacity-80">
+                                <li className="flex gap-2"><span>🔍</span> <span>Search for any location using the high-precision bar</span></li>
+                                <li className="flex gap-2"><span>📍</span> <span>Select from Mappls suggestions for exact coordinates</span></li>
+                                <li className="flex gap-2"><span>🔄</span> <span>Drag stops to reorder the route flow</span></li>
+                                <li className="flex gap-2"><span>🗺️</span> <span>Map updates automatically with road-following paths</span></li>
                             </ul>
                         </div>
                     </div>

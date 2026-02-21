@@ -94,7 +94,7 @@ export default function AdminPanel() {
               <thead>
                 <tr style={{ backgroundColor: "hsl(var(--muted))" }}>
                   {["Bus ID", "Route", "Driver", "Owner", "Status", "Location", "Actions"].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide"
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide"
                       style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
                   ))}
                 </tr>
@@ -152,7 +152,7 @@ export default function AdminPanel() {
             ].map(r => (
               <div key={r.label} className="flex items-center justify-between p-3 rounded-xl border border-border"
                 style={{ backgroundColor: `hsl(var(--${r.color}-light))` }}>
-                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{r.label}</span>
+                <span className="text-xs font-bold text-slate-500">{r.label}</span>
                 <span className="text-xl text-premium" style={{ color: `hsl(var(--${r.color}))` }}>{r.value}</span>
               </div>
             ))}

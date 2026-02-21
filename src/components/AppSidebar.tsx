@@ -15,10 +15,8 @@ import {
   Home,
   History,
   UserCircle,
-  HandCoins,
   User,
   HelpCircle,
-  MoreHorizontal,
   Bus,
   Navigation,
   AlertCircle,
@@ -30,18 +28,22 @@ import {
   Shield,
   School,
   Route,
-  CreditCard
+  CreditCard,
+  Wifi
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import Logo from "./brand/Logo";
+import LogoIcon from "./brand/LogoIcon";
 
 const menuGroups = {
   consumer: [
     { title: "Home", url: "/", icon: Home },
     { title: "Transaction", url: "/transactions", icon: History },
     { title: "Account", url: "/account", icon: UserCircle },
-    { title: "Lentings", url: "/lentings", icon: HandCoins },
+    { title: "Available Buses", url: "/buses", icon: Bus },
     { title: "Profile", url: "/profile", icon: User },
     { title: "Past Rides", url: "/profile/past-rides", icon: Route },
+    { title: "Employee", url: "/employee", icon: Shield },
     { title: "Support", url: "/support", icon: HelpCircle },
   ],
   passenger: [
@@ -86,54 +88,67 @@ export function AppSidebar() {
   const items = menuGroups[group];
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border/50">
-      <SidebarHeader className="bg-[#1E293B] border-b border-white/5 pt-6 pb-4">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      {/* Header */}
+      <SidebarHeader className="bg-sidebar border-b border-white/5 pt-5 pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="hover:bg-white/5">
-              <Link to="/">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                  <Bus className="size-4" />
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-black italic uppercase tracking-tighter text-white">Yatra Setu</span>
-                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 opacity-60 group-data-[collapsible=icon]:hidden">Smart Network</span>
+            <SidebarMenuButton size="lg" asChild className="hover:bg-white/10 rounded-xl transition-all h-auto py-2">
+              <Link to="/" className="flex items-center gap-3">
+                <LogoIcon size={36} className="shrink-0 shadow-lg" />
+                <div className="flex flex-col gap-0 leading-none group-data-[collapsible=icon]:hidden">
+                  <span className="font-bold text-white text-base tracking-tight">Yatra Setu</span>
+                  <span className="text-[9px] font-medium text-blue-300 opacity-60">
+                    Smart Transport
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent className="bg-[#1E293B] px-3 pt-6">
+
+      {/* Content */}
+      <SidebarContent className="bg-sidebar px-2 pt-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 px-3">
+          <SidebarGroupLabel className="text-[9px] font-semibold text-blue-300/60 mb-1 px-3">
             {group.toUpperCase()} Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={item.title}
-                    isActive={location.pathname === item.url}
-                    className={`h-11 rounded-xl transition-all ${location.pathname === item.url ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-white/60 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <Link to={item.url} className="px-3">
-                      <item.icon className="size-4" />
-                      <span className="text-xs font-black uppercase tracking-widest italic">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+            <SidebarMenu className="space-y-0.5">
+              {items.map((item) => {
+                const active = location.pathname === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      isActive={active}
+                      className={`h-10 rounded-xl transition-all duration-200 ${active
+                        ? "bg-primary-light text-white shadow-md shadow-blue-600/20"
+                        : "text-blue-200/70 hover:text-white hover:bg-white/8"
+                        }`}
+                    >
+                      <Link to={item.url} className="px-3 flex items-center gap-3">
+                        <item.icon className="size-4 shrink-0" />
+                        <span className="text-xs font-medium">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="bg-[#1E293B] border-t border-white/5 p-4">
-        <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-white/30 group-data-[collapsible=icon]:hidden">
-          <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>System Online</span>
+
+      {/* Footer */}
+      <SidebarFooter className="bg-sidebar border-t border-white/5 p-4">
+        <div className="flex items-center gap-2.5 text-[9px] font-semibold text-blue-300/50 group-data-[collapsible=icon]:hidden">
+          <div className="flex items-center gap-1.5">
+            <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>System Online</span>
+          </div>
         </div>
       </SidebarFooter>
       <SidebarRail />

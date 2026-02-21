@@ -35,7 +35,7 @@ export default function ProfileBookings() {
             if (now > tripDate) return { label: "Expired", color: "bg-slate-100 text-slate-400 border-slate-200", icon: History, variant: "secondary" as const };
 
             const diff = differenceInCalendarDays(tripDate, now);
-            if (diff === 0) return { label: "Today", color: "bg-amber-50 text-amber-600 border-amber-100", icon: Clock, variant: "default" as const };
+            if (diff === 0) return { label: "Today", color: "bg-amber-50 text-primary border-amber-100", icon: Clock, variant: "default" as const };
             if (diff === 1) return { label: "Tomorrow", color: "bg-blue-50 text-blue-600 border-blue-100", icon: Calendar, variant: "default" as const };
             return { label: `${diff} Days Left`, color: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: Calendar, variant: "default" as const };
         } catch (e) {
@@ -53,13 +53,13 @@ export default function ProfileBookings() {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Fetching Bookings...</p>
+                        <p className="text-xs font-bold text-slate-400">Fetching Bookings...</p>
                     </div>
                 ) : bookings.length === 0 ? (
                     <div className="portal-card p-12 text-center text-slate-400">
                         <Bus className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p className="text-sm font-bold uppercase tracking-widest">No Bookings Found</p>
-                        <p className="text-xs mt-1 italic">Plan your first trip to see it here!</p>
+                        <p className="text-sm font-bold ">No Bookings Found</p>
+                        <p className="text-xs mt-1 ">Plan your first trip to see it here!</p>
                     </div>
                 ) : (
                     <div className="grid gap-6">
@@ -72,13 +72,13 @@ export default function ProfileBookings() {
                                 <div key={booking._id} className={`portal-card overflow-hidden hover:shadow-elevated transition-all group ${status.label === "Expired" ? "opacity-75" : ""}`}>
                                     <div className={`px-4 py-3 flex items-center justify-between ${status.label === "Expired" ? "bg-slate-50" : "bg-primary/5"}`}>
                                         <div className="flex items-center gap-3">
-                                            <Badge variant={status.variant} className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${status.color}`}>
+                                            <Badge variant={status.variant} className={`rounded-full px-3 py-1 text-[9px] font-black flex items-center gap-1.5 ${status.color}`}>
                                                 <status.icon className="w-3 h-3" />
                                                 {status.label}
                                             </Badge>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">₹{booking.amount} Paid</span>
+                                            <span className="text-[10px] font-bold text-slate-400 ">₹{booking.amount} Paid</span>
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-[10px] font-black text-primary italic uppercase">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-black text-primary ">
                                             <QrCode className="w-3 h-3" />
                                             <span>PNR: {booking.pnr}</span>
                                         </div>
@@ -88,8 +88,8 @@ export default function ProfileBookings() {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-4 mb-6 relative">
                                                 <div className="text-left">
-                                                    <p className="text-xl font-black text-primary italic leading-none">{booking.bus?.route.from}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{booking.bus?.departureTime}</p>
+                                                    <p className="text-xl font-black text-primary leading-none">{booking.bus?.route.from}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 mt-1.5">{booking.bus?.departureTime}</p>
                                                 </div>
                                                 <div className="flex-1 flex flex-col items-center px-4">
                                                     <div className="w-full h-[2px] bg-slate-100 relative">
@@ -97,8 +97,8 @@ export default function ProfileBookings() {
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-xl font-black text-primary italic leading-none">{booking.bus?.route.to}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{booking.bus?.arrivalTime}</p>
+                                                    <p className="text-xl font-black text-primary leading-none">{booking.bus?.route.to}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 mt-1.5">{booking.bus?.arrivalTime}</p>
                                                 </div>
                                             </div>
 
@@ -126,12 +126,12 @@ export default function ProfileBookings() {
 
                                         <div className="flex md:flex-col gap-2 min-w-[150px]">
                                             <Link to={`/verify?pnr=${booking.pnr}`} className="flex-1">
-                                                <Button className="w-full text-[10px] font-black uppercase italic tracking-widest h-11 shadow-lg shadow-primary/20">
+                                                <Button className="w-full text-[10px] font-black h-11 shadow-lg shadow-primary/20">
                                                     View E-Ticket
                                                 </Button>
                                             </Link>
                                             {status.label !== "Expired" && (
-                                                <Button variant="outline" className="flex-1 text-[10px] font-black uppercase italic tracking-widest h-11 border-primary text-primary hover:bg-primary/5">
+                                                <Button variant="outline" className="flex-1 text-[10px] font-black h-11 border-primary text-primary hover:bg-primary/5">
                                                     Track Live
                                                 </Button>
                                             )}

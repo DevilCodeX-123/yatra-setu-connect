@@ -196,7 +196,7 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, clas
 
         const busMarkerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-                <div style="background:#10b981;color:#fff;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:900;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,0.2);text-transform:uppercase;letter-spacing:0.5px;border:1px solid rgba(255,255,255,0.3);">
+                <div style="background:#10b981;color:#fff;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:900;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,0.2);text-transform:;letter-spacing:0.5px;border:1px solid rgba(255,255,255,0.3);">
                     LIVE BUS
                 </div>
                 <div style="width:32px;height:32px;background:#10b981;border:3px solid #fff;border-radius:12px;box-shadow:0 4px 12px rgba(16,185,129,0.4);display:flex;align-items:center;justify-center;transform:rotate(45deg);">
@@ -480,16 +480,16 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, clas
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 backdrop-blur-md z-[100] p-10 text-center">
                     {error ? (
                         <div>
-                            <h3 className="font-black uppercase tracking-tighter text-red-500 text-lg mb-2">Map Error</h3>
+                            <h3 className="font-black text-red-500 text-lg mb-2">Map Error</h3>
                             <p className="text-xs text-slate-500 mb-4">{error}</p>
-                            <button onClick={() => window.location.reload()} className="px-8 py-3 bg-slate-900 text-white text-xs font-bold uppercase rounded-xl">
+                            <button onClick={() => window.location.reload()} className="px-8 py-3 bg-slate-900 text-white text-xs font-bold rounded-xl">
                                 Retry
                             </button>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center">
                             <div className="w-10 h-10 border-4 border-slate-100 border-t-blue-500 rounded-full animate-spin mb-4" />
-                            <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Loading Map...</span>
+                            <span className="text-xs font-bold text-slate-400">Loading Map...</span>
                         </div>
                     )}
                 </div>

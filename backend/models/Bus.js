@@ -1,33 +1,49 @@
 const mongoose = require('mongoose');
 
+const SeatSchema = new mongoose.Schema({
+    number: { type: Number, required: true },
+    status: { type: String, enum: ['Available', 'Booked', 'Cash', 'Locked'], default: 'Available' },
+    reservedFor: { type: String, enum: ['general', 'women', 'elderly', 'disabled'], default: 'general' },
+    passenger: { type: String },
+}, { _id: false });
+
+const StopSchema = new mongoose.Schema({
+    name: { type: String },
+    lat: { type: Number },
+    lng: { type: Number },
+    price: { type: Number, default: 0 },
+    sequence: { type: Number },
+}, { _id: false });
+
 const BusSchema = new mongoose.Schema({
-    busNumber: { type: String, required: true, unique: true }, // Renamed from busId
-    operator: { type: String, required: true, default: 'Yatra Setu' }, // Added operator
+    busNumber: { type: String, required: true, unique: true },
+    name: { type: String },
+    operator: { type: String },
+    type: { type: String, enum: ['AC', 'Non-AC', 'Express', 'Volvo', 'Ordinary', 'Sleeper'], default: 'Ordinary' },
+    status: { type: String, enum: ['Active', 'Inactive', 'Maintenance'], default: 'Active' },
+    totalSeats: { type: Number, default: 40 },
+    seats: [SeatSchema],
+    pricePerKm: { type: Number, default: 1.2 },
+    activationCode: { type: String },
+    km: { type: Number, default: 0 },
+    rating: { type: Number, default: 4.0 },
+    departureTime: { type: String },
+    arrivalTime: { type: String },
+    date: { type: String },
     route: {
-        from: { type: String, required: true },
-        to: { type: String, required: true },
-        stops: [{
-            name: { type: String, required: true },
-            lat: { type: Number, required: true },
-            lng: { type: Number, required: true }
-        }]
+        from: { type: String },
+        to: { type: String },
+        stops: [StopSchema],
     },
-    departureTime: { type: String, required: true },
-    arrivalTime: { type: String, required: true },
-    type: { type: String, required: true }, // Express, Ordinary, Volvo AC
-    price: { type: Number, required: true, default: 0 }, // Added price
-    totalSeats: { type: Number, required: true, default: 42 },
-    availableSeats: { type: Number, required: true, default: 42 },
-    amenities: [{ type: String }], // Added amenities (WiFi, AC, Charging, etc.)
-    km: { type: Number },
-    status: { type: String, default: 'On Time' }, // On Time, Delayed, Full
     liveLocation: {
-        latitude: { type: Number },
-        longitude: { type: Number },
-        lastUpdated: { type: Date }
-    }, // Added live location tracking
-    date: { type: String }, // Added date field for searching (YYYY-MM-DD)
-    ownerUPI: { type: String, default: '8302391227-2@ybl' } // Added UPI ID for payment
+        lat: { type: Number },
+        lng: { type: Number },
+        source: { type: String, enum: ['gps', 'driver', 'conductor', 'manual'] },
+        updatedAt: { type: Date },
+    },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Bus', BusSchema);
+
+

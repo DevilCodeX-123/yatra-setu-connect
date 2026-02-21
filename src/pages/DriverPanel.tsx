@@ -50,7 +50,7 @@ export default function DriverPanel() {
           </div>
 
           <div className="portal-card p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>
+            <p className="text-xs font-semibold tracking-wide mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>
               Assigned Bus
             </p>
             <p className="font-bold text-base" style={{ color: "hsl(var(--primary))" }}>KA-01-F-1234</p>
@@ -58,7 +58,7 @@ export default function DriverPanel() {
           </div>
 
           <div className="portal-card p-4 flex flex-col justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
+            <p className="text-xs font-semibold tracking-wide mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
               Trip Control
             </p>
             {!tripActive ? (

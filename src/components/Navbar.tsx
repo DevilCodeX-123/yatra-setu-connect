@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Globe, ChevronDown, Phone, Bus } from "lucide-react";
+import { Menu, X, Globe, ChevronDown, Phone, Moon, Sun } from "lucide-react";
+import Logo from "./brand/Logo";
 import { Button } from "@/components/ui/button";
+import NotificationPanel from "@/components/NotificationPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import logoImg from "@/assets/logo.png";
 
 const languages = [
   { code: "en", label: "English" },
@@ -26,6 +27,7 @@ const navLinks = [
       { href: "/passenger", label: "Passenger Dashboard" },
       { href: "/driver", label: "Driver Panel" },
       { href: "/owner", label: "Bus Owner Panel" },
+      { href: "/employee", label: "Employee Panel" },
       { href: "/admin", label: "Admin Panel" },
     ],
   },
@@ -36,17 +38,34 @@ const navLinks = [
 export default function Navbar({ minimal = false }: { minimal?: boolean }) {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState("en");
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const location = useLocation();
 
   const isActive = (href: string) => location.pathname === href;
 
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("ys_dark", next ? "1" : "0");
+  };
+
   if (minimal) {
     return (
       <header className="w-full">
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-3">
+          <NotificationPanel />
+          <button
+            onClick={toggleDark}
+            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          >
+            {dark
+              ? <Sun className="w-4 h-4 text-blue-200" />
+              : <Moon className="w-4 h-4 text-blue-200" />}
+          </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <button className="flex items-center gap-1 text-xs font-medium text-blue-200 hover:text-white transition-colors">
                 <Globe className="w-3 h-3" />
                 {languages.find(l => l.code === lang)?.label}
                 <ChevronDown className="w-3 h-3" />
@@ -60,7 +79,7 @@ export default function Navbar({ minimal = false }: { minimal?: boolean }) {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" className="text-xs h-8 border-primary text-primary" asChild>
+          <Button size="sm" className="text-xs h-8 bg-white text-blue-700 hover:bg-blue-50 font-semibold rounded-lg" asChild>
             <Link to="/login">Login</Link>
           </Button>
         </div>
@@ -70,24 +89,23 @@ export default function Navbar({ minimal = false }: { minimal?: boolean }) {
 
   return (
     <header className="sticky top-0 z-50">
-      {/* Government stripe */}
-      <div className="h-1 w-full" style={{
-        background: "linear-gradient(to right, hsl(32,100%,50%) 33.33%, white 33.33%, white 66.66%, hsl(145,55%,38%) 66.66%)"
-      }} />
+      {/* Blue brand stripe */}
+      <div className="h-1 w-full gov-stripe" />
 
       {/* Top utility bar */}
-      <div style={{ backgroundColor: "hsl(var(--primary))" }} className="px-4 py-1.5 hidden md:block">
+      <div className="bg-primary px-4 py-1.5 hidden md:block">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <p className="text-xs" style={{ color: "hsl(0 0% 85%)" }}>
-            Government of India — Ministry of Road Transport & Highways
+          <p className="text-xs text-blue-200 font-medium">
+            Government of India — Ministry of Road Transport &amp; Highways
           </p>
-          <div className="flex items-center gap-4">
-            <a href="tel:1800" className="flex items-center gap-1 text-xs hover:underline" style={{ color: "hsl(0 0% 85%)" }}>
-              <Phone className="w-3 h-3" /> Helpline: 1800-XXX-XXXX
+          <div className="flex items-center gap-6">
+            <a href="tel:1800" className="flex items-center gap-1.5 text-xs text-blue-200 hover:text-white transition-colors font-medium">
+              <Phone className="w-3 h-3" />
+              Helpline: 1800-XXX-XXXX
             </a>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1 text-xs font-medium" style={{ color: "hsl(var(--accent))" }}>
+                <button className="flex items-center gap-1 text-xs font-semibold text-blue-200 hover:text-white transition-colors">
                   <Globe className="w-3 h-3" />
                   {languages.find(l => l.code === lang)?.label}
                   <ChevronDown className="w-3 h-3" />
@@ -105,37 +123,29 @@ export default function Navbar({ minimal = false }: { minimal?: boolean }) {
         </div>
       </div>
 
-      {/* Main nav */}
-      <nav className="bg-card border-b border-border shadow-card">
+      {/* Main nav — deep blue */}
+      <nav className="bg-primary shadow-lg">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-3">
-            <img src={logoImg} alt="Yatra Setu" className="h-8 w-8 sm:h-10 sm:w-10 object-contain" />
-            <div>
-              <p className="text-base sm:text-lg leading-tight text-premium text-primary">
-                यात्रा सेतु
-              </p>
-              <p className="text-[8px] sm:text-[10px] font-bold leading-tight tracking-[0.2em] sm:tracking-[0.3em] uppercase text-muted-foreground opacity-60">
-                Smart Public Bus Network
-              </p>
-            </div>
+          <Link to="/" className="hover:opacity-90 transition-opacity">
+            <Logo className="h-10" />
           </Link>
 
-          {/* Desktop Nav */}
+          {/* Desktop Nav links */}
           <div className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => {
               if (link.children) {
                 return (
                   <DropdownMenu key={link.label}>
                     <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-1 px-3 py-2 rounded text-xs font-black uppercase tracking-tighter italic transition-colors hover:bg-primary-muted text-foreground">
+                      <button className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 transition-all">
                         {link.label} <ChevronDown className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
+                    <DropdownMenuContent align="start" className="min-w-[200px]">
                       {link.children.map(child => (
                         <DropdownMenuItem key={child.href} asChild>
-                          <Link to={child.href} className="text-sm">{child.label}</Link>
+                          <Link to={child.href} className="text-sm font-medium">{child.label}</Link>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
@@ -145,49 +155,63 @@ export default function Navbar({ minimal = false }: { minimal?: boolean }) {
               if (link.danger) {
                 return (
                   <Link key={link.href} to={link.href}
-                    className="px-3 py-1.5 rounded text-xs font-black uppercase tracking-tighter italic border transition-colors border-danger text-danger">
+                    className="px-3 py-1.5 rounded-lg text-sm font-semibold text-red-300 hover:text-white hover:bg-red-500/20 border border-red-400/30 transition-all">
                     {link.label}
                   </Link>
                 );
               }
               return (
                 <Link key={link.href} to={link.href!}
-                  className={`px-3 py-2 rounded text-xs transition-colors text-premium ${isActive(link.href || "") ? "bg-primary-muted text-primary" : "text-foreground hover:bg-slate-50"}`}>
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${isActive(link.href || "")
+                    ? "bg-white/20 text-white font-semibold"
+                    : "text-blue-100 hover:text-white hover:bg-white/10"
+                    }`}>
                   {link.label}
                 </Link>
               );
             })}
           </div>
 
-          {/* Auth Button */}
+          {/* Right controls */}
           <div className="hidden lg:flex items-center gap-2">
-            <Button variant="outline" size="sm" className="text-sm border-primary text-primary" asChild>
+            <NotificationPanel />
+            <button
+              onClick={toggleDark}
+              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            >
+              {dark
+                ? <Sun className="w-4 h-4 text-blue-200" />
+                : <Moon className="w-4 h-4 text-blue-200" />}
+            </button>
+            <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50 font-semibold rounded-xl shadow-md px-4 transition-all hover:scale-[1.02]" asChild>
               <Link to="/login">Login</Link>
             </Button>
           </div>
 
-          {/* Mobile toggle */}
-          <button className="lg:hidden p-2 rounded" style={{ color: "hsl(var(--primary))" }} onClick={() => setOpen(!open)}>
+          {/* Mobile hamburger */}
+          <button
+            className="lg:hidden p-2 rounded-xl text-white hover:bg-white/10 transition-colors"
+            onClick={() => setOpen(!open)}
+          >
             {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile dropdown menu */}
         {open && (
-          <div className="lg:hidden border-t border-border bg-card animate-slide-up">
+          <div className="lg:hidden bg-primary border-t border-white/10 animate-slide-up">
             <div className="px-4 py-3 space-y-1">
               {navLinks.map((link) => {
                 if (link.children) {
                   return (
                     <div key={link.label}>
-                      <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      <p className="px-3 py-1.5 text-xs font-semibold text-blue-300">
                         {link.label}
                       </p>
                       {link.children.map(child => (
                         <Link key={child.href} to={child.href}
                           onClick={() => setOpen(false)}
-                          className="block px-6 py-2 text-sm font-medium rounded hover:bg-primary-muted transition-colors"
-                          style={{ color: "hsl(var(--foreground))" }}>
+                          className="block px-6 py-2.5 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
                           {child.label}
                         </Link>
                       ))}
@@ -197,27 +221,27 @@ export default function Navbar({ minimal = false }: { minimal?: boolean }) {
                 return (
                   <Link key={link.href} to={link.href!}
                     onClick={() => setOpen(false)}
-                    className="block px-3 py-2 text-sm font-medium rounded transition-colors"
-                    style={{
-                      color: link.danger ? "hsl(var(--danger))" : "hsl(var(--foreground))",
-                      backgroundColor: isActive(link.href || "") ? "hsl(var(--primary-muted))" : "transparent",
-                    }}>
+                    className={`block px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${link.danger
+                      ? "text-red-300 hover:bg-red-500/10"
+                      : isActive(link.href || "")
+                        ? "bg-white/20 text-white font-semibold"
+                        : "text-blue-100 hover:text-white hover:bg-white/10"
+                      }`}>
                     {link.label}
                   </Link>
                 );
               })}
-              <div className="pt-2 border-t border-border flex gap-2">
-                {languages.map(l => (
-                  <button key={l.code} onClick={() => setLang(l.code)}
-                    className="px-3 py-1 text-xs rounded border transition-colors"
-                    style={{
-                      backgroundColor: lang === l.code ? "hsl(var(--primary))" : "transparent",
-                      color: lang === l.code ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))",
-                      borderColor: "hsl(var(--border))"
-                    }}>
-                    {l.label}
-                  </button>
-                ))}
+              <div className="pt-3 border-t border-white/10 flex items-center gap-2">
+                <button
+                  onClick={toggleDark}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium text-blue-100 hover:bg-white/10 transition-colors"
+                >
+                  {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  {dark ? "Light Mode" : "Dark Mode"}
+                </button>
+                <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50 font-semibold rounded-lg" asChild>
+                  <Link to="/login" onClick={() => setOpen(false)}>Login</Link>
+                </Button>
               </div>
             </div>
           </div>

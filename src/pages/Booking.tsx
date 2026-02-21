@@ -49,6 +49,8 @@ export default function Booking() {
   const [buses, setBuses] = useState<any[]>([]);
   const [selectedBus, setSelectedBus] = useState<any>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [boardingStop, setBoardingStop] = useState("");
+  const [droppingStop, setDroppingStop] = useState("");
   const [activeLocks, setActiveLocks] = useState<{ seatNumber: number, lockerId: string }[]>([]);
   const [lockerId] = useState(() => {
     const existing = sessionStorage.getItem("lockerId");
@@ -210,6 +212,23 @@ export default function Booking() {
 
   const isConfirmationRequired = selectedReservedTypes.length > 0;
 
+  const calculatePrice = () => {
+    if (!selectedBus || !boardingStop || !droppingStop) return 0;
+    const stops = selectedBus.route.stops;
+    const startIndex = stops.findIndex((s: any) => s.name === boardingStop);
+    const endIndex = stops.findIndex((s: any) => s.name === droppingStop);
+
+    if (startIndex === -1 || endIndex === -1 || startIndex >= endIndex) {
+      return selectedBus.price * selectedSeats.length;
+    }
+
+    const segmentPrice = 120; // Price per stop-to-stop segment
+    const numSegments = endIndex - startIndex;
+    return (selectedBus.price + (numSegments * segmentPrice)) * selectedSeats.length;
+  };
+
+  const totalPrice = calculatePrice();
+
   useEffect(() => {
     if (!isConfirmationRequired) {
       setConfirmationChecked(false);
@@ -228,7 +247,9 @@ export default function Booking() {
           seatNumber: p.seatNum.toString()
         })),
         date: new Date(),
-        amount: selectedSeats.length * selectedBus.price
+        fromStop: boardingStop,
+        toStop: droppingStop,
+        amount: totalPrice
       });
       setSelectedSeats([]);
       setBookingResult(result);
@@ -248,8 +269,8 @@ export default function Booking() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl text-premium text-primary">Book Bus Ticket</h1>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Online Advance Ticket Booking — Yatra Setu Portal</p>
+          <h1 className="text-2xl text-premium text-primary font-black ">Book Bus Ticket</h1>
+          <p className="text-[10px] font-black tracking-[0.2em] text-muted-foreground mt-1 opacity-60">Online Advance Ticket Booking — Yatra Setu Portal</p>
         </div>
 
         {/* Step indicator */}
@@ -259,14 +280,14 @@ export default function Booking() {
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all`}
                   style={{
-                    backgroundColor: stepKeys.indexOf(step) >= i ? "hsl(var(--primary))" : "hsl(var(--muted))",
+                    backgroundColor: stepKeys.indexOf(step) >= i ? "hsl(var(--primary))" : "hsl(var(--secondary))",
                     borderColor: stepKeys.indexOf(step) >= i ? "hsl(var(--primary))" : "hsl(var(--border))",
                     color: stepKeys.indexOf(step) >= i ? "hsl(var(--primary-foreground))" : "hsl(var(--muted-foreground))"
                   }}>
                   {stepKeys.indexOf(step) > i ? <Check className="w-4 h-4" /> : i + 1}
                 </div>
-                <span className="text-[10px] mt-1 whitespace-nowrap text-premium"
-                  style={{ color: stepKeys.indexOf(step) >= i ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}>
+                <span className="text-[9px] font-black mt-1 whitespace-nowrap"
+                  style={{ color: stepKeys.indexOf(step) >= i ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))", opacity: stepKeys.indexOf(step) >= i ? 1 : 0.4 }}>
                   {s}
                 </span>
               </div>
@@ -280,83 +301,83 @@ export default function Booking() {
 
         {/* Step 1: Search */}
         {step === "search" && (
-          <div className="portal-card p-6 animate-slide-up">
-            <h2 className="text-sm text-premium text-primary mb-4">Route Selection</h2>
+          <div className="bg-card border border-border p-6 animate-slide-up rounded-3xl shadow-card">
+            <h2 className="text-xs font-black text-primary mb-4 ">Route Selection</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-[10px] text-premium opacity-50 mb-1.5">From</label>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">From</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
-                  <Input className="pl-9" value={searchFrom} onChange={e => setSearchFrom(e.target.value)} />
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-40" />
+                  <Input className="pl-9 bg-secondary border-border text-foreground" value={searchFrom} onChange={e => setSearchFrom(e.target.value)} />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] text-premium opacity-50 mb-1.5">To</label>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">To</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--accent))" }} />
-                  <Input className="pl-9" value={searchTo} onChange={e => setSearchTo(e.target.value)} />
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-40" />
+                  <Input className="pl-9 bg-secondary border-border text-foreground" value={searchTo} onChange={e => setSearchTo(e.target.value)} />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] text-premium opacity-50 mb-1.5">Date</label>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Date</label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
-                  <Input type="date" className="pl-9" value={searchDate} onChange={e => setSearchDate(e.target.value)} />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-40" />
+                  <Input type="date" className="pl-9 bg-secondary border-border text-foreground" value={searchDate} onChange={e => setSearchDate(e.target.value)} />
                 </div>
               </div>
             </div>
-            <Button className="w-full mb-6" onClick={fetchAvailableBuses} disabled={loading}>
+            <Button className="w-full mb-6 font-black bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20" onClick={fetchAvailableBuses} disabled={loading}>
               {loading ? "Searching..." : "Search Available Buses"}
             </Button>
 
             {/* Bus selection */}
             <div className="space-y-3 mt-4">
-              <h3 className="text-sm text-premium text-primary">Available Buses</h3>
+              <h3 className="text-[10px] font-black text-foreground opacity-50 mb-2">Available Buses</h3>
               {buses.length === 0 && !loading && (
-                <p className="text-center py-4 opacity-50">No buses found for this route.</p>
+                <p className="text-center py-10 opacity-40 font-black text-xs">No buses found for this route.</p>
               )}
               {buses.map(bus => (
-                <div key={bus._id} className={`portal-card p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:shadow-elevated transition-shadow ${selectedBus?._id === bus._id ? 'border-primary' : ''}`}
+                <div key={bus._id} className={`bg-card border p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:shadow-elevated transition-all rounded-2xl ${selectedBus?._id === bus._id ? 'border-primary' : 'border-border'}`}
                   onClick={() => {
                     setSelectedBus(bus);
                     setStep("seats");
                   }}>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm sm:text-base text-premium text-primary leading-tight">{bus.route.from} → {bus.route.to}</span>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter italic bg-primary-muted text-primary flex-shrink-0">
+                      <span className="text-sm font-black text-foreground ">{bus.route.from} → {bus.route.to}</span>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-black bg-primary/10 text-primary">
                         {bus.type}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono opacity-60 uppercase tracking-widest">{bus.busNumber}</span>
+                    <span className="text-[10px] font-mono opacity-40 text-muted-foreground">{bus.busNumber}</span>
                   </div>
-                  <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 text-sm py-2 sm:py-0 border-y sm:border-0 border-slate-100">
+                  <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 text-sm py-2 sm:py-0 border-y sm:border-0 border-border">
                     <div className="text-center sm:text-left">
-                      <p className="font-bold text-base sm:text-lg">{bus.departureTime}</p>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Dep</p>
+                      <p className="font-black text-lg text-foreground">{bus.departureTime}</p>
+                      <p className="text-[9px] font-black text-muted-foreground opacity-40">Dep</p>
                     </div>
                     <div className="flex items-center opacity-30">
-                      <div className="w-8 sm:w-12 h-px bg-slate-400" />
-                      <BusIcon className="w-3 h-3 mx-1" />
-                      <div className="w-8 sm:w-12 h-px bg-slate-400" />
+                      <div className="w-8 sm:w-12 h-px bg-primary" />
+                      <BusIcon className="w-3 h-3 mx-1 text-primary" />
+                      <div className="w-8 sm:w-12 h-px bg-primary" />
                     </div>
                     <div className="text-center sm:text-left">
-                      <p className="font-bold text-base sm:text-lg">{bus.arrivalTime}</p>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Arr</p>
+                      <p className="font-black text-lg text-foreground">{bus.arrivalTime}</p>
+                      <p className="text-[9px] font-black text-muted-foreground opacity-40">Arr</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between sm:flex-col sm:justify-center gap-1">
                     <div className="text-left sm:text-center">
-                      <p className="font-bold text-lg text-success leading-none">{bus.availableSeats}</p>
-                      <p className="text-[9px] uppercase font-bold text-slate-400">Seats</p>
+                      <p className="font-black text-lg leading-none text-emerald-600 dark:text-emerald-400">{bus.availableSeats}</p>
+                      <p className="text-[8px] font-black text-muted-foreground opacity-40">Seats</p>
                     </div>
                     <div className="text-right sm:text-center">
-                      <p className="font-bold text-lg text-primary leading-none">₹{bus.price}</p>
-                      <p className="text-[9px] uppercase font-bold text-slate-400">Fare</p>
+                      <p className="font-black text-lg leading-none text-primary">₹{bus.price}</p>
+                      <p className="text-[8px] font-black text-muted-foreground opacity-40">Fare</p>
                     </div>
                   </div>
                   <div className="sm:text-right">
-                    <Button size="sm" className="w-full sm:w-auto" onClick={(e) => { e.stopPropagation(); setSelectedBus(bus); setStep("seats"); }}>
+                    <Button size="sm" className="w-full sm:w-auto font-black " onClick={(e) => { e.stopPropagation(); setSelectedBus(bus); setStep("seats"); }}>
                       Select
                     </Button>
                   </div>
@@ -368,10 +389,10 @@ export default function Booking() {
 
         {/* Step 2: Seat Selection */}
         {step === "seats" && (
-          <div className="portal-card p-6 animate-slide-up">
+          <div className="bg-card border border-border p-6 animate-slide-up rounded-3xl shadow-card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold" style={{ color: "hsl(var(--primary))" }}>Select Your Seat(s)</h2>
-              <span className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+              <h2 className="text-xs font-black text-primary ">Select Your Seat(s)</h2>
+              <span className="text-[10px] font-black text-muted-foreground opacity-60">
                 {selectedSeats.length} selected
               </span>
             </div>
@@ -379,7 +400,7 @@ export default function Booking() {
             {/* Legend */}
             <div className="flex flex-wrap gap-3 mb-5">
               {legendItems.map(l => (
-                <div key={l.type} className="flex items-center gap-1.5 text-xs">
+                <div key={l.type} className="flex items-center gap-1.5 text-[9px] font-black text-muted-foreground opacity-60">
                   <div className="w-5 h-5 rounded border-2 flex items-center justify-center text-[9px] font-bold"
                     style={{
                       backgroundColor: seatColors[l.type].bg,
@@ -388,7 +409,7 @@ export default function Booking() {
                     }}>
                     {l.type === "selected" ? "✓" : ""}
                   </div>
-                  <span style={{ color: "hsl(var(--muted-foreground))" }}>{l.label}</span>
+                  <span>{l.label}</span>
                 </div>
               ))}
             </div>
@@ -412,7 +433,7 @@ export default function Booking() {
                         key={seat.num}
                         onClick={() => toggleSeat(seat.num)}
                         disabled={isBooked || isLockedByOthers}
-                        className="w-10 h-10 rounded border-2 text-[10px] font-bold transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70"
+                        className="w-10 h-10 rounded border-2 text-[10px] font-black transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-30"
                         style={{
                           backgroundColor: colors.bg,
                           borderColor: colors.border,
@@ -428,19 +449,19 @@ export default function Booking() {
 
               {isConfirmationRequired && (
                 <div className="w-full mt-2 animate-slide-up">
-                  <div className="portal-card p-4 border-primary/30 bg-primary/5 flex items-center gap-4">
+                  <div className="bg-primary/5 border border-primary/20 p-4 rounded-2xl flex items-center gap-4">
                     <div
                       onClick={() => setConfirmationChecked(!confirmationChecked)}
                       className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center cursor-pointer transition-all duration-300 ${confirmationChecked
-                        ? "bg-primary border-primary shadow-sm"
-                        : "bg-card border-slate-300 hover:border-primary/50"
+                        ? "bg-primary border-primary shadow-lg shadow-primary/20"
+                        : "bg-card border-border hover:border-primary/50"
                         }`}
                     >
                       {confirmationChecked && <Check className="w-4 h-4 text-white stroke-[4px]" />}
                     </div>
-                    <p className="text-[11px] font-medium text-premium leading-tight">
+                    <p className="text-[10px] font-black text-foreground leading-tight">
                       I confirm that I am booking restricted seat(s) for
-                      <span className="font-bold text-primary mx-1">
+                      <span className="font-black text-primary mx-1 ">
                         {selectedReservedTypes.map((t, i) => {
                           const label = t === "women" ? "Women" : t === "elderly" ? "Elderly" : "Disabled";
                           return i === 0 ? label : i === selectedReservedTypes.length - 1 ? ` and ${label}` : `, ${label}`;
@@ -453,16 +474,47 @@ export default function Booking() {
               )}
             </div>
 
+            {/* Stop Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pt-6 border-t border-border mt-4">
+              <div>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Boarding Point</label>
+                <select
+                  className="w-full h-11 px-3 border border-border bg-secondary rounded-xl text-xs font-bold text-foreground focus:border-primary transition-colors"
+                  value={boardingStop}
+                  onChange={e => setBoardingStop(e.target.value)}
+                >
+                  <option value="">Select Boarding Point</option>
+                  {selectedBus?.route?.stops?.map((s: any) => (
+                    <option key={s.name} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Dropping Point</label>
+                <select
+                  className="w-full h-11 px-3 border border-border bg-secondary rounded-xl text-xs font-bold text-foreground focus:border-primary transition-colors"
+                  value={droppingStop}
+                  onChange={e => setDroppingStop(e.target.value)}
+                >
+                  <option value="">Select Dropping Point</option>
+                  {selectedBus?.route?.stops?.map((s: any) => (
+                    <option key={s.name} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="mt-4 flex items-center justify-between">
-              <Button variant="outline" size="sm" onClick={() => setStep("search")}>
+              <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("search")}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <div className="text-right">
-                <p className="text-sm mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>
-                  Seats: {selectedSeats.join(", ") || "—"} | Total: ₹{selectedSeats.length * (selectedBus?.price || 0)}
+                <p className="text-[10px] font-black text-muted-foreground opacity-60 mb-2">
+                  {selectedSeats.length} Seat(s) | Total: <span className="font-black text-primary ">₹{totalPrice}</span>
                 </p>
-                <Button disabled={selectedSeats.length === 0 || (isConfirmationRequired && !confirmationChecked)} onClick={() => setStep("details")}
-                  style={{ backgroundColor: (selectedSeats.length === 0 || (isConfirmationRequired && !confirmationChecked)) ? "hsl(var(--muted))" : "hsl(var(--primary))", color: (selectedSeats.length === 0 || (isConfirmationRequired && !confirmationChecked)) ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))" }}>
+                <Button disabled={selectedSeats.length === 0 || !boardingStop || !droppingStop || (isConfirmationRequired && !confirmationChecked)}
+                  onClick={() => setStep("details")}
+                  className="h-10 px-6 font-black shadow-lg shadow-primary/20">
                   Continue <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
@@ -472,29 +524,30 @@ export default function Booking() {
 
         {/* Step 3: Passenger Details */}
         {step === "details" && (
-          <div className="portal-card p-6 animate-slide-up space-y-8">
-            <h2 className="text-base font-semibold mb-4" style={{ color: "hsl(var(--primary))" }}>Passenger Information</h2>
+          <div className="bg-card border border-border p-6 animate-slide-up space-y-8 rounded-3xl shadow-card">
+            <h2 className="text-xs font-black text-primary ">Passenger Information</h2>
 
             {passengers.map((passenger, index) => {
               const seat = seatData.find(s => s.num === passenger.seatNum);
               const isWomenReserved = seat?.type === "women";
 
               return (
-                <div key={passenger.seatNum} className="space-y-4 pb-6 border-b border-slate-100 last:border-0 last:pb-0">
+                <div key={passenger.seatNum} className="space-y-4 pb-6 border-b border-border last:border-0 last:pb-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 rounded bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="w-6 h-6 rounded bg-primary text-white text-[10px] font-black flex items-center justify-center shadow-md">
                       {passenger.seatNum}
                     </span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Passenger for Seat {passenger.seatNum}</span>
+                    <span className="text-[10px] font-black text-muted-foreground opacity-60">Passenger for Seat {passenger.seatNum}</span>
                     {isWomenReserved && (
-                      <span className="text-[9px] font-bold bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full uppercase ml-auto border border-pink-200">Women Reserved</span>
+                      <span className="text-[8px] font-black bg-pink-500/10 text-pink-600 dark:text-pink-400 px-3 py-1 rounded-full ml-auto border border-pink-500/20 ">Women Reserved</span>
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Full Name</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Full Name</label>
                       <Input
+                        className="bg-secondary border-border"
                         placeholder="As per Aadhaar / ID"
                         value={passenger.name}
                         onChange={e => {
@@ -505,8 +558,9 @@ export default function Booking() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Mobile Number</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Mobile Number</label>
                       <Input
+                        className="bg-secondary border-border font-mono text-xs"
                         type="tel"
                         placeholder="+91 XXXXX XXXXX"
                         value={passenger.phone}
@@ -522,12 +576,13 @@ export default function Booking() {
                         }}
                       />
                       {passenger.phone && passenger.phone.replace(/\D/g, "").substring(2).length > 0 && passenger.phone.replace(/\D/g, "").substring(2).length < 10 && (
-                        <p className="text-[10px] text-danger mt-1 font-medium">Please enter a valid number</p>
+                        <p className="text-[9px] text-red-600 dark:text-red-400 mt-1 font-black ">Please enter a valid number</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Age</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Age</label>
                       <Input
+                        className="bg-secondary border-border"
                         type="number"
                         placeholder="Age"
                         min="1"
@@ -543,14 +598,13 @@ export default function Booking() {
                         }}
                       />
                       {passenger.age && (parseInt(passenger.age) < 1 || parseInt(passenger.age) > 120) && (
-                        <p className="text-[10px] text-danger mt-1 font-medium">Please enter a valid age</p>
+                        <p className="text-[9px] text-red-600 dark:text-red-400 mt-1 font-black ">Please enter a valid age</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))" }}>Gender</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Gender</label>
                       <select
-                        className={`w-full h-9 px-3 border rounded-md text-sm ${isWomenReserved ? "bg-slate-100 cursor-not-allowed opacity-80" : ""}`}
-                        style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))" }}
+                        className={`w-full h-10 px-3 border rounded-xl text-xs font-bold bg-secondary border-border text-foreground transition-all ${isWomenReserved ? "cursor-not-allowed opacity-50" : ""}`}
                         value={passenger.gender}
                         disabled={isWomenReserved}
                         onChange={e => {
@@ -563,7 +617,7 @@ export default function Booking() {
                         <option value="other">Other</option>
                       </select>
                       {isWomenReserved && (
-                        <p className="text-[9px] text-primary/60 mt-1 font-medium italic">Gender locked for reserved seat</p>
+                        <p className="text-[8px] text-primary/60 mt-1 font-black ">Gender locked for reserved seat</p>
                       )}
                     </div>
                   </div>
@@ -572,7 +626,7 @@ export default function Booking() {
             })}
 
             <div className="flex items-center justify-between pt-4">
-              <Button variant="outline" size="sm" onClick={() => setStep("seats")}>
+              <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("seats")}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <Button onClick={() => setStep("confirm")}
@@ -583,10 +637,7 @@ export default function Booking() {
                   parseInt(p.age) < 1 ||
                   parseInt(p.age) > 120
                 )}
-                style={{
-                  backgroundColor: passengers.some(p => !p.name || p.phone.replace(/\D/g, "").substring(2).length !== 10 || !p.age || parseInt(p.age) < 1 || parseInt(p.age) > 120) ? "hsl(var(--muted))" : "hsl(var(--primary))",
-                  color: passengers.some(p => !p.name || p.phone.replace(/\D/g, "").substring(2).length !== 10 || !p.age || parseInt(p.age) < 1 || parseInt(p.age) > 120) ? "hsl(var(--muted-foreground))" : "hsl(var(--primary-foreground))"
-                }}>
+                className="h-10 px-6 font-black shadow-lg shadow-primary/20">
                 Review Booking <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -596,32 +647,32 @@ export default function Booking() {
         {/* Step 4: Confirm */}
         {step === "confirm" && (
           <div className="animate-slide-up space-y-4">
-            <div className="portal-card p-6">
-              <h2 className="text-base font-semibold mb-4" style={{ color: "hsl(var(--primary))" }}>Booking Summary</h2>
+            <div className="bg-card border border-border p-6 rounded-3xl shadow-card">
+              <h2 className="text-xs font-black text-primary mb-4">Booking Summary</h2>
               <div className="space-y-4">
                 {[
                   ["Route", `${selectedBus.route.from} → ${selectedBus.route.to}`],
                   ["Bus No.", `${selectedBus.busNumber} (${selectedBus.type})`],
                   ["Departure", selectedBus.departureTime],
+                  ["Dropping At", droppingStop],
                   ["Seats", selectedSeats.join(", ")],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between py-2 border-b"
-                    style={{ borderColor: "hsl(var(--border))" }}>
-                    <span className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>{label}</span>
-                    <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>{value}</span>
+                  <div key={label} className="flex items-center justify-between py-2 border-b border-border">
+                    <span className="text-[10px] font-black text-muted-foreground opacity-50">{label}</span>
+                    <span className="text-xs font-black text-foreground">{value}</span>
                   </div>
                 ))}
 
                 <div className="pt-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-400 block mb-3">Passenger List</span>
+                  <span className="text-[9px] font-black text-muted-foreground block mb-3 opacity-40">Passenger List</span>
                   <div className="space-y-2">
                     {passengers.map(p => (
-                      <div key={p.seatNum} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div key={p.seatNum} className="flex items-center justify-between p-3 bg-secondary rounded-xl border border-border">
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-premium">{p.name}</span>
-                          <span className="text-[10px] text-slate-500">{p.gender} | {p.age} Yrs | {p.phone}</span>
+                          <span className="text-sm font-black text-foreground ">{p.name}</span>
+                          <span className="text-[9px] font-black text-muted-foreground opacity-50">{p.gender} • {p.age} Yrs • {p.phone}</span>
                         </div>
-                        <span className="w-6 h-6 rounded bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center border border-primary/20">
+                        <span className="w-6 h-6 rounded bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center border border-primary/20 shadow-sm">
                           {p.seatNum}
                         </span>
                       </div>
@@ -629,20 +680,19 @@ export default function Booking() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between py-4 mt-4 border-t-2 border-dashed border-slate-100">
-                  <span className="text-base font-bold" style={{ color: "hsl(var(--primary))" }}>Total Amount</span>
-                  <span className="text-xl font-bold" style={{ color: "hsl(var(--primary))" }}>₹ {selectedSeats.length * selectedBus.price}</span>
+                <div className="flex items-center justify-between py-4 mt-4 border-t-2 border-dashed border-border">
+                  <span className="text-xs font-black text-primary">Total Amount</span>
+                  <span className="text-xl font-black text-primary">₹{totalPrice}</span>
                 </div>
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <Button variant="outline" size="sm" onClick={() => setStep("details")}>
+              <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("details")}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
-              <Button size="lg" onClick={() => setStep("payment")}
-                style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+              <Button size="lg" className="h-12 px-8 font-black shadow-lg shadow-primary/20" onClick={() => setStep("payment")}>
                 <Check className="w-4 h-4 mr-2" />
-                Go to Payment (₹{selectedSeats.length * selectedBus.price})
+                Proceed to Payment (₹{totalPrice})
               </Button>
             </div>
           </div>
@@ -651,21 +701,21 @@ export default function Booking() {
         {/* Step 5: Payment */}
         {step === "payment" && selectedBus && (
           <div className="animate-slide-up space-y-4 max-w-md mx-auto">
-            <div className="portal-card p-8 text-center border-primary/20 shadow-xl overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-3 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest border-l border-b border-primary/10">
+            <div className="bg-card border border-border p-8 text-center border-primary/20 shadow-xl overflow-hidden relative rounded-3xl">
+              <div className="absolute top-0 right-0 p-3 bg-primary/5 text-primary text-[10px] font-black border-l border-b border-primary/20">
                 Secure Gateway
               </div>
 
-              <h2 className="text-xl font-black text-premium mb-1">Scan & Pay</h2>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-6">UPI Payment for Seat Booking</p>
+              <h2 className="text-xl font-black text-foreground mb-1 ">Scan & Pay</h2>
+              <p className="text-[9px] text-muted-foreground font-black mb-6 opacity-60 ">UPI Payment for Seat Booking</p>
 
-              <div className="bg-white p-4 rounded-2xl shadow-inner border border-slate-100 inline-block mb-6 relative group">
+              <div className="bg-white p-4 rounded-2xl shadow-inner border border-border inline-block mb-6 relative group">
                 {/* 
                   UPI QR Generator
                   Standard UPI URI: upi://pay?pa={VPA}&pn={NAME}&am={AMOUNT}&cu=INR&tn={NOTE}
                 */}
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${selectedBus.ownerUPI || '8302391227-2@ybl'}&pn=${selectedBus.operator}&am=${selectedSeats.length * selectedBus.price}&cu=INR&tn=YatraSetuBooking`)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${selectedBus.ownerUPI || '8302391227-2@ybl'}&pn=${selectedBus.operator}&am=${totalPrice}&cu=INR&tn=YatraSetuBooking`)}`}
                   alt="UPI QR Code"
                   className="w-48 h-48 mx-auto"
                 />
@@ -674,32 +724,32 @@ export default function Booking() {
 
               <div className="space-y-4 mb-8">
                 <div className="flex flex-col items-center">
-                  <span className="text-3xl font-black text-primary">₹{selectedSeats.length * selectedBus.price}</span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Payable Amount</span>
+                  <span className="text-3xl font-black text-primary ">₹{totalPrice}</span>
+                  <span className="text-[9px] font-black text-muted-foreground opacity-40">Payable Amount</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-left">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-[8px] font-black text-slate-400 uppercase block mb-1">Receiver</span>
-                    <span className="text-[10px] font-bold text-premium truncate block">{selectedBus.operator}</span>
+                  <div className="p-3 bg-secondary rounded-xl border border-border">
+                    <span className="text-[8px] font-black text-muted-foreground block mb-1 opacity-40">Receiver</span>
+                    <span className="text-[10px] font-black text-foreground truncate block ">{selectedBus.operator}</span>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-[8px] font-black text-slate-400 uppercase block mb-1">UPI ID</span>
-                    <span className="text-[10px] font-bold text-premium truncate block">{selectedBus.ownerUPI || '8302391227-2@ybl'}</span>
+                  <div className="p-3 bg-secondary rounded-xl border border-border">
+                    <span className="text-[8px] font-black text-muted-foreground block mb-1 opacity-40">UPI ID</span>
+                    <span className="text-[10px] font-black text-foreground truncate block ">{selectedBus.ownerUPI || '8302391227-2@ybl'}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-2 mb-6 text-amber-600 bg-amber-50 py-2 rounded-lg border border-amber-100">
-                <span className="text-[11px] font-black uppercase tracking-wider">Session Expires:</span>
-                <span className="text-sm font-mono font-black">{Math.floor(paymentTimer / 60)}:{(paymentTimer % 60).toString().padStart(2, '0')}</span>
+              <div className="flex items-center justify-center gap-2 mb-6 text-primary dark:text-blue-400 bg-primary-light/10 py-2 rounded-lg border border-primary/20">
+                <span className="text-[10px] font-black ">Expires In:</span>
+                <span className="text-sm font-mono font-black ">{Math.floor(paymentTimer / 60)}:{(paymentTimer % 60).toString().padStart(2, '0')}</span>
               </div>
 
-              <p className="text-[9px] text-slate-400 italic mb-6">Please do not refresh or go back after scanning the QR code.</p>
+              <p className="text-[9px] text-muted-foreground mb-6 opacity-40 font-black ">Please do not refresh or go back after scanning.</p>
 
               <Button
                 size="lg"
-                className="w-full h-12 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
+                className="w-full h-12 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] font-black "
                 onClick={handleBooking}
                 disabled={loading || paymentTimer <= 0}
               >
@@ -710,7 +760,7 @@ export default function Booking() {
             <div className="flex items-center justify-center gap-4">
               <button
                 onClick={() => setStep("confirm")}
-                className="text-[10px] font-black uppercase text-slate-400 hover:text-primary transition-colors flex items-center gap-1"
+                className="text-[9px] font-black text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 opacity-60"
               >
                 <ChevronLeft className="w-3 h-3" /> Edit Booking
               </button>
@@ -720,29 +770,29 @@ export default function Booking() {
 
         {/* Step: Success */}
         {step === "success" && (
-          <div className="portal-card p-10 text-center animate-scale-in">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10" />
+          <div className="bg-card border border-border p-10 text-center animate-scale-in rounded-3xl shadow-card">
+            <div className="w-20 h-20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
+              <Check className="w-10 h-10 shadow-sm" />
             </div>
-            <h2 className="text-2xl font-black italic text-primary mb-2 uppercase tracking-tighter">Booking Successful!</h2>
-            <p className="text-slate-400 text-sm mb-8">Your ticket has been confirmed and stored in the database.</p>
+            <h2 className="text-2xl font-black text-primary mb-2 ">Booking Successful!</h2>
+            <p className="text-muted-foreground text-xs mb-8 font-black opacity-60">Your ticket has been confirmed and stored safely.</p>
 
-            <div className="bg-slate-50 rounded-2xl p-6 mb-8 text-left border border-slate-100">
+            <div className="bg-secondary rounded-2xl p-6 mb-8 text-left border border-border">
               <div className="flex justify-between mb-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">PNR Number</span>
-                <span className="text-sm font-mono font-black text-primary">{bookingResult?.pnr}</span>
+                <span className="text-[10px] font-black text-muted-foreground opacity-40">PNR Number</span>
+                <span className="text-sm font-mono font-black text-primary ">{bookingResult?.pnr}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Paid</span>
-                <span className="text-sm font-black text-emerald-600">₹{bookingResult?.amount}</span>
+                <span className="text-[10px] font-black text-muted-foreground opacity-40">Total Paid</span>
+                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 ">₹{bookingResult?.amount}</span>
               </div>
             </div>
 
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" asChild>
+              <Button variant="outline" className="font-black text-[9px] border-border" asChild>
                 <Link to="/">Back to Home</Link>
               </Button>
-              <Button asChild>
+              <Button className="font-black text-[9px] " asChild>
                 <Link to="/verify">Verify Ticket</Link>
               </Button>
             </div>

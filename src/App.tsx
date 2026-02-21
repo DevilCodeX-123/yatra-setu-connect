@@ -2,21 +2,23 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./components/AppSidebar";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import Booking from "./pages/Booking";
 import VerifyTicket from "./pages/VerifyTicket";
 import PassengerDashboard from "./pages/PassengerDashboard";
 import DriverPanel from "./pages/DriverPanel";
+import EmployeePanel from "./pages/EmployeePanel";
 import OwnerPanel from "./pages/OwnerPanel";
 import AdminPanel from "./pages/AdminPanel";
 import SchoolBus from "./pages/SchoolBus";
 import Emergency from "./pages/Emergency";
 import Transactions from "./pages/Transactions";
 import Account from "./pages/Account";
-import Lentings from "./pages/Lentings";
+import Buses from "./pages/Buses";
 import Profile from "./pages/Profile";
 import ProfileBookings from "./pages/ProfileBookings";
 import ProfileInfo from "./pages/ProfileInfo";
@@ -32,44 +34,58 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Guard: sirf logged-in users ke liye
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+};
+
 const AppShell = () => {
   const location = useLocation();
-  const noSidebarRoutes = ["/login", "/404"];
-  const showSidebar = !noSidebarRoutes.includes(location.pathname);
+  const { isAuthenticated } = useAuth();
+  const noSidebarRoutes = ["/login", "/404", "/employee"];
+  const showSidebar = isAuthenticated && !noSidebarRoutes.includes(location.pathname);
 
   return (
     <div className="flex min-h-screen w-full overflow-hidden">
       {showSidebar && <AppSidebar />}
       <div className="flex-1 flex flex-col min-w-0 overflow-auto">
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* Public route */}
           <Route path="/login" element={<Login />} />
-          <Route path="/booking" element={<Booking />} />
-          <Route path="/verify" element={<VerifyTicket />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="/lentings" element={<Lentings />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/bookings" element={<ProfileBookings />} />
-          <Route path="/profile/past-rides" element={<ProfilePastRides />} />
-          <Route path="/profile/info" element={<ProfileInfo />} />
-          <Route path="/profile/passengers" element={<ProfilePassengers />} />
-          <Route path="/profile/wallet" element={<ProfileWallet />} />
-          <Route path="/profile/gst" element={<ProfilePlaceholder title="GST Details" />} />
-          <Route path="/profile/irctc" element={<ProfilePlaceholder title="IRCTC Details" />} />
-          <Route path="/profile/offers" element={<ProfilePlaceholder title="Active Offers" />} />
-          <Route path="/profile/referrals" element={<ProfilePlaceholder title="Referral Program" />} />
-          <Route path="/profile/about" element={<ProfilePlaceholder title="About Yatra Setu" />} />
-          <Route path="/profile/rate" element={<ProfilePlaceholder title="Rate Experience" />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/tracking/:id" element={<BusTracking />} />
-          <Route path="/passenger" element={<PassengerDashboard />} />
-          <Route path="/driver" element={<DriverPanel />} />
-          <Route path="/owner" element={<OwnerPanel />} />
-          <Route path="/owner/route-selection" element={<RouteSelection />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/school-bus" element={<SchoolBus />} />
-          <Route path="/emergency" element={<Emergency />} />
+
+          {/* Protected routes */}
+          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+          <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
+          <Route path="/verify" element={<ProtectedRoute><VerifyTicket /></ProtectedRoute>} />
+          <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          <Route path="/buses" element={<ProtectedRoute><Buses /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/profile/bookings" element={<ProtectedRoute><ProfileBookings /></ProtectedRoute>} />
+          <Route path="/profile/past-rides" element={<ProtectedRoute><ProfilePastRides /></ProtectedRoute>} />
+          <Route path="/profile/info" element={<ProtectedRoute><ProfileInfo /></ProtectedRoute>} />
+          <Route path="/profile/passengers" element={<ProtectedRoute><ProfilePassengers /></ProtectedRoute>} />
+          <Route path="/profile/wallet" element={<ProtectedRoute><ProfileWallet /></ProtectedRoute>} />
+          <Route path="/profile/gst" element={<ProtectedRoute><ProfilePlaceholder title="GST Details" /></ProtectedRoute>} />
+          <Route path="/profile/irctc" element={<ProtectedRoute><ProfilePlaceholder title="IRCTC Details" /></ProtectedRoute>} />
+          <Route path="/profile/offers" element={<ProtectedRoute><ProfilePlaceholder title="Active Offers" /></ProtectedRoute>} />
+          <Route path="/profile/referrals" element={<ProtectedRoute><ProfilePlaceholder title="Referral Program" /></ProtectedRoute>} />
+          <Route path="/profile/about" element={<ProtectedRoute><ProfilePlaceholder title="About Yatra Setu" /></ProtectedRoute>} />
+          <Route path="/profile/rate" element={<ProtectedRoute><ProfilePlaceholder title="Rate Experience" /></ProtectedRoute>} />
+          <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+          <Route path="/tracking/:id" element={<ProtectedRoute><BusTracking /></ProtectedRoute>} />
+          <Route path="/passenger" element={<ProtectedRoute><PassengerDashboard /></ProtectedRoute>} />
+          <Route path="/driver" element={<ProtectedRoute><DriverPanel /></ProtectedRoute>} />
+          <Route path="/owner" element={<ProtectedRoute><OwnerPanel /></ProtectedRoute>} />
+          <Route path="/owner/route-selection" element={<ProtectedRoute><RouteSelection /></ProtectedRoute>} />
+          <Route path="/employee" element={<ProtectedRoute><EmployeePanel /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+          <Route path="/school-bus" element={<ProtectedRoute><SchoolBus /></ProtectedRoute>} />
+          <Route path="/emergency" element={<ProtectedRoute><Emergency /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
@@ -79,15 +95,17 @@ const AppShell = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <SidebarProvider defaultOpen={true}>
-        <BrowserRouter>
-          <AppShell />
-        </BrowserRouter>
-      </SidebarProvider>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <SidebarProvider defaultOpen={true}>
+          <BrowserRouter>
+            <AppShell />
+          </BrowserRouter>
+        </SidebarProvider>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

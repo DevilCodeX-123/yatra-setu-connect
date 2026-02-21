@@ -18,7 +18,7 @@ export default function Layout({ children, noFooter }: LayoutProps) {
             <SidebarTrigger className="text-primary" />
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
             <div className="hidden md:block">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary">Yatra Setu Portal</p>
+              <p className="text-[9px] font-black tracking-[0.3em] text-primary">Yatra Setu Portal</p>
             </div>
           </div>
           <Navbar minimal />

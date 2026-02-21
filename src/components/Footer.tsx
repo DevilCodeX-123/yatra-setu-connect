@@ -28,7 +28,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3 uppercase tracking-wider">Quick Links</h4>
+            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">Quick Links</h4>
             <ul className="space-y-2 text-sm opacity-80">
               {[
                 { href: "/", label: "Home" },
@@ -48,7 +48,7 @@ export default function Footer() {
 
           {/* Portals */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3 uppercase tracking-wider">Portals</h4>
+            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">Portals</h4>
             <ul className="space-y-2 text-sm opacity-80">
               {[
                 { href: "/passenger", label: "Passenger Dashboard" },
@@ -67,7 +67,7 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3 uppercase tracking-wider">Contact</h4>
+            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">Contact</h4>
             <ul className="space-y-3 text-sm opacity-80">
               <li className="flex items-start gap-2">
                 <Phone className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "hsl(var(--accent))" }} />

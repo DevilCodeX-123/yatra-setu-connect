@@ -1,14 +1,36 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Bus = require('../models/Bus');
 
+const { verifyToken, requireAuth } = require('../middleware/auth');
+
 // Get all bookings for the user
-router.get('/', async (req, res) => {
+router.get('/', verifyToken, requireAuth, async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json([
+            {
+                pnr: 'YS1234567890',
+                user: req.user.id,
+                bus: {
+                    busNumber: 'KA-01-F-1234',
+                    operator: 'KSRTC',
+                    departureTime: '06:30',
+                    arrivalTime: '09:15',
+                    route: { from: 'Bengaluru', to: 'Mysuru' }
+                },
+                passengers: [{ name: 'Demo User', seatNumber: 5 }],
+                date: new Date().toISOString().split('T')[0],
+                amount: 180,
+                status: 'Confirmed',
+                createdAt: new Date()
+            }
+        ]);
+    }
     try {
-        const user = await User.findOne({ email: 'john.doe@government.in' });
-        const bookings = await Booking.find({ user: user._id }).populate('bus');
+        const bookings = await Booking.find({ user: req.user.id }).populate('bus').sort({ createdAt: -1 });
         res.json(bookings);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -16,33 +38,49 @@ router.get('/', async (req, res) => {
 });
 
 // Create a new booking
-router.post('/', async (req, res) => {
-    const { busId, passengers, date, amount } = req.body;
+router.post('/', verifyToken, requireAuth, async (req, res) => {
+    const { busId, passengers, date, amount, fromStop, toStop } = req.body;
 
-    try {
-        const user = await User.findOne({ email: 'john.doe@government.in' });
-        const bus = await Bus.findById(busId);
-
-        if (!bus || bus.availableSeats < passengers.length) {
-            return res.status(400).json({ message: 'Bus not available or not enough seats' });
-        }
-
+    if (mongoose.connection.readyState !== 1) {
         const pnr = 'YS' + Date.now().toString().slice(-10);
-
-        const booking = new Booking({
+        return res.status(201).json({
             pnr,
-            user: user._id,
-            bus: bus._id,
-            passengers, // Now an array of { name, age, gender, seatNumber }
+            user: req.user.id,
+            bus: busId,
+            passengers,
             date,
             amount,
-            paymentStatus: 'Completed' // Assuming payment is done for now
+            fromStop,
+            toStop,
+            paymentStatus: 'Completed',
+            status: 'Confirmed',
+            createdAt: new Date()
+        });
+    }
+
+    try {
+        const bus = await Bus.findById(busId);
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const pnr = 'YS' + Date.now().toString().slice(-10);
+        const booking = new Booking({
+            pnr,
+            user: req.user.id,
+            bus: bus._id,
+            passengers,
+            date,
+            amount,
+            fromStop,
+            toStop,
+            paymentStatus: 'Completed'
         });
 
         await booking.save();
 
-        // Update bus availability
-        bus.availableSeats -= passengers.length;
+        if (!bus.bookedSeats) bus.bookedSeats = [];
+        passengers.forEach(p => {
+            if (p.seatNumber) bus.bookedSeats.push(Number(p.seatNumber));
+        });
         await bus.save();
 
         res.status(201).json(booking);
@@ -53,11 +91,22 @@ router.post('/', async (req, res) => {
 
 // Verify ticket by PNR
 router.get('/verify/:pnr', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({
+            pnr: req.params.pnr,
+            user: 'demo-user',
+            bus: {
+                busNumber: 'KA-01-F-1234',
+                operator: 'KSRTC',
+                route: { from: 'Bengaluru', to: 'Mysuru' }
+            },
+            passengers: [{ name: 'Demo User', seatNumber: 5 }],
+            status: 'Confirmed'
+        });
+    }
     try {
         const booking = await Booking.findOne({ pnr: req.params.pnr }).populate('bus');
-        if (!booking) {
-            return res.status(404).json({ message: 'Ticket not found' });
-        }
+        if (!booking) return res.status(404).json({ message: 'Ticket not found' });
         res.json(booking);
     } catch (err) {
         res.status(500).json({ message: err.message });

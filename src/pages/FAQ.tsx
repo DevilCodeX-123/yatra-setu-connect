@@ -12,7 +12,7 @@ export default function FAQ() {
                     </div>
                     <div>
                         <h1 className="text-2xl sm:text-3xl text-premium text-primary mb-0.5">Help Center & FAQ</h1>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Find answers to common questions about Yatra Setu.</p>
+                        <p className="text-[10px] font-bold text-slate-400">Find answers to common questions about Yatra Setu.</p>
                     </div>
                 </div>
 

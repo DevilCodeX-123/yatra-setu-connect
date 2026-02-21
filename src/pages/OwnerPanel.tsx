@@ -15,25 +15,29 @@ const sidebarItems = [
   { label: "Rent for Event", icon: <Package className="w-4 h-4" />, id: "rent", url: "/owner#rent" },
 ];
 
-const buses = [
-  { id: "KA-01-F-1234", type: "Express", route: "Bengaluru → Mysuru", seats: 42, fare: 180, status: "Active", earnings: 12600 },
-  { id: "KA-01-F-5678", type: "Ordinary", route: "Mysuru → Bengaluru", seats: 40, fare: 130, status: "Active", earnings: 9880 },
-  { id: "KA-01-F-9012", type: "Volvo AC", route: "Bengaluru → Mangaluru", seats: 52, fare: 450, status: "Maintenance", earnings: 18450 },
-];
-
-const earningsData = [
-  { month: "Sep", amount: 38400 },
-  { month: "Oct", amount: 42200 },
-  { month: "Nov", amount: 39800 },
-  { month: "Dec", amount: 40930 },
-];
-
-const maxEarning = Math.max(...earningsData.map(e => e.amount));
+import { api } from "@/lib/api";
 
 export default function OwnerPanel() {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeRoot, setActiveTab] = useState("fleet");
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const data = await api.getOwnerDashboard();
+        setDashboardData(data);
+      } catch (err) {
+        console.error("Failed to fetch owner dashboard", err);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboard();
+  }, []);
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
@@ -47,13 +51,24 @@ export default function OwnerPanel() {
   const [editFare, setEditFare] = useState<string | null>(null);
   const [fareVal, setFareVal] = useState("");
 
-  const totalEarnings = buses.reduce((a, b) => a + b.earnings, 0);
+  const buses = dashboardData?.buses || [];
+  const totalEarnings = dashboardData?.totalRevenue || 0;
 
   const currentSidebarItems = sidebarItems.map(item => ({
     ...item,
     active: activeRoot === item.id,
     href: item.url
   }));
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Loading Dashboard..." sidebarItems={currentSidebarItems}>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -67,10 +82,10 @@ export default function OwnerPanel() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: "Total Buses", value: buses.length, icon: Bus, color: "primary" },
-                { label: "Active Buses", value: buses.filter(b => b.status === "Active").length, icon: TrendingUp, color: "success" },
+                { label: "Total Buses", value: dashboardData?.totalBuses || 0, icon: Bus, color: "primary" },
+                { label: "Active Buses", value: dashboardData?.activeBuses || 0, icon: TrendingUp, color: "success" },
                 { label: "Total Earnings", value: `₹${(totalEarnings / 1000).toFixed(1)}k`, icon: DollarSign, color: "info" },
-                { label: "Total Capacity", value: buses.reduce((a, b) => a + b.seats, 0), icon: Users, color: "warning" },
+                { label: "Total Bookings", value: dashboardData?.totalBookings || 0, icon: Users, color: "warning" },
               ].map(s => (
                 <div key={s.label} className="portal-card p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -94,20 +109,20 @@ export default function OwnerPanel() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted">
-                      {["Bus Number", "Type", "Route", "Seats", "Fare (₹)", "Status", "Monthly Earnings", "Actions"].map(h => (
-                        <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
+                      {["Bus Number", "Name", "Route", "Seats", "Fare (₹)", "Status", "Actions"].map(h => (
+                        <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {buses.map(bus => (
+                    {buses.map((bus: any) => (
                       <tr key={bus.id} className="border-b border-border hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 font-mono font-semibold text-xs text-primary">{bus.id}</td>
-                        <td className="px-4 py-3">{bus.type}</td>
-                        <td className="px-4 py-3 text-xs">{bus.route}</td>
-                        <td className="px-4 py-3">{bus.seats}</td>
+                        <td className="px-4 py-3 font-mono font-semibold text-xs text-primary">{bus.busNumber}</td>
+                        <td className="px-4 py-3">{bus.name}</td>
+                        <td className="px-4 py-3 text-xs">{bus.route.from} → {bus.route.to}</td>
+                        <td className="px-4 py-3">{bus.totalSeats}</td>
                         <td className="px-4 py-3">
-                          {editFare === bus.id ? (
+                          {editFare === bus._id ? (
                             <div className="flex gap-1">
                               <Input className="w-20 h-7 text-xs" value={fareVal} onChange={e => setFareVal(e.target.value)} />
                               <Button size="sm" className="h-7 text-xs px-2 bg-success text-white"
@@ -199,7 +214,7 @@ export default function OwnerPanel() {
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
               <Calendar className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-bold text-primary italic uppercase tracking-tighter">Booking Records</h3>
+            <h3 className="text-lg font-bold text-primary ">Booking Records</h3>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">
               View all passenger bookings for your fleet in real-time. This section is being updated with live data.
             </p>

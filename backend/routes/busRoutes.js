@@ -1,11 +1,67 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Bus = require('../models/Bus');
 const SeatLock = require('../models/SeatLock');
 const Booking = require('../models/Booking');
 
+// Mock data for Demo Mode
+const MOCK_BUSES = [
+    {
+        _id: "demo-bus-1",
+        busNumber: "KA-01-F-1234",
+        operator: "KSRTC",
+        route: {
+            from: "Bengaluru",
+            to: "Mysuru",
+            stops: [
+                { name: "Bengaluru Central", lat: 12.9716, lng: 77.5946 },
+                { name: "Mandya", lat: 12.5221, lng: 76.8967 },
+                { name: "Mysuru", lat: 12.2958, lng: 76.6394 }
+            ]
+        },
+        departureTime: "06:30",
+        arrivalTime: "09:15",
+        type: "Express",
+        totalSeats: 42,
+        availableSeats: 12,
+        km: 145,
+        status: "On Time",
+        price: 180,
+        bookedSeats: [5, 6, 12, 14],
+        activeLocks: []
+    },
+    {
+        _id: "demo-bus-2",
+        busNumber: "DL-01-A-4122",
+        operator: "Yatra Setu Pro",
+        route: {
+            from: "Delhi",
+            to: "Jaipur",
+            stops: [
+                { name: "ISBT Kashmere Gate", lat: 28.6675, lng: 77.2282 },
+                { name: "Gurugram", lat: 28.4595, lng: 77.0266 },
+                { name: "Jaipur", lat: 26.9124, lng: 75.7873 }
+            ]
+        },
+        departureTime: "10:00",
+        arrivalTime: "15:30",
+        type: "Volvo AC",
+        totalSeats: 52,
+        availableSeats: 28,
+        km: 270,
+        status: "Delayed 15m",
+        price: 850,
+        bookedSeats: [1, 2, 10],
+        activeLocks: []
+    }
+];
+
 // Get all buses
 router.get('/', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json(MOCK_BUSES);
+    }
     try {
         const buses = await Bus.find();
         res.json(buses);
@@ -14,8 +70,11 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get unique city names for suggestions
+// Get unique city names
 router.get('/cities', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json(["Bengaluru", "Delhi", "Jaipur", "Mangaluru", "Mysuru", "Pune"]);
+    }
     try {
         const fromCities = await Bus.distinct('route.from');
         const toCities = await Bus.distinct('route.to');
@@ -26,19 +85,21 @@ router.get('/cities', async (req, res) => {
     }
 });
 
-// Search buses by route and date
+// Search buses
 router.get('/search', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        const { from, to } = req.query;
+        let filtered = MOCK_BUSES;
+        if (from) filtered = filtered.filter(b => b.route.from.toLowerCase().includes(from.toLowerCase()));
+        if (to) filtered = filtered.filter(b => b.route.to.toLowerCase().includes(to.toLowerCase()));
+        return res.json(filtered);
+    }
     const { from, to, date } = req.query;
     try {
         const query = {};
         if (from) query['route.from'] = new RegExp(from, 'i');
         if (to) query['route.to'] = new RegExp(to, 'i');
-
-        if (date) {
-            const dates = date.split(',');
-            query['date'] = { $in: dates };
-        }
-
+        if (date) query['date'] = { $in: date.split(',') };
         const buses = await Bus.find(query);
         res.json(buses);
     } catch (err) {
@@ -46,176 +107,23 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// Get single bus by busNumber
-router.get('/:busNumber', async (req, res) => {
-    try {
-        const bus = await Bus.findOne({ busNumber: req.params.busNumber });
-        if (!bus) return res.status(404).json({ message: 'Bus not found' });
-        res.json(bus);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// Get single bus by MongoDB ID
+// Get single bus by ID
 router.get('/by-id/:id', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        const bus = MOCK_BUSES.find(b => b._id === req.params.id) || MOCK_BUSES[0];
+        return res.json(bus);
+    }
     try {
         const bus = await Bus.findById(req.params.id).lean();
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
-
-        // Fetch active locks for this bus
         const locks = await SeatLock.find({ busId: req.params.id });
         bus.activeLocks = locks.map(l => ({ seatNumber: l.seatNumber, lockerId: l.lockerId }));
-
-        // Fetch real bookings for this bus to show occupied seats
-        const confirmedBookings = await Booking.find({
-            bus: req.params.id,
-            paymentStatus: 'Completed'
-        });
-
-        // Flatten all seatNumbers from all passenger lists in all bookings
+        const confirmedBookings = await Booking.find({ bus: req.params.id, paymentStatus: 'Completed' });
         const bookedSeatsArray = confirmedBookings.reduce((acc, b) => {
-            const seats = b.passengers.map(p => parseInt(p.seatNumber));
-            return [...acc, ...seats];
+            return [...acc, ...b.passengers.map(p => parseInt(p.seatNumber))];
         }, []);
-
         bus.bookedSeats = Array.from(new Set(bookedSeatsArray));
-
         res.json(bus);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// Lock a seat
-router.post('/:id/lock', async (req, res) => {
-    try {
-        const { seatNumber, lockerId } = req.body;
-        const lock = new SeatLock({
-            busId: req.params.id,
-            seatNumber,
-            lockerId
-        });
-        await lock.save();
-        res.status(201).json(lock);
-    } catch (err) {
-        if (err.code === 11000) {
-            return res.status(409).json({ message: 'Seat already locked' });
-        }
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// Unlock a seat
-router.post('/:id/unlock', async (req, res) => {
-    try {
-        const { seatNumber, lockerId } = req.body;
-        await SeatLock.deleteOne({
-            busId: req.params.id,
-            seatNumber,
-            lockerId
-        });
-        res.json({ message: 'Seat unlocked' });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// Update bus route and stops
-router.patch('/:busNumber/route', async (req, res) => {
-    try {
-        const { from, to, stops } = req.body;
-        const bus = await Bus.findOneAndUpdate(
-            { busNumber: req.params.busNumber },
-            {
-                $set: {
-                    'route.from': from,
-                    'route.to': to,
-                    'route.stops': stops
-                }
-            },
-            { new: true }
-        );
-        if (!bus) return res.status(404).json({ message: 'Bus not found' });
-        res.json(bus);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
-    }
-});
-
-// Seed some data (Utility route)
-router.post('/seed', async (req, res) => {
-    const buses = [
-        {
-            busNumber: "KA-01-F-1234",
-            operator: "KSRTC",
-            route: {
-                from: "Bengaluru",
-                to: "Mysuru",
-                stops: [
-                    { name: "Bengaluru Central", lat: 12.9716, lng: 77.5946 },
-                    { name: "Mandya", lat: 12.5221, lng: 76.8967 },
-                    { name: "Mysuru", lat: 12.2958, lng: 76.6394 }
-                ]
-            },
-            departureTime: "06:30",
-            arrivalTime: "09:15",
-            type: "Express",
-            totalSeats: 42,
-            availableSeats: 12,
-            km: 145,
-            status: "On Time",
-            price: 180
-        },
-        {
-            busNumber: "KA-01-F-5678",
-            operator: "KSRTC",
-            route: {
-                from: "Mysuru",
-                to: "Bengaluru",
-                stops: [
-                    { name: "Mysuru", lat: 12.2958, lng: 76.6394 },
-                    { name: "Ramanagara", lat: 12.7209, lng: 77.2781 },
-                    { name: "Bengaluru Central", lat: 12.9716, lng: 77.5946 }
-                ]
-            },
-            departureTime: "07:00",
-            arrivalTime: "09:45",
-            type: "Ordinary",
-            totalSeats: 42,
-            availableSeats: 3,
-            km: 145,
-            status: "Delayed 10 min",
-            price: 120
-        },
-        {
-            busNumber: "KA-01-F-9012",
-            operator: "KSRTC",
-            route: {
-                from: "Bengaluru",
-                to: "Mangaluru",
-                stops: [
-                    { name: "Bengaluru Central", lat: 12.9716, lng: 77.5946 },
-                    { name: "Hassan", lat: 13.0072, lng: 76.1029 },
-                    { name: "Sakleshpur", lat: 12.9723, lng: 75.7828 },
-                    { name: "Mangaluru", lat: 12.9141, lng: 74.8560 }
-                ]
-            },
-            departureTime: "07:30",
-            arrivalTime: "13:00",
-            type: "Volvo AC",
-            totalSeats: 52,
-            availableSeats: 28,
-            km: 352,
-            status: "On Time",
-            price: 750
-        },
-    ];
-
-    try {
-        await Bus.deleteMany({});
-        const createdBuses = await Bus.insertMany(buses);
-        res.json(createdBuses);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

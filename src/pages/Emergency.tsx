@@ -128,7 +128,7 @@ export default function Emergency() {
                 <p className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>{svc.name}</p>
                 <p className="text-[10px] text-muted-foreground leading-tight hidden sm:block">{svc.desc}</p>
               </div>
-              <span className="mt-2 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest bg-slate-100 sm:bg-transparent"
+              <span className="mt-2 text-[10px] px-3 py-1 rounded-full font-black bg-slate-100 sm:bg-transparent"
                 style={{
                   color: `hsl(var(--${svc.color}))`,
                   backgroundColor: `hsl(var(--${svc.color}) / 0.1)`

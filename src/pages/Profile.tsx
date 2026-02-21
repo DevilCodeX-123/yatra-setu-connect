@@ -16,7 +16,27 @@ const sidebarItems = [
     { href: "/support", label: "Support", icon: <HelpCircle className="w-4 h-4" /> },
 ];
 
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
+
 export default function Profile() {
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const data = await api.getProfile();
+                setUser(data);
+            } catch (err) {
+                console.error("Failed to fetch profile", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProfile();
+    }, []);
+
     const MenuItem = ({ icon: Icon, label, subtitle, trailing, to = "#" }: { icon: any; label: string; subtitle?: string; trailing?: string; to?: string }) => (
         <Link to={to} className="portal-card flex items-center justify-between p-4 mb-2 hover:bg-slate-50 transition-all cursor-pointer group active:scale-[0.99] border-l-4 border-l-transparent hover:border-l-primary group block">
             <div className="flex items-center gap-4">
@@ -24,12 +44,12 @@ export default function Profile() {
                     <Icon className="w-5 h-5" />
                 </div>
                 <div>
-                    <p className="text-sm font-black text-[#1E293B] uppercase tracking-tighter italic group-hover:text-primary transition-colors">{label}</p>
-                    {subtitle && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{subtitle}</p>}
+                    <p className="text-sm font-black text-[#1E293B] group-hover:text-primary transition-colors">{label}</p>
+                    {subtitle && <p className="text-[10px] text-slate-400 font-bold mt-0.5">{subtitle}</p>}
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                {trailing && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{trailing}</span>}
+                {trailing && <span className="text-[10px] font-black text-slate-400 ">{trailing}</span>}
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
             </div>
         </Link>
@@ -38,9 +58,11 @@ export default function Profile() {
     const SectionHeader = ({ label }: { label: string }) => (
         <div className="pt-8 pb-4 flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <h2 className="text-xl font-black italic text-[#1E293B] uppercase tracking-tighter">{label}</h2>
+            <h2 className="text-xl font-black text-[#1E293B] ">{label}</h2>
         </div>
     );
+
+    const nameInitials = user?.name ? user.name.split(' ').map((n: any) => n[0]).join('').toUpperCase().slice(0, 2) : 'YS';
 
     return (
         <DashboardLayout
@@ -56,25 +78,31 @@ export default function Profile() {
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 blur-[80px] -ml-32 -mb-32 rounded-full" />
 
                     <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                        <div className="w-28 h-28 rounded-[35px] bg-white text-[#1E293B] flex items-center justify-center text-4xl font-black italic shadow-2xl border-4 border-white/20">
-                            JD
+                        <div className="w-28 h-28 rounded-[35px] bg-white text-[#1E293B] flex items-center justify-center text-4xl font-black shadow-2xl border-4 border-white/20 ">
+                            {loading ? '...' : nameInitials}
                         </div>
                         <div className="text-center md:text-left">
-                            <h1 className="text-4xl font-black italic tracking-tighter uppercase mb-1">John Doe</h1>
-                            <p className="text-sm font-bold text-emerald-400 uppercase tracking-[0.3em] mb-4">Premium Gold Traveler</p>
+                            <h1 className="text-4xl font-black mb-1">
+                                {loading ? 'Loading...' : (user?.name || 'Guest User')}
+                            </h1>
+                            <p className="text-sm font-bold text-emerald-400 tracking-[0.3em] mb-4">
+                                {user?.role || 'Passenger'} Member
+                            </p>
                             <div className="flex flex-wrap justify-center md:justify-start gap-3">
                                 <div className="bg-white/10 px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Active Status</span>
+                                    <span className="text-[10px] font-black ">Active Status</span>
                                 </div>
                                 <div className="bg-white/10 px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">ID:</span>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white">YS-442-JD</span>
+                                    <span className="text-[10px] font-black text-slate-400">ID:</span>
+                                    <span className="text-[10px] font-black text-white">
+                                        {user?._id?.slice(-8).toUpperCase() || 'YS-NEW'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                         <div className="md:ml-auto flex gap-3">
-                            <Link to="/profile/info" className="h-12 px-6 bg-white text-[#1E293B] rounded-2xl text-[10px] font-black uppercase flex items-center justify-center tracking-[0.2em] shadow-xl active:scale-95 transition-all">
+                            <Link to="/profile/info" className="h-12 px-6 bg-white text-[#1E293B] rounded-2xl text-[10px] font-black flex items-center justify-center tracking-[0.2em] shadow-xl active:scale-95 transition-all">
                                 Edit Profile
                             </Link>
                         </div>
@@ -113,13 +141,13 @@ export default function Profile() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="portal-card p-4 flex flex-col items-center text-center gap-2">
                                 <Languages className="w-5 h-5 text-primary" />
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Language</p>
-                                <p className="text-xs font-black text-[#1E293B] uppercase italic">English</p>
+                                <p className="text-[9px] font-black text-slate-400 ">Language</p>
+                                <p className="text-xs font-black text-[#1E293B] ">English</p>
                             </div>
                             <div className="portal-card p-4 flex flex-col items-center text-center gap-2">
                                 <Palette className="w-5 h-5 text-blue-500" />
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Theme</p>
-                                <p className="text-xs font-black text-[#1E293B] uppercase italic">Classic Light</p>
+                                <p className="text-[9px] font-black text-slate-400 ">Theme</p>
+                                <p className="text-xs font-black text-[#1E293B] ">Classic Light</p>
                             </div>
                         </div>
                     </div>
@@ -127,7 +155,7 @@ export default function Profile() {
 
                 <div className="py-24 flex flex-col items-center gap-4 opacity-10">
                     <div className="w-20 h-1 bg-[#1E293B] rounded-full" />
-                    <p className="text-[10px] font-black uppercase tracking-[1em]">Yatra Setu Portal</p>
+                    <p className="text-[10px] font-black tracking-[1em]">Yatra Setu Portal</p>
                 </div>
 
             </div>
