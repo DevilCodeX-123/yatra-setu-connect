@@ -40,17 +40,19 @@ router.get('/search', async (req, res) => {
 // ===== 2. ROUTE (Driving Directions via Mappls) =====
 router.get('/route', async (req, res) => {
     try {
-        const { pts } = req.query;
-        if (!pts) {
-            return res.status(400).json({ error: "Points (pts) query parameter is required" });
-        }
+        // Use OSRM for reliable, free, and fast road-following routes
+        // OSRM expects {lng,lat;lng,lat} format for coordinates
+        const url = `http://router.project-osrm.org/route/v1/driving/${pts}?overview=full&geometries=polyline6`;
 
-        const url = `https://apis.mappls.com/advancedmaps/v1/${REST_KEY}/route_adv/driving/${pts}?steps=true&overview=full`;
+        console.log("Backend: Fetching road route from OSRM:", url);
         const response = await axios.get(url);
+
+        // Transform OSRM response to match expected format if needed
+        // OSRM returns geometry as a polyline6 string in routes[0].geometry
         res.json(response.data);
     } catch (error) {
-        console.error('Route API Error:', error.message);
-        res.status(500).json({ error: 'Failed to fetch route data' });
+        console.error('Route API Error (OSRM Fallback):', error.message);
+        res.status(500).json({ error: 'Failed to fetch road route from OSRM', details: error.message });
     }
 });
 

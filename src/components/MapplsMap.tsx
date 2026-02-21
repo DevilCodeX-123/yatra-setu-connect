@@ -16,12 +16,14 @@ declare global {
 interface MapplsMapProps {
     markers?: any[];
     routePoints?: string;
+    busLocation?: { lat: number; lng: number };
     className?: string;
 }
 
-export default function MapplsMap({ markers = [], routePoints, className }: MapplsMapProps) {
+export default function MapplsMap({ markers = [], routePoints, busLocation, className }: MapplsMapProps) {
     const mapInstance = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
+    const busMarkerRef = useRef<any>(null);
     const routeLayerRef = useRef<any>(null);
     const polylineRef = useRef<any>(null);
 
@@ -93,6 +95,7 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
         clearAll();
         addMarkers();
         addRoute();
+        updateBusMarker();
     };
 
     // ===== 3. CLEAR ALL OVERLAYS =====
@@ -102,6 +105,12 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
             try { if (m.remove) m.remove(); } catch (e) { }
         });
         markersRef.current = [];
+
+        // Clear bus marker
+        if (busMarkerRef.current) {
+            try { if (busMarkerRef.current.remove) busMarkerRef.current.remove(); } catch (e) { }
+            busMarkerRef.current = null;
+        }
 
         // Clear route
         if (routeLayerRef.current) {
@@ -177,6 +186,47 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
         }
     };
 
+    // ===== 5. UPDATE BUS MARKER =====
+    const updateBusMarker = () => {
+        const map = mapInstance.current;
+        if (!map || !busLocation) return;
+
+        const { lat, lng } = busLocation;
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const busMarkerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+                <div style="background:#10b981;color:#fff;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:900;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,0.2);text-transform:uppercase;letter-spacing:0.5px;border:1px solid rgba(255,255,255,0.3);">
+                    LIVE BUS
+                </div>
+                <div style="width:32px;height:32px;background:#10b981;border:3px solid #fff;border-radius:12px;box-shadow:0 4px 12px rgba(16,185,129,0.4);display:flex;align-items:center;justify-center;transform:rotate(45deg);">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="3" fill="none" style="transform:rotate(-45deg);margin:auto;">
+                        <circle cx="7" cy="17" r="2"></circle>
+                        <circle cx="17" cy="17" r="2"></circle>
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h10"></path>
+                    </svg>
+                </div>
+            </div>
+        `;
+
+        try {
+            if (busMarkerRef.current) {
+                busMarkerRef.current.setPosition({ lat, lng });
+            } else {
+                busMarkerRef.current = new window.mappls.Marker({
+                    map: map,
+                    position: { lat, lng },
+                    html: busMarkerHTML,
+                    width: 60,
+                    height: 60,
+                    offset: [0, -20]
+                });
+            }
+        } catch (e) {
+            console.warn("Mappls: Failed to update bus marker", e);
+        }
+    };
+
     // ===== 5. CENTER MAP ON POINTS =====
     const centerMapOnPoints = (points: { lat: number; lng: number }[]) => {
         const map = mapInstance.current;
@@ -219,14 +269,16 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
     };
 
     // ===== 6. ADD ROUTE =====
-    const addRoute = () => {
+    const addRoute = async () => {
         const map = mapInstance.current;
-        if (!map || !routePoints || !routePoints.includes(',')) return;
+        if (!map || !routePoints || !routePoints.includes(',')) {
+            return;
+        }
 
         const ptsArray = routePoints.split(';');
         if (ptsArray.length < 2) return;
 
-        // Parse to LatLng objects
+        // Parse to LatLng objects for polyline fallback
         const routeLatLngs = ptsArray.map(p => {
             const [lng, lat] = p.split(',').map(Number);
             return { lat, lng };
@@ -234,44 +286,129 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
 
         if (routeLatLngs.length < 2) return;
 
-        console.log("Mappls: Drawing route with", routeLatLngs.length, "points");
+        console.log("Mappls: Initializing route with", routeLatLngs.length, "points");
 
         // ALWAYS draw a polyline first so there's a visible route immediately
-        drawPolyline(routeLatLngs);
+        drawPolyline(routeLatLngs, '#3b82f6', 4, [10, 5]);
 
-        // Then TRY the Direction API for road-following route (it will overlay the polyline)
-        if (window.mappls && window.mappls.direction) {
-            try {
-                window.mappls.direction({
-                    map: map,
-                    path: routePoints, // "lng,lat;lng,lat" format
-                    strokeColor: "#2563eb",
-                    strokeWeight: 7,
-                    strokeOpacity: 0.9,
-                    fitBounds: false,
-                    routeFullColor: "#2563eb",
-                    start_icon: { url: ' ', width: 1, height: 1 },
-                    end_icon: { url: ' ', width: 1, height: 1 },
-                    via_icon: { url: ' ', width: 1, height: 1 },
-                }, (layer: any) => {
-                    if (layer) {
-                        console.log("Mappls: Direction API route drawn (road-following)");
-                        routeLayerRef.current = layer;
-                        // Remove the polyline since we have the better road-following route
-                        if (polylineRef.current) {
-                            try { polylineRef.current.remove(); } catch (e) { }
-                            polylineRef.current = null;
+        // Then FETCH PRECISE ROAD DATA from backend
+        try {
+            console.log("Mappls: Fetching road geometry from backend...");
+            const response = await fetch(`/api/maps/route?pts=${encodeURIComponent(routePoints)}`);
+            const data = await response.json();
+
+            if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                console.log("Mappls: Precise road geometry received from backend. Rendering...");
+                drawRoadRoute(data.routes[0].geometry);
+                return; // SUCCESS - skip plugin
+            } else {
+                console.warn("Mappls: Backend Route API did not return geometry, calling SDK plugin fallback");
+            }
+        } catch (error) {
+            console.error("Mappls: Failed to fetch precise road route:", error);
+        }
+
+        // FALLBACK: Use Mappls Direction Plugin
+        if (window.mappls) {
+            console.log("Mappls: Plugin Status Check:", {
+                mappls: !!window.mappls,
+                direction: !!window.mappls.direction,
+                Direction: !!window.mappls.Direction,
+            });
+
+            const directionPlugin = window.mappls.direction || window.mappls.Direction;
+
+            if (directionPlugin) {
+                try {
+                    window.mappls.direction({
+                        map: map,
+                        path: routePoints,
+                        resource: 'route_adv',
+                        strokeColor: "#2563eb",
+                        strokeWeight: 7,
+                        strokeOpacity: 0.9,
+                        fitBounds: false,
+                        routeFullColor: "#2563eb",
+                        start_icon: { url: '', width: 1, height: 1 },
+                        end_icon: { url: '', width: 1, height: 1 },
+                        via_icon: { url: '', width: 1, height: 1 },
+                    }, (res: any) => {
+                        if (res && (res.status === 'success' || res.length > 0)) {
+                            console.log("Mappls: Direction Plugin success");
+                            if (polylineRef.current) polylineRef.current.remove();
                         }
-                    }
-                });
-            } catch (e) {
-                console.warn("Mappls: Direction API failed, keeping polyline", e);
+                    });
+                } catch (e) {
+                    console.error("Mappls: Direction plugin call failed:", e);
+                }
+            } else {
+                console.warn("Mappls: Directions plugin not found in window.mappls");
             }
         }
     };
 
+    // Standard Google Polyline Decoder
+    const decodePolyline = (str: string, precision = 5) => {
+        let index = 0, lat = 0, lng = 0, coordinates = [], shift = 0, result = 0, byte = null, latIn, lngIn, factor = Math.pow(10, precision);
+        while (index < str.length) {
+            byte = null; shift = 0; result = 0;
+            do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+            latIn = ((result & 1) ? ~(result >> 1) : (result >> 1));
+            shift = 0; result = 0;
+            do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+            lngIn = ((result & 1) ? ~(result >> 1) : (result >> 1));
+            lat += latIn; lng += lngIn;
+            coordinates.push({ lat: lat / factor, lng: lng / factor });
+        }
+        return coordinates;
+    };
+
+    // Draw high quality road route from geometry
+    const drawRoadRoute = (encodedGeometry: string) => {
+        const map = mapInstance.current;
+        if (!map || !window.mappls) return;
+
+        try {
+            console.log("Mappls: Decoding geometry...");
+            // OSRM polyline6 is precision 6
+            let pts = decodePolyline(encodedGeometry, 6);
+
+            // Safety check: if decoding failed (e.g., wrong precision), try 5
+            if (pts.length < 5 || Math.abs(pts[0].lat) > 90) {
+                console.log("Mappls: Refined decoding with precision 5");
+                pts = decodePolyline(encodedGeometry, 5);
+            }
+
+            if (pts.length > 0) {
+                // Remove previous layers
+                if (polylineRef.current) {
+                    try { polylineRef.current.remove(); } catch (e) { }
+                    polylineRef.current = null;
+                }
+                if (routeLayerRef.current) {
+                    try { routeLayerRef.current.remove(); } catch (e) { }
+                    routeLayerRef.current = null;
+                }
+
+                const path = pts.map(p => new window.mappls.LatLng(p.lat, p.lng));
+                const roadPoly = new window.mappls.Polyline({
+                    map: map,
+                    path: path,
+                    strokeColor: '#2563eb',
+                    strokeWeight: 7,
+                    strokeOpacity: 0.9,
+                    fitBounds: false
+                });
+                routeLayerRef.current = roadPoly;
+                console.log(`Mappls: Road route rendered smoothly (${pts.length} pts)`);
+            }
+        } catch (e) {
+            console.warn("Mappls: Failed to draw road route from geometry", e);
+        }
+    };
+
     // ===== 7. DRAW POLYLINE =====
-    const drawPolyline = (points: { lat: number; lng: number }[]) => {
+    const drawPolyline = (points: { lat: number; lng: number }[], color = '#3b82f6', weight = 6, dash: number[] | null = null) => {
         const map = mapInstance.current;
         if (!map || points.length < 2) return;
 
@@ -280,14 +417,14 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
             const poly = new window.mappls.Polyline({
                 map: map,
                 path: path,
-                strokeColor: '#3b82f6',
-                strokeWeight: 6,
+                strokeColor: color,
+                strokeWeight: weight,
                 strokeOpacity: 0.7,
                 fitBounds: false,
-                dasharray: [10, 5], // Dashed line to distinguish from road-following route
+                dasharray: dash,
             });
             polylineRef.current = poly;
-            console.log("Mappls: Polyline drawn");
+            console.log("Mappls: Fallback polyline drawn");
         } catch (e) {
             console.warn("Mappls: Polyline draw failed", e);
         }
@@ -296,7 +433,7 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
     // ===== LIFECYCLE: Load SDK =====
     useEffect(() => {
         if (!sdkKey) {
-            setError("Missing VITE_MAPPLS_SDK_KEY in .env");
+            setError("Missing VITE_MAPPLS_SDK_KEY");
             setLoading(false);
             return;
         }
@@ -305,14 +442,15 @@ export default function MapplsMap({ markers = [], routePoints, className }: Mapp
         if (!document.getElementById(scriptId)) {
             const s = document.createElement('script');
             s.id = scriptId;
-            s.src = `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${sdkKey}&plugins=direction`;
+            // Upgrade to v3.2 for better stability and remove explicit CSS to avoid 412 error
+            s.src = `https://sdk.mappls.com/map/sdk/web?v=3.2&access_token=${sdkKey}`;
             s.async = true;
             s.onload = () => {
-                console.log("Mappls: SDK script loaded");
-                setTimeout(initMap, 500);
+                console.log("Mappls: SDK v3.2 script loaded");
+                setTimeout(initMap, 1000);
             };
             s.onerror = () => {
-                setError("Failed to load Mappls SDK. Check your internet connection.");
+                setError("Failed to load map engine.");
                 setLoading(false);
             };
             document.head.appendChild(s);

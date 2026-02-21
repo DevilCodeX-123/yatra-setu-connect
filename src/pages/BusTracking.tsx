@@ -65,6 +65,10 @@ export default function BusTracking() {
     const [speed, setSpeed] = useState(53);
     const [occupancy, setOccupancy] = useState(24);
 
+    // Live Tracking State
+    const [busLocation, setBusLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
+    const [routeGeometry, setRouteGeometry] = useState<any[]>([]);
+
     const busData = routesData[id as keyof typeof routesData] || routesData["default"];
     const stations = busData.stops;
 
@@ -73,18 +77,70 @@ export default function BusTracking() {
         return stations.find(s => s.status === "Upcoming")?.name || busData.destination;
     }, [stations, busData.destination]);
 
-    // Simulation Logic
+    // ===== 1. FETCH PRECISE ROUTE GEOMETRY =====
     useEffect(() => {
+        const fetchRoute = async () => {
+            try {
+                // Using backend API for precise road geometry
+                const res = await fetch(`/api/maps/route?pts=${encodeURIComponent(busData.coordinates)}`);
+                const data = await res.json();
+
+                if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                    // Mappls geometry decoding helper (standard polyline fallback or SDK)
+                    // For simulation, we'll just parse the path if it's available as points
+                    // If geometry is encoded, we'll need a decoder. Mappls usually returns it as a string.
+                    // For now, let's use the stops as a fallback or assume the backend gives us points.
+                    console.log("BusTracking: Received precise route geometry");
+                }
+            } catch (err) {
+                console.error("BusTracking: Failed to fetch route geometry", err);
+            }
+        };
+        fetchRoute();
+    }, [busData.coordinates]);
+
+    // ===== 2. SIMULATION LOGIC (Live Tracking) =====
+    useEffect(() => {
+        // Start position
+        let currentIdx = 0;
+        const pts = busData.markers.map(m => ({ lat: m.lat, lng: m.lon }));
+
+        if (!busLocation && pts.length > 0) {
+            setBusLocation(pts[0]);
+        }
+
         const interval = setInterval(() => {
-            setEta(prev => Math.max(1, prev - (Math.random() > 0.85 ? 1 : 0)));
+            // Update ETA and Speed
+            setEta(prev => Math.max(1, prev - (Math.random() > 0.9 ? 1 : 0)));
             setSpeed(prev => {
                 const delta = Math.floor(Math.random() * 5) - 2;
                 return Math.max(45, Math.min(65, prev + delta));
             });
-        }, 4000);
+
+            // Move bus along the points
+            setBusLocation(prev => {
+                if (!prev) return pts[0];
+
+                // Simple animation: move towards the next marker
+                const target = pts[pts.length - 1]; // Move towards destination
+
+                // Fine-grained simulation: small step towards destination
+                const step = 0.0005; // Adjust for speed
+                const dLat = target.lat - prev.lat;
+                const dLng = target.lng - prev.lng;
+                const distance = Math.sqrt(dLat * dLat + dLng * dLng);
+
+                if (distance < step) return target;
+
+                return {
+                    lat: prev.lat + (dLat / distance) * step,
+                    lng: prev.lng + (dLng / distance) * step,
+                };
+            });
+        }, 3000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [busData.markers]);
 
     const handleRefresh = () => {
         if (isRefreshing) return;
@@ -231,6 +287,7 @@ export default function BusTracking() {
                                     <MapplsMap
                                         markers={busData.markers || []}
                                         routePoints={busData.coordinates}
+                                        busLocation={busLocation}
                                         className="absolute inset-0"
                                     />
                                     {/* Overlay to allow clicking/dragging map while still having our layout feel */}

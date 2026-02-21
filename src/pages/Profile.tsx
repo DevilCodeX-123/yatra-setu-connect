@@ -86,6 +86,7 @@ export default function Profile() {
                         {/* My Details */}
                         <SectionHeader label="My details" />
                         <MenuItem icon={ClipboardList} label="Bookings" to="/profile/bookings" />
+                        <MenuItem icon={History} label="Past Rides" subtitle="Completed journeys & eco impact" to="/profile/past-rides" />
                         <MenuItem icon={User} label="Personal information" to="/profile/info" />
                         <MenuItem icon={Users} label="Passengers" to="/profile/passengers" />
                         <MenuItem icon={Train} label="IRCTC details" to="/profile/irctc" />

@@ -265,4 +265,31 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Print Styles for E-Tickets */
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+
+    .printable-ticket,
+    .printable-ticket * {
+      visibility: visible;
+    }
+
+    .printable-ticket {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 12px !important;
+      box-shadow: none !important;
+    }
+
+    /* Hide UI elements within the ticket card that shouldn't be printed */
+    .print\:hidden {
+      display: none !important;
+    }
+  }
 }

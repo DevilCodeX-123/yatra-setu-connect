@@ -23,6 +23,7 @@ import ProfileInfo from "./pages/ProfileInfo";
 import ProfilePassengers from "./pages/ProfilePassengers";
 import ProfileWallet from "./pages/ProfileWallet";
 import ProfilePlaceholder from "./pages/ProfilePlaceholder";
+import ProfilePastRides from "./pages/ProfilePastRides";
 import Support from "./pages/Support";
 import BusTracking from "./pages/BusTracking";
 import Login from "./pages/Login";
@@ -50,6 +51,7 @@ const AppShell = () => {
           <Route path="/lentings" element={<Lentings />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/bookings" element={<ProfileBookings />} />
+          <Route path="/profile/past-rides" element={<ProfilePastRides />} />
           <Route path="/profile/info" element={<ProfileInfo />} />
           <Route path="/profile/passengers" element={<ProfilePassengers />} />
           <Route path="/profile/wallet" element={<ProfileWallet />} />

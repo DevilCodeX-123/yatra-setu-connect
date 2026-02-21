@@ -41,6 +41,7 @@ const menuGroups = {
     { title: "Account", url: "/account", icon: UserCircle },
     { title: "Lentings", url: "/lentings", icon: HandCoins },
     { title: "Profile", url: "/profile", icon: User },
+    { title: "Past Rides", url: "/profile/past-rides", icon: Route },
     { title: "Support", url: "/support", icon: HelpCircle },
   ],
   passenger: [
