@@ -17,13 +17,15 @@ interface MapplsMapProps {
     markers?: any[];
     routePoints?: string;
     busLocation?: { lat: number; lng: number };
+    userLocation?: { lat: number; lng: number } | null;
     className?: string;
 }
 
-export default function MapplsMap({ markers = [], routePoints, busLocation, className }: MapplsMapProps) {
+export default function MapplsMap({ markers = [], routePoints, busLocation, userLocation, className }: MapplsMapProps) {
     const mapInstance = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
     const busMarkerRef = useRef<any>(null);
+    const userMarkerRef = useRef<any>(null);
     const routeLayerRef = useRef<any>(null);
     const polylineRef = useRef<any>(null);
 
@@ -96,6 +98,7 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, clas
         addMarkers();
         addRoute();
         updateBusMarker();
+        updateUserMarker();
     };
 
     // ===== 3. CLEAR ALL OVERLAYS =====
@@ -110,6 +113,12 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, clas
         if (busMarkerRef.current) {
             try { if (busMarkerRef.current.remove) busMarkerRef.current.remove(); } catch (e) { }
             busMarkerRef.current = null;
+        }
+
+        // Clear user marker
+        if (userMarkerRef.current) {
+            try { if (userMarkerRef.current.remove) userMarkerRef.current.remove(); } catch (e) { }
+            userMarkerRef.current = null;
         }
 
         // Clear route
@@ -224,6 +233,49 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, clas
             }
         } catch (e) {
             console.warn("Mappls: Failed to update bus marker", e);
+        }
+    };
+
+    // ===== 6. UPDATE USER MARKER =====
+    const updateUserMarker = () => {
+        const map = mapInstance.current;
+        if (!map || !userLocation) {
+            if (userMarkerRef.current) {
+                userMarkerRef.current.remove();
+                userMarkerRef.current = null;
+            }
+            return;
+        }
+
+        const { lat, lng } = userLocation;
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const userMarkerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+                <div style="width:20px;height:20px;background:#3b82f6;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(59,130,246,0.6);position:relative;">
+                    <div style="position:absolute;inset:-10px;background:rgba(59,130,246,0.2);border-radius:50%;animation:mPulse 2s infinite;"></div>
+                </div>
+                <div style="background:#3b82f6;color:#fff;border-radius:4px;padding:1px 4px;font-size:7px;font-weight:900;margin-top:2px;box-shadow:0 2px 4px rgba(0,0,0,0.1);text-transform:uppercase;">
+                    YOU
+                </div>
+            </div>
+        `;
+
+        try {
+            if (userMarkerRef.current) {
+                userMarkerRef.current.setPosition({ lat, lng });
+            } else {
+                userMarkerRef.current = new window.mappls.Marker({
+                    map: map,
+                    position: { lat, lng },
+                    html: userMarkerHTML,
+                    width: 40,
+                    height: 40,
+                    offset: [0, 0]
+                });
+            }
+        } catch (e) {
+            console.warn("Mappls: Failed to update user marker", e);
         }
     };
 
@@ -470,7 +522,7 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, clas
         if (mapReady) {
             drawAll();
         }
-    }, [markers, routePoints, mapReady]);
+    }, [markers, routePoints, busLocation, userLocation, mapReady]);
 
     return (
         <div className={`relative w-full h-full overflow-hidden bg-slate-100 ${className}`} style={{ minHeight: '350px' }}>

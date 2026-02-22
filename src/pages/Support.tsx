@@ -135,6 +135,7 @@ export default function Support() {
                                             <label className="text-sm font-medium">Date of Travel</label>
                                             <Input
                                                 type="date"
+                                                max={new Date().toISOString().split('T')[0]}
                                                 value={travelDate}
                                                 onChange={(e) => setTravelDate(e.target.value)}
                                                 required

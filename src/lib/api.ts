@@ -106,8 +106,9 @@ export const api = {
         });
         return res.json();
     },
-    getStats: async () => {
-        const res = await fetch(`${API_BASE_URL}/stats`, { headers: getAuthHeaders() });
+    getStats: async (date?: string) => {
+        const url = date ? `${API_BASE_URL}/stats?date=${date}` : `${API_BASE_URL}/stats`;
+        const res = await fetch(url, { headers: getAuthHeaders() });
         return res.json();
     },
 

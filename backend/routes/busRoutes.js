@@ -5,57 +5,7 @@ const Bus = require('../models/Bus');
 const SeatLock = require('../models/SeatLock');
 const Booking = require('../models/Booking');
 
-// Mock data for Demo Mode
-const MOCK_BUSES = [
-    {
-        _id: "demo-bus-1",
-        busNumber: "KA-01-F-1234",
-        operator: "KSRTC",
-        route: {
-            from: "Bengaluru",
-            to: "Mysuru",
-            stops: [
-                { name: "Bengaluru Central", lat: 12.9716, lng: 77.5946 },
-                { name: "Mandya", lat: 12.5221, lng: 76.8967 },
-                { name: "Mysuru", lat: 12.2958, lng: 76.6394 }
-            ]
-        },
-        departureTime: "06:30",
-        arrivalTime: "09:15",
-        type: "Express",
-        totalSeats: 42,
-        availableSeats: 12,
-        km: 145,
-        status: "On Time",
-        price: 180,
-        bookedSeats: [5, 6, 12, 14],
-        activeLocks: []
-    },
-    {
-        _id: "demo-bus-2",
-        busNumber: "DL-01-A-4122",
-        operator: "Yatra Setu Pro",
-        route: {
-            from: "Delhi",
-            to: "Jaipur",
-            stops: [
-                { name: "ISBT Kashmere Gate", lat: 28.6675, lng: 77.2282 },
-                { name: "Gurugram", lat: 28.4595, lng: 77.0266 },
-                { name: "Jaipur", lat: 26.9124, lng: 75.7873 }
-            ]
-        },
-        departureTime: "10:00",
-        arrivalTime: "15:30",
-        type: "Volvo AC",
-        totalSeats: 52,
-        availableSeats: 28,
-        km: 270,
-        status: "Delayed 15m",
-        price: 850,
-        bookedSeats: [1, 2, 10],
-        activeLocks: []
-    }
-];
+const { MOCK_BUSES } = require('../data/mockData');
 
 // Get all buses
 router.get('/', async (req, res) => {
@@ -73,7 +23,7 @@ router.get('/', async (req, res) => {
 // Get unique city names
 router.get('/cities', async (req, res) => {
     if (mongoose.connection.readyState !== 1) {
-        return res.json(["Bengaluru", "Delhi", "Jaipur", "Mangaluru", "Mysuru", "Pune"]);
+        return res.json(["Bengaluru", "Delhi", "Jaipur", "Kota", "Mangaluru", "Mysuru", "Pune"]);
     }
     try {
         const fromCities = await Bus.distinct('route.from');
@@ -88,10 +38,18 @@ router.get('/cities', async (req, res) => {
 // Search buses
 router.get('/search', async (req, res) => {
     if (mongoose.connection.readyState !== 1) {
-        const { from, to } = req.query;
+        const { from, to, date } = req.query;
+        console.log(`🔍 [DEMO SEARCH] from=${from}, to=${to}, date=${date}`);
+
         let filtered = MOCK_BUSES;
         if (from) filtered = filtered.filter(b => b.route.from.toLowerCase().includes(from.toLowerCase()));
         if (to) filtered = filtered.filter(b => b.route.to.toLowerCase().includes(to.toLowerCase()));
+        if (date) {
+            const datesArray = date.split(',');
+            filtered = filtered.filter(b => datesArray.includes(b.date));
+        }
+
+        console.log(`✨ [DEMO RESULT] Found ${filtered.length} buses`);
         return res.json(filtered);
     }
     const { from, to, date } = req.query;
@@ -127,6 +85,56 @@ router.get('/by-id/:id', async (req, res) => {
         }, []);
         bus.bookedSeats = Array.from(new Set(bookedSeatsArray));
         res.json(bus);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Lock seat
+router.post('/:id/lock', async (req, res) => {
+    const { seatNumber, lockerId } = req.body;
+    if (mongoose.connection.readyState !== 1) {
+        // In demo mode, we'll just simulate a successful lock
+        // unless we want to keep track of it in memory
+        const bus = MOCK_BUSES.find(b => b._id === req.params.id);
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        if (!bus.activeLocks) bus.activeLocks = [];
+        const existing = bus.activeLocks.find(l => l.seatNumber === seatNumber);
+        if (existing && existing.lockerId !== lockerId) {
+            return res.json({ message: "Seat already locked" });
+        }
+
+        if (!existing) {
+            bus.activeLocks.push({ seatNumber, lockerId });
+        }
+        return res.json({ message: "Seat locked", lockerId });
+    }
+    try {
+        const lock = await SeatLock.findOneAndUpdate(
+            { busId: req.params.id, seatNumber },
+            { lockerId, expiresAt: new Date(Date.now() + 10 * 60 * 1000) }, // 10 mins
+            { upsert: true, new: true }
+        );
+        res.json({ message: 'Seat locked', lock });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Unlock seat
+router.post('/:id/unlock', async (req, res) => {
+    const { seatNumber, lockerId } = req.body;
+    if (mongoose.connection.readyState !== 1) {
+        const bus = MOCK_BUSES.find(b => b._id === req.params.id);
+        if (bus && bus.activeLocks) {
+            bus.activeLocks = bus.activeLocks.filter(l => !(l.seatNumber === seatNumber && l.lockerId === lockerId));
+        }
+        return res.json({ message: "Seat unlocked" });
+    }
+    try {
+        await SeatLock.findOneAndDelete({ busId: req.params.id, seatNumber, lockerId });
+        res.json({ message: 'Seat unlocked' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

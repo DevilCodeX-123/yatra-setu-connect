@@ -375,7 +375,13 @@ export default function Booking() {
                 <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.date')}</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-40" />
-                  <Input type="date" className="pl-9 bg-secondary border-border text-foreground" value={searchDate} onChange={e => setSearchDate(e.target.value)} />
+                  <Input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    className="pl-9 bg-secondary border-border text-foreground"
+                    value={searchDate}
+                    onChange={e => setSearchDate(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -450,7 +456,13 @@ export default function Booking() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.travelDate')}</label>
-                      <Input type="date" value={rentalDate} onChange={e => setRentalDate(e.target.value)} className="bg-secondary border-border" />
+                      <Input
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        value={rentalDate}
+                        onChange={e => setRentalDate(e.target.value)}
+                        className="bg-secondary border-border"
+                      />
                     </div>
                     <div>
                       <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.pickupTime')}</label>
@@ -624,7 +636,17 @@ export default function Booking() {
                     <select
                       className="w-full h-11 px-3 border border-border bg-secondary rounded-xl text-xs font-bold text-foreground focus:border-primary transition-colors"
                       value={boardingStop}
-                      onChange={e => setBoardingStop(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setBoardingStop(val);
+                        if (selectedBus && val) {
+                          const boardIdx = selectedBus.route.stops.findIndex((s: any) => s.name === val);
+                          const dropIdx = selectedBus.route.stops.findIndex((s: any) => s.name === droppingStop);
+                          if (dropIdx !== -1 && dropIdx <= boardIdx) {
+                            setDroppingStop("");
+                          }
+                        }
+                      }}
                     >
                       <option value="">{t('booking.selectBoarding')}</option>
                       {selectedBus?.route?.stops?.map((s: any) => (
@@ -640,7 +662,11 @@ export default function Booking() {
                       onChange={e => setDroppingStop(e.target.value)}
                     >
                       <option value="">{t('booking.selectDropping')}</option>
-                      {selectedBus?.route?.stops?.map((s: any) => (
+                      {selectedBus?.route?.stops?.filter((_: any, idx: number) => {
+                        if (!boardingStop) return true;
+                        const boardIdx = selectedBus.route.stops.findIndex((bs: any) => bs.name === boardingStop);
+                        return idx > boardIdx;
+                      }).map((s: any) => (
                         <option key={s.name} value={s.name}>{s.name}</option>
                       ))}
                     </select>
@@ -974,6 +1000,6 @@ export default function Booking() {
           </div>
         )}
       </div>
-    </Layout>
+    </Layout >
   );
 }

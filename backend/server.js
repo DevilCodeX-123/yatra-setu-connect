@@ -103,8 +103,8 @@ const startServer = async () => {
         console.error('⚠️ Database connection failed:', err.message);
         console.log('🚀 Starting in OFFLINE DEMO MODE (Server will run without Database)');
     } finally {
-        server.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
+        server.listen(PORT, '127.0.0.1', () => {
+            console.log(`🚀 Server running on http://127.0.0.1:${PORT}`);
             console.log(`🔌 Socket.io ready`);
             if (mongoose.connection.readyState !== 1) {
                 console.log('📢 WARNING: Running in Demo Mode (Local data only)');

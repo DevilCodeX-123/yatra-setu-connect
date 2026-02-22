@@ -44,8 +44,10 @@ export default function Home() {
   useEffect(() => {
     const init = async () => {
       try {
+        // Initially fetch today's stats or specific date if selected
+        const statsDate = selectedDates.length > 0 ? selectedDates[0] : today;
         const [statsData, citiesData] = await Promise.all([
-          api.getStats(),
+          api.getStats(statsDate),
           api.getCities()
         ]);
         setDynamicStats(statsData);
@@ -66,7 +68,7 @@ export default function Home() {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [selectedDates]); // Re-run when date changes to sync stats
 
   // Removed initial fetch to show buses only on search
 
@@ -75,7 +77,13 @@ export default function Home() {
       setLoading(true);
       try {
         const data = await api.searchBuses(fromCity, toCity, selectedDates.join(','));
-        setLiveBuses(data);
+        // Final Rating Score = (Avg Rating * Total Passengers)
+        const sortedData = [...data].sort((a: any, b: any) => {
+          const scoreA = parseFloat(a.rating || "0") * (a.reviewCount || 0);
+          const scoreB = parseFloat(b.rating || "0") * (b.reviewCount || 0);
+          return scoreB - scoreA;
+        });
+        setLiveBuses(sortedData);
         setSearched(true);
       } catch (err) {
         console.error("Search failed:", err);
@@ -85,23 +93,27 @@ export default function Home() {
     }
   };
 
-  const toggleDate = (dateStr: string) => {
-    setSelectedDates(prev =>
-      prev.includes(dateStr)
-        ? prev.filter(d => d !== dateStr)
-        : [...prev, dateStr]
-    );
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-  const today = "2026-02-20"; // Consistent with context
+  const today = getLocalDateString(new Date());
+
+  const toggleDate = (dateStr: string) => {
+    // Force single selection as requested
+    setSelectedDates([dateStr]);
+  };
 
   const getUpcomingDates = () => {
     const dates = [];
-    const startDate = new Date(today);
+    const startDate = new Date(); // Use local now
     for (let i = 0; i < 4; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString('en-US', { weekday: 'short' });
       const dayNum = d.getDate();
       dates.push({ dateStr, dayName, dayNum });
@@ -253,7 +265,7 @@ export default function Home() {
                         }`}
                     >
                       <span className="text-[7px] font-black opacity-60">
-                        {dayName}
+                        {dayName === "Today" ? <span className="text-blue-300">● {t('search.today') || "Today"}</span> : dayName}
                       </span>
                       <span className="text-xs font-black leading-none mt-1">
                         {dayNum}
@@ -273,6 +285,7 @@ export default function Home() {
                     <Input
                       id="custom-date-picker"
                       type="date"
+                      min={today}
                       className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
                       onChange={(e) => {
                         if (e.target.value) {
@@ -351,6 +364,7 @@ export default function Home() {
 
           <div className="grid gap-4">
             {loading ? (
+              // ... loading state
               <div className="text-center py-20 bg-secondary/50 rounded-3xl border border-dashed border-border">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -358,6 +372,7 @@ export default function Home() {
                 </div>
               </div>
             ) : liveBuses.length === 0 ? (
+              // ... empty state
               <div className="bg-card border border-border p-16 text-center rounded-[32px] shadow-card">
                 <div className="max-w-xs mx-auto space-y-4">
                   <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
@@ -368,8 +383,14 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              liveBuses.map(bus => (
-                <div key={bus._id} className="bg-card border border-border p-6 flex flex-col md:flex-row md:items-center gap-6 hover:shadow-2xl transition-all rounded-[28px] group">
+              liveBuses.map((bus, idx) => (
+                <div key={bus._id} className={`bg-card border ${idx === 0 ? 'border-amber-500/50 shadow-amber-500/10' : 'border-border'} p-6 flex flex-col md:flex-row md:items-center gap-6 hover:shadow-2xl transition-all rounded-[28px] group relative overflow-hidden`}>
+                  {idx === 0 && (
+                    <div className="absolute top-0 right-0 px-4 py-1 bg-gradient-to-l from-amber-500 to-amber-600 text-white text-[8px] font-black italic tracking-widest rounded-bl-xl shadow-lg flex items-center gap-1.5 z-10">
+                      <Star className="w-2.5 h-2.5 fill-white" />
+                      🏆 {t('bus.topRanked') || 'TOP RANKED'}
+                    </div>
+                  )}
                   {/* Route info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-3">
@@ -385,6 +406,13 @@ export default function Home() {
                         <div className="flex items-center gap-3 mt-1">
                           <Badge variant="outline" className="rounded-lg text-[9px] font-black border-border bg-secondary text-muted-foreground">{bus.busNumber}</Badge>
                           <Badge className="rounded-lg text-[9px] font-black bg-primary/10 text-primary border-none">{bus.type}</Badge>
+                          {bus.rating && (
+                            <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-md">
+                              <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                              <span className="text-[9px] font-black text-amber-600">{bus.rating}</span>
+                              <span className="text-[8px] font-bold text-amber-600/50">({bus.reviewCount || 0})</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -424,18 +452,38 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Status & Book */}
-                  <div className="flex flex-col items-end gap-3 min-w-[140px]">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black border ${bus.status === "On Time" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : bus.status === "Full" ? "bg-red-500/10 text-red-600 border-red-500/20" : "bg-primary-light/10 text-primary border-primary/20"}`}>
-                      {bus.status}
+                  {/* Status & Actions */}
+                  <div className="flex flex-col items-end gap-3 min-w-[160px]">
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-black border flex items-center gap-1.5 ${(bus.avgDelay || 0) <= 2
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                      : (bus.avgDelay || 0) <= 7
+                        ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        : "bg-red-500/10 text-red-600 border-red-500/20"
+                      }`}>
+                      <Clock className="w-2.5 h-2.5" />
+                      {(bus.avgDelay || 0) === 0 ? t('bus.onTime') : `${bus.avgDelay}m ${t('bus.avgLate')}`}
                     </span>
-                    <Button
-                      className="w-full h-12 rounded-xl bg-primary hover:bg-primary-light font-black text-[10px] shadow-lg shadow-primary/20"
-                      disabled={bus.availableSeats === 0}
-                      asChild={bus.availableSeats > 0}
-                    >
-                      {bus.availableSeats > 0 ? <Link to={`/booking?busId=${bus._id}`}>{t('bus.bookSeat')}</Link> : <span>{t('bus.full')}</span>}
-                    </Button>
+
+                    <div className="flex gap-2 w-full mt-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1 h-11 rounded-xl border-primary/20 hover:bg-primary/5 font-black text-[9px] gap-2 transition-all"
+                        asChild
+                      >
+                        <Link to={`/tracking/${bus._id}`}>
+                          <Navigation className="w-3 h-3" />
+                          {t('bus.trackLive')}
+                        </Link>
+                      </Button>
+
+                      <Button
+                        className="flex-1 h-11 rounded-xl bg-primary hover:bg-primary-light font-black text-[9px] shadow-lg shadow-primary/20 transition-all"
+                        disabled={bus.availableSeats === 0}
+                        asChild={bus.availableSeats > 0}
+                      >
+                        {bus.availableSeats > 0 ? <Link to={`/booking?busId=${bus._id}`}>{t('bus.bookSeat')}</Link> : <span>{t('bus.full')}</span>}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))

@@ -111,7 +111,11 @@ export const translations = {
             plusPetrol: "+ Petrol",
             rentDesc: "Rent / Day + Fuel Cost",
             mileage: "KM/L Mileage",
-            rentNow: "Rent Now"
+            rentNow: "Rent Now",
+            trackLive: "Track Live",
+            topRanked: "TOP RANKED",
+            avgLate: "Avg. Late",
+            onTime: "On Time"
         },
         profile: {
             title: "Personal Information",
@@ -462,7 +466,11 @@ export const translations = {
             plusPetrol: "+ पेट्रोल",
             rentDesc: "किराया / दिन + ईंधन लागत",
             mileage: "KM/L माइलेज",
-            rentNow: "अभी बुक करें"
+            rentNow: "अभी बुक करें",
+            trackLive: "लाइव ट्रैक करें",
+            topRanked: "टॉप रैंक",
+            avgLate: "औसत देरी",
+            onTime: "समय पर"
         },
         profile: {
             title: "व्यक्तिगत जानकारी",
@@ -811,7 +819,11 @@ export const translations = {
             plusPetrol: "+ पेट्रोल",
             rentDesc: "भाडे / दिवस + इंधन खर्च",
             mileage: "KM/L मायलेज",
-            rentNow: "आत्ताच बुक करा"
+            rentNow: "आत्ताच बुक करा",
+            trackLive: "लाईव्ह ट्रॅक करा",
+            topRanked: "टॉप रँक्ड",
+            avgLate: "सरासरी उशीर",
+            onTime: "वेळेवर"
         },
         profile: {
             title: "वैयक्तिक माहिती",
