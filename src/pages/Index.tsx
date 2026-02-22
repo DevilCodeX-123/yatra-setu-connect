@@ -12,15 +12,17 @@ import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
 import Logo from "@/components/brand/Logo";
 import LogoIcon from "@/components/brand/LogoIcon";
+import { useTranslation } from "@/contexts/LanguageContext";
 
-const features = [
-  { icon: Shield, title: "Verified & Safe", desc: "All buses GPS-tracked with driver verification and live monitoring." },
-  { icon: Clock, title: "Real-time Updates", desc: "Live bus location, delay alerts and arrival predictions." },
-  { icon: Star, title: "Priority Seating", desc: "Reserved seats for women, elderly, disabled and pregnant passengers." },
-  { icon: Leaf, title: "Eco Tracking", desc: "Track your carbon footprint savings vs. personal vehicle travel." },
+const featureItems = [
+  { icon: Shield, titleKey: "home.why.f1_title", descKey: "home.why.f1_desc" },
+  { icon: Clock, titleKey: "home.why.f2_title", descKey: "home.why.f2_desc" },
+  { icon: Star, titleKey: "home.why.f3_title", descKey: "home.why.f3_desc" },
+  { icon: Leaf, titleKey: "home.why.f4_title", descKey: "home.why.f4_desc" },
 ];
 
 export default function Home() {
+  const { t } = useTranslation();
   const [liveBuses, setLiveBuses] = useState<any[]>([]);
   const [dynamicStats, setDynamicStats] = useState({
     busesRunningToday: 0,
@@ -138,7 +140,7 @@ export default function Home() {
           <div className="text-center mb-12 flex flex-col items-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 text-xs font-semibold bg-white/10 border border-white/20 text-white backdrop-blur-md">
               <Radio className="w-3.5 h-3.5 live-pulse text-blue-300" />
-              Real-time Network Monitoring Active
+              {t('home.monitoring')}
             </div>
 
             <div className="flex flex-col items-center gap-6 mb-8">
@@ -149,7 +151,7 @@ export default function Home() {
             </div>
 
             <p className="text-base sm:text-lg font-medium max-w-2xl mx-auto text-blue-100/80 mt-4">
-              India's unified gateway for smart public transport. Seamlessly connect with verified buses, live tracking, and secure digital ticketing.
+              {t('home.hero')}
             </p>
           </div>
 
@@ -158,13 +160,13 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-black text-muted-foreground mb-2 ml-1 opacity-60">
-                  From
+                  {t('search.from')}
                 </label>
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
                   <Input
                     className="pl-11 h-14 bg-secondary border border-border rounded-2xl font-black text-[10px] shadow-sm focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder="Departure city"
+                    placeholder={t('search.departure')}
                     value={fromCity}
                     onChange={e => {
                       const val = e.target.value;
@@ -198,13 +200,13 @@ export default function Home() {
               </div>
               <div className="md:col-span-1 relative">
                 <label className="block text-[10px] font-black text-muted-foreground mb-2 ml-1 opacity-60">
-                  To
+                  {t('search.to')}
                 </label>
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
                   <Input
                     className="pl-11 h-14 bg-secondary border border-border rounded-2xl font-black text-[10px] shadow-sm focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder="Destination city"
+                    placeholder={t('search.destination')}
                     value={toCity}
                     onChange={e => {
                       const val = e.target.value;
@@ -238,7 +240,7 @@ export default function Home() {
               </div>
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-black text-muted-foreground mb-2 ml-1 opacity-60">
-                  Date of Travel
+                  {t('search.date')}
                 </label>
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                   {upcomingDates.map(({ dateStr, dayName, dayNum }) => (
@@ -266,7 +268,7 @@ export default function Home() {
                       className="flex flex-col items-center justify-center min-w-[54px] h-14 rounded-2xl border bg-secondary text-foreground border-border hover:border-primary/50 transition-all"
                     >
                       <Calendar className="w-4 h-4 text-primary" />
-                      <span className="text-[7px] font-black mt-1 opacity-60">Custom</span>
+                      <span className="text-[7px] font-black mt-1 opacity-60">{t('search.custom')}</span>
                     </button>
                     <Input
                       id="custom-date-picker"
@@ -285,7 +287,7 @@ export default function Home() {
               <div className="md:col-span-1">
                 <Button className="w-full h-14 rounded-2xl bg-primary hover:bg-primary-light font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.01]" onClick={handleSearch}>
                   <Search className="w-4 h-4 mr-2" />
-                  Find Buses
+                  {t('home.findBuses')}
                 </Button>
               </div>
             </div>
@@ -293,7 +295,7 @@ export default function Home() {
             <div className="mt-6 flex flex-wrap items-center gap-6 text-[9px] font-black text-muted-foreground opacity-60 border-t border-border pt-4">
               <span className="flex items-center gap-2">
                 <CheckCircle className="w-3 h-3 text-emerald-500" />
-                Advance booking (30 Days)
+                {t('home.actions.adv_desc')}
               </span>
               <span className="flex items-center gap-2">
                 <CheckCircle className="w-3 h-3 text-emerald-500" />
@@ -313,10 +315,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { label: "Buses Active", value: dynamicStats.busesRunningToday.toLocaleString(), icon: Bus },
-              { label: "Total Bookings", value: dynamicStats.passengersServed >= 100000 ? `${(dynamicStats.passengersServed / 100000).toFixed(1)}L+` : dynamicStats.passengersServed.toLocaleString(), icon: Users },
-              { label: "Routes Online", value: dynamicStats.routesActive.toLocaleString(), icon: Navigation },
-              { label: "CO₂ Reduced", value: `${(dynamicStats.co2Saved / 1000).toFixed(1)}T`, icon: Leaf },
+              { label: t('home.stats.active'), value: dynamicStats.busesRunningToday.toLocaleString(), icon: Bus },
+              { label: t('home.stats.bookings'), value: dynamicStats.passengersServed >= 100000 ? `${(dynamicStats.passengersServed / 100000).toFixed(1)}L+` : dynamicStats.passengersServed.toLocaleString(), icon: Users },
+              { label: t('home.stats.routes'), value: dynamicStats.routesActive.toLocaleString(), icon: Navigation },
+              { label: t('home.stats.co2'), value: `${(dynamicStats.co2Saved / 1000).toFixed(1)}T`, icon: Leaf },
             ].map(stat => (
               <div key={stat.label} className="flex items-center gap-4 group">
                 <div className="p-3.5 rounded-2xl bg-secondary border border-border group-hover:bg-primary/5 transition-colors">
@@ -339,10 +341,10 @@ export default function Home() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2.5 h-2.5 rounded-full live-pulse bg-emerald-500" />
-                <h2 className="text-3xl font-black text-foreground">Search Results</h2>
+                <h2 className="text-3xl font-black text-foreground">{t('home.monitoring')}</h2>
               </div>
               <p className="text-xs font-black text-muted-foreground opacity-60">
-                Live availability for <span className="text-primary font-semibold">{fromCity}</span> to <span className="text-blue-600 font-semibold">{toCity}</span>
+                {t('bus.noBusesDesc')}
               </p>
             </div>
           </div>
@@ -361,8 +363,8 @@ export default function Home() {
                   <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
                     <Bus className="w-8 h-8 text-muted-foreground opacity-20" />
                   </div>
-                  <p className="text-xl font-black text-foreground">No Buses Found</p>
-                  <p className="text-[10px] font-black text-muted-foreground opacity-60">We couldn't find any active buses for this specific route and date selection.</p>
+                  <p className="text-xl font-black text-foreground">{t('bus.noBuses')}</p>
+                  <p className="text-[10px] font-black text-muted-foreground opacity-60">{t('bus.noBusesDesc')}</p>
                 </div>
               </div>
             ) : (
@@ -411,7 +413,7 @@ export default function Home() {
                       <p className="text-2xl font-black leading-none" style={{ color: getAvailabilityColor(bus.availableSeats, bus.totalSeats) }}>
                         {bus.availableSeats}
                       </p>
-                      <p className="text-[9px] font-black text-muted-foreground opacity-40 mb-0.5">Seats Left</p>
+                      <p className="text-[9px] font-black text-muted-foreground opacity-40 mb-0.5">{t('bus.seatsLeft')}</p>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-secondary border border-border/50 overflow-hidden">
                       <div className="h-full rounded-full transition-all duration-1000"
@@ -432,7 +434,7 @@ export default function Home() {
                       disabled={bus.availableSeats === 0}
                       asChild={bus.availableSeats > 0}
                     >
-                      {bus.availableSeats > 0 ? <Link to={`/booking?busId=${bus._id}`}>Book Seat</Link> : <span>Coach Full</span>}
+                      {bus.availableSeats > 0 ? <Link to={`/booking?busId=${bus._id}`}>{t('bus.bookSeat')}</Link> : <span>{t('bus.full')}</span>}
                     </Button>
                   </div>
                 </div>
@@ -452,8 +454,8 @@ export default function Home() {
               <Bus className="w-7 h-7 text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-foreground">Advanced Booking</h3>
-              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">Book up to 30 days in advance</p>
+              <h3 className="text-sm font-black text-foreground">{t('home.actions.adv_booking')}</h3>
+              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('home.actions.adv_desc')}</p>
             </div>
             <ArrowRight className="w-4 h-4 ml-auto text-primary/30 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -464,8 +466,8 @@ export default function Home() {
               <CheckCircle className="w-7 h-7 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-foreground">Verify Ticket</h3>
-              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">Check PNR validity instantly</p>
+              <h3 className="text-sm font-black text-foreground">{t('home.actions.verify_ticket')}</h3>
+              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('home.actions.verify_desc')}</p>
             </div>
             <ArrowRight className="w-4 h-4 ml-auto text-emerald-500/30 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -476,8 +478,8 @@ export default function Home() {
               <AlertCircle className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-red-600">Emergency SOS</h3>
-              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">One-tap police assistance</p>
+              <h3 className="text-sm font-black text-red-600">{t('home.actions.emergency')}</h3>
+              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('home.actions.emergency_desc')}</p>
             </div>
             <ArrowRight className="w-4 h-4 ml-auto text-red-500/30 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -488,22 +490,22 @@ export default function Home() {
       <section className="bg-secondary/30 dark:bg-secondary/10 py-20 border-t border-border">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary mb-4">Core Ecosystem</div>
+            <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary mb-4">{t('home.why.badge')}</div>
             <h2 className="text-4xl font-black text-foreground mb-4">
-              Why Yatra Setu?
+              {t('home.why.title')}
             </h2>
             <p className="text-xs font-black text-muted-foreground opacity-60 max-w-lg mx-auto leading-relaxed">
-              India's first unified public transport portal for citizens and operators.
+              {t('home.why.subtitle')}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map(f => (
-              <div key={f.title} className="bg-card border border-border p-8 rounded-[32px] text-center hover:shadow-2xl transition-all group">
+            {featureItems.map(f => (
+              <div key={f.titleKey} className="bg-card border border-border p-8 rounded-[32px] text-center hover:shadow-2xl transition-all group">
                 <div className="inline-flex p-4 rounded-2xl mb-6 bg-secondary group-hover:bg-primary group-hover:text-white transition-all">
                   <f.icon className="w-6 h-6 text-primary group-hover:text-white" />
                 </div>
-                <h3 className="text-lg font-black text-foreground mb-3">{f.title}</h3>
-                <p className="text-[10px] font-bold text-muted-foreground opacity-60 leading-relaxed">{f.desc}</p>
+                <h3 className="text-lg font-black text-foreground mb-3">{t(f.titleKey)}</h3>
+                <p className="text-[10px] font-bold text-muted-foreground opacity-60 leading-relaxed">{t(f.descKey)}</p>
               </div>
             ))}
           </div>

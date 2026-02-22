@@ -34,46 +34,48 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import Logo from "./brand/Logo";
 import LogoIcon from "./brand/LogoIcon";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 const menuGroups = {
   consumer: [
-    { title: "Home", url: "/", icon: Home },
-    { title: "Transaction", url: "/transactions", icon: History },
-    { title: "Account", url: "/account", icon: UserCircle },
-    { title: "Available Buses", url: "/buses", icon: Bus },
-    { title: "Profile", url: "/profile", icon: User },
-    { title: "Past Rides", url: "/profile/past-rides", icon: Route },
-    { title: "Employee", url: "/employee", icon: Shield },
-    { title: "Support", url: "/support", icon: HelpCircle },
+    { title: "sidebar.home", url: "/", icon: Home },
+    { title: "sidebar.transaction", url: "/transactions", icon: History },
+    { title: "sidebar.account", url: "/account", icon: UserCircle },
+    { title: "sidebar.buses", url: "/buses", icon: Bus },
+    { title: "sidebar.profile", url: "/profile", icon: User },
+    { title: "sidebar.pastRides", url: "/profile/past-rides", icon: Route },
+    { title: "sidebar.employee", url: "/employee", icon: Shield },
+    { title: "sidebar.support", url: "/support", icon: HelpCircle },
   ],
   passenger: [
-    { title: "Overview", url: "/passenger", icon: User },
-    { title: "Book Ticket", url: "/booking", icon: Bus },
-    { title: "My Tickets", url: "/verify", icon: CreditCard },
-    { title: "Travel History", url: "#history", icon: History },
+    { title: "sidebar.overview", url: "/passenger", icon: User },
+    { title: "sidebar.bookTicket", url: "/booking", icon: Bus },
+    { title: "sidebar.myTickets", url: "/verify", icon: CreditCard },
+    { title: "sidebar.travelHistory", url: "#history", icon: History },
   ],
   driver: [
-    { title: "Today's Route", url: "/driver", icon: Navigation },
-    { title: "Passenger List", url: "#passengers", icon: Users },
-    { title: "Stop Alerts", url: "#alerts", icon: AlertCircle },
+    { title: "sidebar.todayRoute", url: "/driver", icon: Navigation },
+    { title: "sidebar.passengerList", url: "#passengers", icon: Users },
+    { title: "sidebar.stopAlerts", url: "#alerts", icon: AlertCircle },
   ],
   owner: [
-    { title: "Fleet Overview", url: "/owner", icon: Bus },
-    { title: "Booking Records", url: "#bookings", icon: Calendar },
-    { title: "Earnings", url: "#earnings", icon: DollarSign },
-    { title: "Rent for Event", url: "#rent", icon: Package },
+    { title: "sidebar.fleet", url: "/owner", icon: Bus },
+    { title: "sidebar.bookingRecords", url: "#bookings", icon: Calendar },
+    { title: "sidebar.earnings", url: "#earnings", icon: DollarSign },
+    { title: "sidebar.rent", url: "#rent", icon: Package },
   ],
   admin: [
-    { title: "Overview", url: "/admin", icon: TrendingUp },
-    { title: "All Buses", url: "#buses", icon: Bus },
-    { title: "Drivers & Owners", url: "#drivers", icon: Users },
-    { title: "Routes", url: "#routes", icon: Route },
-    { title: "School Buses", url: "#school", icon: School },
-    { title: "Event Buses", url: "#events", icon: Shield },
+    { title: "sidebar.overview", url: "/admin", icon: TrendingUp },
+    { title: "sidebar.allBuses", url: "#buses", icon: Bus },
+    { title: "sidebar.driversOwners", url: "#drivers", icon: Users },
+    { title: "sidebar.routes", url: "#routes", icon: Route },
+    { title: "sidebar.schoolBuses", url: "#school", icon: School },
+    { title: "sidebar.eventBuses", url: "#events", icon: Shield },
   ]
 };
 
 export function AppSidebar() {
+  const { t } = useTranslation();
   const location = useLocation();
 
   const getActiveGroup = () => {
@@ -99,7 +101,7 @@ export function AppSidebar() {
                 <div className="flex flex-col gap-0 leading-none group-data-[collapsible=icon]:hidden">
                   <span className="font-bold text-white text-base tracking-tight">Yatra Setu</span>
                   <span className="text-[9px] font-medium text-blue-300 opacity-60">
-                    Smart Transport
+                    {t('sidebar.smartTransport')}
                   </span>
                 </div>
               </Link>
@@ -111,18 +113,19 @@ export function AppSidebar() {
       {/* Content */}
       <SidebarContent className="bg-sidebar px-2 pt-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] font-semibold text-blue-300/60 mb-1 px-3">
-            {group.toUpperCase()} Navigation
+          <SidebarGroupLabel className="text-[9px] font-semibold text-blue-300/60 mb-1 px-3 uppercase">
+            {group} {t('sidebar.nav')}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-0.5">
               {items.map((item) => {
                 const active = location.pathname === item.url;
+                const translatedTitle = t(item.title);
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      tooltip={item.title}
+                      tooltip={translatedTitle}
                       isActive={active}
                       className={`h-10 rounded-xl transition-all duration-200 ${active
                         ? "bg-primary-light text-white shadow-md shadow-blue-600/20"
@@ -131,7 +134,7 @@ export function AppSidebar() {
                     >
                       <Link to={item.url} className="px-3 flex items-center gap-3">
                         <item.icon className="size-4 shrink-0" />
-                        <span className="text-xs font-medium">{item.title}</span>
+                        <span className="text-xs font-medium">{translatedTitle}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -147,7 +150,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2.5 text-[9px] font-semibold text-blue-300/50 group-data-[collapsible=icon]:hidden">
           <div className="flex items-center gap-1.5">
             <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>System Online</span>
+            <span>{t('sidebar.systemOnline')}</span>
           </div>
         </div>
       </SidebarFooter>

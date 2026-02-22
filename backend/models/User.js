@@ -5,6 +5,11 @@ const PassengerSchema = new mongoose.Schema({
     age: { type: Number, required: true },
     gender: { type: String, required: true },
     relation: { type: String },
+    phone: { type: String },
+    email: { type: String },
+    identityType: { type: String, enum: ['Aadhar', 'PAN', 'Voter ID', 'Driving License', 'Other'], default: 'Aadhar' },
+    identityNumber: { type: String },
+    emergencyContact: { type: String },
     status: { type: String, default: 'Pending' }
 });
 

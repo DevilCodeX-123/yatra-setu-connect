@@ -64,76 +64,137 @@ export default function ProfileBookings() {
                 ) : (
                     <div className="grid gap-6">
                         {bookings.map((booking) => {
-                            const busDate = booking.bus?.date || format(new Date(booking.date), 'yyyy-MM-dd');
+                            const isRental = booking.bookingType === 'FullBus';
+                            const busDate = booking.bus?.date || (isRental ? booking.rentalDetails?.startDate : format(new Date(booking.date), 'yyyy-MM-dd'));
                             const departureTime = booking.bus?.departureTime || "00:00";
-                            const status = getStatus(busDate, departureTime);
+                            const statusInfo = isRental ? {
+                                label: booking.status,
+                                color: booking.status === 'Accepted' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                    booking.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                        booking.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                                            'bg-amber-50 text-amber-600 border-amber-100',
+                                icon: isRental ? Bus : Calendar,
+                                variant: 'default' as const
+                            } : getStatus(busDate, departureTime);
+
+                            const handlePayDeposit = async () => {
+                                if (window.confirm("Confirm paying 50% deposit to book this rental?")) {
+                                    try {
+                                        await api.payDeposit(booking._id);
+                                        window.location.reload();
+                                    } catch (err) {
+                                        alert("Payment failed");
+                                    }
+                                }
+                            };
 
                             return (
-                                <div key={booking._id} className={`portal-card overflow-hidden hover:shadow-elevated transition-all group ${status.label === "Expired" ? "opacity-75" : ""}`}>
-                                    <div className={`px-4 py-3 flex items-center justify-between ${status.label === "Expired" ? "bg-slate-50" : "bg-primary/5"}`}>
+                                <div key={booking._id} className={`portal-card overflow-hidden hover:shadow-elevated transition-all group ${statusInfo.label === "Expired" || statusInfo.label === "Rejected" ? "opacity-75" : ""}`}>
+                                    <div className={`px-4 py-3 flex items-center justify-between ${statusInfo.label === "Expired" ? "bg-slate-50" : "bg-primary/5"}`}>
                                         <div className="flex items-center gap-3">
-                                            <Badge variant={status.variant} className={`rounded-full px-3 py-1 text-[9px] font-black flex items-center gap-1.5 ${status.color}`}>
-                                                <status.icon className="w-3 h-3" />
-                                                {status.label}
+                                            <Badge variant={statusInfo.variant} className={`rounded-full px-3 py-1 text-[9px] font-black flex items-center gap-1.5 ${statusInfo.color}`}>
+                                                <statusInfo.icon className="w-3 h-3" />
+                                                {statusInfo.label}
                                             </Badge>
-                                            <span className="text-[10px] font-bold text-slate-400 ">₹{booking.amount} Paid</span>
+                                            <span className="text-[10px] font-bold text-slate-400 ">
+                                                {isRental ? `Total: ₹${booking.amount}` : `₹${booking.amount} Paid`}
+                                            </span>
+                                            {isRental && booking.status === 'Confirmed' && (
+                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[8px] font-black">Deposit Paid</Badge>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1.5 text-[10px] font-black text-primary ">
                                             <QrCode className="w-3 h-3" />
-                                            <span>PNR: {booking.pnr}</span>
+                                            <span>{isRental ? 'REQ' : 'PNR'}: {booking.pnr}</span>
                                         </div>
                                     </div>
 
                                     <div className="p-6 flex flex-col md:flex-row gap-6 md:items-center">
                                         <div className="flex-1">
-                                            <div className="flex items-center gap-4 mb-6 relative">
-                                                <div className="text-left">
-                                                    <p className="text-xl font-black text-primary leading-none">{booking.bus?.route.from}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 mt-1.5">{booking.bus?.departureTime}</p>
-                                                </div>
-                                                <div className="flex-1 flex flex-col items-center px-4">
-                                                    <div className="w-full h-[2px] bg-slate-100 relative">
-                                                        <Bus className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-accent bg-white px-0.5" />
+                                            {isRental ? (
+                                                <div className="mb-4">
+                                                    <p className="text-xl font-black text-primary leading-none uppercase">{booking.rentalDetails?.fromLocation || 'Pickup'} → {booking.rentalDetails?.destination}</p>
+                                                    <div className="flex flex-wrap gap-4 mt-2">
+                                                        <p className="text-[10px] font-bold text-slate-400">Purpose: {booking.rentalDetails?.purpose} • Pickup: {booking.rentalDetails?.startTime || '09:00'} ({booking.rentalDetails?.isRoundTrip ? 'Round' : 'One-Way'})</p>
+                                                        <p className="text-[10px] font-black text-accent uppercase tracking-wider bg-accent/5 px-2 py-0.5 rounded">
+                                                            {booking.rentalDetails?.estimatedKm} KM ({booking.rentalDetails?.totalFuelKm || (booking.rentalDetails?.isRoundTrip ? booking.rentalDetails?.estimatedKm * 2 : booking.rentalDetails?.estimatedKm * 1.5)} KM total) • {booking.rentalDetails?.hoursRequested || 24}h • Renting: ₹{(booking.amount - (booking.rentalDetails?.calculatedFuelCost || 0)).toLocaleString()} • Petrol: ₹{(booking.rentalDetails?.calculatedFuelCost || 0).toLocaleString()}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-xl font-black text-primary leading-none">{booking.bus?.route.to}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 mt-1.5">{booking.bus?.arrivalTime}</p>
+                                            ) : (
+                                                <div className="flex items-center gap-4 mb-6 relative">
+                                                    <div className="text-left">
+                                                        <p className="text-xl font-black text-primary leading-none">{booking.bus?.route.from}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 mt-1.5">{booking.bus?.departureTime}</p>
+                                                    </div>
+                                                    <div className="flex-1 flex flex-col items-center px-4">
+                                                        <div className="w-full h-[2px] bg-slate-100 relative">
+                                                            <Bus className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-accent bg-white px-0.5" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xl font-black text-primary leading-none">{booking.bus?.route.to}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 mt-1.5">{booking.bus?.arrivalTime}</p>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
 
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-                                                <div className="flex items-center gap-2 group/info">
+                                                <div className="flex items-center gap-2 group/info" title="Departure Date">
                                                     <Calendar className="w-3.5 h-3.5 text-slate-400 group-hover/info:text-primary transition-colors" />
                                                     <span className="text-xs font-bold text-slate-600">
-                                                        {booking.bus?.date ? format(parseISO(booking.bus.date), 'dd MMM yyyy') : format(new Date(booking.date), 'dd MMM yyyy')}
+                                                        {isRental ? format(new Date(booking.rentalDetails.startDate), 'dd MMM yyyy') : (booking.bus?.date ? format(parseISO(booking.bus.date), 'dd MMM yyyy') : format(new Date(booking.date), 'dd MMM yyyy'))}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <User className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-bold text-slate-600">{booking.passengers.length} Passenger(s)</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-bold text-slate-600">Seats: {booking.passengers.map((p: any) => p.seatNumber).join(", ")}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
                                                     <Bus className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-bold text-slate-600 truncate max-w-[80px]">{booking.bus?.operator}</span>
+                                                    <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">{booking.bus?.operator}</span>
                                                 </div>
+                                                {!isRental && (
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-bold text-slate-600">Seats: {booking.passengers.map((p: any) => p.seatNumber).join(", ")}</span>
+                                                    </div>
+                                                )}
+                                                {isRental && (
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-bold text-slate-600">Full Bus Rental</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
                                         <div className="flex md:flex-col gap-2 min-w-[150px]">
-                                            <Link to={`/verify?pnr=${booking.pnr}`} className="flex-1">
-                                                <Button className="w-full text-[10px] font-black h-11 shadow-lg shadow-primary/20">
-                                                    View E-Ticket
-                                                </Button>
-                                            </Link>
-                                            {status.label !== "Expired" && (
-                                                <Button variant="outline" className="flex-1 text-[10px] font-black h-11 border-primary text-primary hover:bg-primary/5">
-                                                    Track Live
-                                                </Button>
+                                            {!isRental ? (
+                                                <>
+                                                    <Link to={`/verify?pnr=${booking.pnr}`} className="flex-1">
+                                                        <Button className="w-full text-[10px] font-black h-11 shadow-lg shadow-primary/20">
+                                                            View E-Ticket
+                                                        </Button>
+                                                    </Link>
+                                                    {statusInfo.label !== "Expired" && (
+                                                        <Button variant="outline" className="flex-1 text-[10px] font-black h-11 border-primary text-primary hover:bg-primary/5">
+                                                            Track Live
+                                                        </Button>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {booking.status === 'Accepted' && (
+                                                        <Button onClick={handlePayDeposit} className="w-full text-[10px] font-black h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200">
+                                                            Pay Deposit (₹{booking.amount / 2})
+                                                        </Button>
+                                                    )}
+                                                    {booking.status === 'Confirmed' && (
+                                                        <Button variant="outline" className="w-full text-[10px] font-black h-11 border-emerald-500 text-emerald-600" disabled>
+                                                            Booking Confirmed
+                                                        </Button>
+                                                    )}
+                                                    <Button variant="outline" className="w-full text-[10px] font-black h-11 opacity-50" disabled>
+                                                        Rental Details
+                                                    </Button>
+                                                </>
                                             )}
                                         </div>
                                     </div>

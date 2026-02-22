@@ -114,6 +114,31 @@ router.get('/profile', verifyToken, requireAuth, async (req, res) => {
     }
 });
 
+// Update user profile
+router.patch('/profile', verifyToken, requireAuth, async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ ...req.user, ...req.body });
+    }
+    try {
+        const { name, phone, age, gender, address } = req.body;
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (name) user.name = name;
+        if (phone) user.phone = phone;
+        if (age) user.age = age;
+        if (gender) user.gender = gender;
+        if (address) user.address = address;
+
+        await user.save();
+        const userData = user.toObject();
+        delete userData.password;
+        res.json(userData);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Get user transactions
 router.get('/transactions', verifyToken, requireAuth, async (req, res) => {
     if (mongoose.connection.readyState !== 1) {
@@ -153,6 +178,40 @@ router.post('/wallet/topup', verifyToken, requireAuth, async (req, res) => {
         await transaction.save();
 
         res.json({ user: { walletBalance: user.walletBalance }, transaction });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Add a saved passenger
+router.post('/passengers', verifyToken, requireAuth, async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, passenger: { ...req.body, _id: 'demo-' + Date.now() } });
+    }
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        user.savedPassengers.push(req.body);
+        await user.save();
+        res.status(201).json(user.savedPassengers[user.savedPassengers.length - 1]);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Delete a saved passenger
+router.delete('/passengers/:id', verifyToken, requireAuth, async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true });
+    }
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        user.savedPassengers = user.savedPassengers.filter(p => p._id.toString() !== req.params.id);
+        await user.save();
+        res.json({ message: 'Passenger removed' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

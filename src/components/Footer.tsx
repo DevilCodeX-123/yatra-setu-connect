@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { Bus, Phone, Mail, MapPin, ExternalLink } from "lucide-react";
 import logoImg from "@/assets/logo.png";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function Footer() {
+  const { t } = useTranslation();
   return (
     <footer style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(0 0% 88%)" }}>
       {/* Tricolor stripe */}
@@ -18,24 +20,24 @@ export default function Footer() {
               <img src={logoImg} alt="Yatra Setu" className="h-12 w-12 object-contain rounded-full" />
               <div>
                 <p className="text-lg font-bold text-white">यात्रा सेतु</p>
-                <p className="text-xs opacity-70">Smart Public Bus Network</p>
+                <p className="text-xs opacity-70">{t('footer.smartBus')}</p>
               </div>
             </div>
             <p className="text-xs leading-relaxed opacity-75">
-              A Digital India initiative for seamless, safe and smart public transport connectivity across the nation.
+              {t('footer.digitalIndiaDesc')}
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">Quick Links</h4>
+            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">{t('footer.quickLinks')}</h4>
             <ul className="space-y-2 text-sm opacity-80">
               {[
-                { href: "/", label: "Home" },
-                { href: "/booking", label: "Book Ticket" },
-                { href: "/verify", label: "Verify Ticket" },
-                { href: "/school-bus", label: "School Bus Tracking" },
-                { href: "/emergency", label: "Emergency" },
+                { href: "/", label: t('nav.home') },
+                { href: "/booking", label: t('nav.booking') },
+                { href: "/verify", label: t('nav.verify') },
+                { href: "/school-bus", label: t('nav.schoolBus') },
+                { href: "/emergency", label: t('nav.emergency') },
               ].map(l => (
                 <li key={l.href}>
                   <Link to={l.href} className="hover:text-accent transition-colors">
@@ -48,13 +50,14 @@ export default function Footer() {
 
           {/* Portals */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">Portals</h4>
+            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">{t('footer.portals')}</h4>
             <ul className="space-y-2 text-sm opacity-80">
               {[
-                { href: "/passenger", label: "Passenger Dashboard" },
-                { href: "/driver", label: "Driver Panel" },
-                { href: "/owner", label: "Bus Owner Panel" },
-                { href: "/admin", label: "Admin Panel" },
+                { href: "/passenger", label: t('nav.passenger') },
+                { href: "/driver", label: t('nav.driver') },
+                { href: "/owner", label: t('nav.owner') },
+                { href: "/employee", label: t('nav.employee') },
+                { href: "/admin", label: t('nav.admin') },
               ].map(l => (
                 <li key={l.href}>
                   <Link to={l.href} className="hover:text-accent transition-colors">
@@ -67,11 +70,11 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">Contact</h4>
+            <h4 className="text-sm font-semibold text-white mb-3 tracking-wider">{t('footer.contact')}</h4>
             <ul className="space-y-3 text-sm opacity-80">
               <li className="flex items-start gap-2">
                 <Phone className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "hsl(var(--accent))" }} />
-                <span>Helpline: 1800-XXX-XXXX<br />(Toll Free, 24×7)</span>
+                <span>{t('nav.helpline')}<br />{t('footer.tollFree')}</span>
               </li>
               <li className="flex items-start gap-2">
                 <Mail className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "hsl(var(--accent))" }} />
@@ -87,11 +90,11 @@ export default function Footer() {
 
         <div className="mt-8 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3 text-xs opacity-60"
           style={{ borderColor: "hsl(220 40% 28%)" }}>
-          <p>© 2024 Yatra Setu — Government of India. All rights reserved.</p>
+          <p>{t('footer.copyright')}</p>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:opacity-100">Privacy Policy</a>
-            <a href="#" className="hover:opacity-100">Terms of Use</a>
-            <a href="#" className="hover:opacity-100">Accessibility</a>
+            <a href="#" className="hover:opacity-100">{t('footer.privacy')}</a>
+            <a href="#" className="hover:opacity-100">{t('footer.terms')}</a>
+            <a href="#" className="hover:opacity-100">{t('footer.accessibility')}</a>
             <a href="#" className="flex items-center gap-1 hover:opacity-100">
               <ExternalLink className="w-3 h-3" /> Digital India
             </a>

@@ -99,7 +99,10 @@ router.get('/search', async (req, res) => {
         const query = {};
         if (from) query['route.from'] = new RegExp(from, 'i');
         if (to) query['route.to'] = new RegExp(to, 'i');
-        if (date) query['date'] = { $in: date.split(',') };
+        if (date) {
+            query['date'] = { $in: date.split(',') };
+            query['bookedDates'] = { $nin: date.split(',') };
+        }
         const buses = await Bus.find(query);
         res.json(buses);
     } catch (err) {

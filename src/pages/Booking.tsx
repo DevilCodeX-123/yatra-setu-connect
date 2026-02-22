@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
+
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type Step = "search" | "seats" | "details" | "confirm" | "payment" | "success";
 
@@ -33,23 +36,39 @@ const seatColors: Record<string, { bg: string; text: string; border: string }> =
 };
 
 const legendItems = [
-  { type: "women", label: "Women Reserved" },
-  { type: "elderly", label: "Elderly Reserved" },
-  { type: "disabled", label: "Disabled Reserved" },
-  { type: "general", label: "Available" },
-  { type: "booked", label: "Booked" },
-  { type: "selected", label: "Your Selection" },
+  { type: "women", label: "booking.womenReserved" },
+  { type: "elderly", label: "booking.elderlyReserved" },
+  { type: "disabled", label: "booking.disabledReserved" },
+  { type: "general", label: "booking.available" },
+  { type: "booked", label: "booking.booked" },
+  { type: "selected", label: "booking.yourSelection" },
 ];
 
 export default function Booking() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const busIdParam = searchParams.get("busId");
 
   const [step, setStep] = useState<Step>("search");
+  const isRental = searchParams.get("type") === "rental";
+
   const [buses, setBuses] = useState<any[]>([]);
   const [selectedBus, setSelectedBus] = useState<any>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+
+  // Rental specific state
+  const [rentalDate, setRentalDate] = useState("");
+  const [rentalStartTime, setRentalStartTime] = useState("09:00");
+  const [isRoundTrip, setIsRoundTrip] = useState(true);
+  const [rentalDuration, setRentalDuration] = useState("24"); // in hours
+  const [rentalFrom, setRentalFrom] = useState("");
+  const [rentalDestination, setRentalDestination] = useState("");
+  const [rentalPurpose, setRentalPurpose] = useState("");
+  const [estimatedKm, setEstimatedKm] = useState("100");
+  const FUEL_PRICE = 100;
+
   const [boardingStop, setBoardingStop] = useState("");
+
   const [droppingStop, setDroppingStop] = useState("");
   const [activeLocks, setActiveLocks] = useState<{ seatNumber: number, lockerId: string }[]>([]);
   const [lockerId] = useState(() => {
@@ -173,7 +192,7 @@ export default function Booking() {
     // Check if seat is locked by someone else
     const lock = activeLocks.find(l => l.seatNumber === num);
     if (lock && lock.lockerId !== lockerId) {
-      alert("This seat is currently held by another passenger. Please try again in 5 minutes.");
+      toast.error(t('toasts.seatLocked'));
       return;
     }
 
@@ -227,7 +246,17 @@ export default function Booking() {
     return (selectedBus.price + (numSegments * segmentPrice)) * selectedSeats.length;
   };
 
-  const totalPrice = calculatePrice();
+  const calculateFuelCost = () => {
+    const km = Number(estimatedKm) || 0;
+    const totalKm = isRoundTrip ? (km * 2) : (km * 1.5);
+    const mileage = selectedBus?.mileage || 4.0;
+    return (totalKm / mileage) * FUEL_PRICE;
+  };
+
+  const rentalFuelCost = calculateFuelCost();
+  const rentalBasePrice = (Number(rentalDuration) || 0) * (selectedBus?.rentalPricePerHour || 500);
+  const totalPrice = isRental ? rentalBasePrice : calculatePrice();
+  const rentalGrandTotal = totalPrice + rentalFuelCost;
 
   useEffect(() => {
     if (!isConfirmationRequired) {
@@ -238,30 +267,54 @@ export default function Booking() {
   const handleBooking = async () => {
     setLoading(true);
     try {
-      const result = await api.createBooking({
-        busId: selectedBus._id,
-        passengers: passengers.map(p => ({
-          name: p.name,
-          age: Number(p.age),
-          gender: p.gender,
-          seatNumber: p.seatNum.toString()
-        })),
-        date: new Date(),
-        fromStop: boardingStop,
-        toStop: droppingStop,
-        amount: totalPrice
-      });
+      if (isRental) {
+        const result = await api.createRentalRequest({
+          busId: selectedBus._id,
+          startDate: rentalDate,
+          endDate: rentalDate,
+          startTime: rentalStartTime,
+          isRoundTrip: isRoundTrip,
+          fromLocation: rentalFrom,
+          destination: rentalDestination,
+          purpose: rentalPurpose,
+          estimatedKm: Number(estimatedKm),
+          hoursRequested: Number(rentalDuration),
+          amount: totalPrice
+        });
+        setBookingResult(result);
+        setStep("success");
+      } else {
+        const result = await api.createBooking({
+          busId: selectedBus._id,
+          passengers: passengers.map(p => ({
+            name: p.name,
+            age: Number(p.age),
+            gender: p.gender,
+            seatNumber: p.seatNum.toString()
+          })),
+          date: new Date(),
+          fromStop: boardingStop,
+          toStop: droppingStop,
+          amount: totalPrice
+        });
+        setBookingResult(result);
+        setStep("success");
+      }
       setSelectedSeats([]);
-      setBookingResult(result);
-      setStep("success");
     } catch (err) {
-      alert("Booking failed. Please try again.");
+      toast.error(t('toasts.bookingError'));
     } finally {
       setLoading(false);
     }
   };
 
-  const steps = ["Search", "Select Seat", "Passenger Details", "Confirm", "Payment"];
+  const steps = [
+    t('booking.steps.search'),
+    t('booking.steps.seats'),
+    t('booking.steps.details'),
+    t('booking.steps.confirm'),
+    t('booking.steps.payment')
+  ];
   const stepKeys: Step[] = ["search", "seats", "details", "confirm", "payment"];
 
   return (
@@ -269,8 +322,8 @@ export default function Booking() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl text-premium text-primary font-black ">Book Bus Ticket</h1>
-          <p className="text-[10px] font-black tracking-[0.2em] text-muted-foreground mt-1 opacity-60">Online Advance Ticket Booking — Yatra Setu Portal</p>
+          <h1 className="text-2xl text-premium text-primary font-black ">{t('booking.title')}</h1>
+          <p className="text-[10px] font-black tracking-[0.2em] text-muted-foreground mt-1 opacity-60">{t('booking.subtitle')}</p>
         </div>
 
         {/* Step indicator */}
@@ -302,24 +355,24 @@ export default function Booking() {
         {/* Step 1: Search */}
         {step === "search" && (
           <div className="bg-card border border-border p-6 animate-slide-up rounded-3xl shadow-card">
-            <h2 className="text-xs font-black text-primary mb-4 ">Route Selection</h2>
+            <h2 className="text-xs font-black text-primary mb-4 ">{t('booking.routeSelection')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">From</label>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.from')}</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-40" />
                   <Input className="pl-9 bg-secondary border-border text-foreground" value={searchFrom} onChange={e => setSearchFrom(e.target.value)} />
                 </div>
               </div>
               <div>
-                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">To</label>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.to')}</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-40" />
                   <Input className="pl-9 bg-secondary border-border text-foreground" value={searchTo} onChange={e => setSearchTo(e.target.value)} />
                 </div>
               </div>
               <div>
-                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Date</label>
+                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.date')}</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary opacity-40" />
                   <Input type="date" className="pl-9 bg-secondary border-border text-foreground" value={searchDate} onChange={e => setSearchDate(e.target.value)} />
@@ -327,14 +380,14 @@ export default function Booking() {
               </div>
             </div>
             <Button className="w-full mb-6 font-black bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20" onClick={fetchAvailableBuses} disabled={loading}>
-              {loading ? "Searching..." : "Search Available Buses"}
+              {loading ? t('booking.searching') : t('booking.searchBuses')}
             </Button>
 
             {/* Bus selection */}
             <div className="space-y-3 mt-4">
-              <h3 className="text-[10px] font-black text-foreground opacity-50 mb-2">Available Buses</h3>
+              <h3 className="text-[10px] font-black text-foreground opacity-50 mb-2">{t('booking.availableBuses')}</h3>
               {buses.length === 0 && !loading && (
-                <p className="text-center py-10 opacity-40 font-black text-xs">No buses found for this route.</p>
+                <p className="text-center py-10 opacity-40 font-black text-xs">{t('booking.noBuses')}</p>
               )}
               {buses.map(bus => (
                 <div key={bus._id} className={`bg-card border p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:shadow-elevated transition-all rounded-2xl ${selectedBus?._id === bus._id ? 'border-primary' : 'border-border'}`}
@@ -354,7 +407,7 @@ export default function Booking() {
                   <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 text-sm py-2 sm:py-0 border-y sm:border-0 border-border">
                     <div className="text-center sm:text-left">
                       <p className="font-black text-lg text-foreground">{bus.departureTime}</p>
-                      <p className="text-[9px] font-black text-muted-foreground opacity-40">Dep</p>
+                      <p className="text-[9px] font-black text-muted-foreground opacity-40">{t('booking.dep')}</p>
                     </div>
                     <div className="flex items-center opacity-30">
                       <div className="w-8 sm:w-12 h-px bg-primary" />
@@ -363,22 +416,22 @@ export default function Booking() {
                     </div>
                     <div className="text-center sm:text-left">
                       <p className="font-black text-lg text-foreground">{bus.arrivalTime}</p>
-                      <p className="text-[9px] font-black text-muted-foreground opacity-40">Arr</p>
+                      <p className="text-[9px] font-black text-muted-foreground opacity-40">{t('booking.arr')}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between sm:flex-col sm:justify-center gap-1">
                     <div className="text-left sm:text-center">
                       <p className="font-black text-lg leading-none text-emerald-600 dark:text-emerald-400">{bus.availableSeats}</p>
-                      <p className="text-[8px] font-black text-muted-foreground opacity-40">Seats</p>
+                      <p className="text-[8px] font-black text-muted-foreground opacity-40">{t('booking.seats')}</p>
                     </div>
                     <div className="text-right sm:text-center">
                       <p className="font-black text-lg leading-none text-primary">₹{bus.price}</p>
-                      <p className="text-[8px] font-black text-muted-foreground opacity-40">Fare</p>
+                      <p className="text-[8px] font-black text-muted-foreground opacity-40">{t('booking.fare')}</p>
                     </div>
                   </div>
                   <div className="sm:text-right">
                     <Button size="sm" className="w-full sm:w-auto font-black " onClick={(e) => { e.stopPropagation(); setSelectedBus(bus); setStep("seats"); }}>
-                      Select
+                      {t('booking.select')}
                     </Button>
                   </div>
                 </div>
@@ -387,145 +440,237 @@ export default function Booking() {
           </div>
         )}
 
-        {/* Step 2: Seat Selection */}
+        {/* Step 2: Seat Selection or Rental Info */}
         {step === "seats" && (
           <div className="bg-card border border-border p-6 animate-slide-up rounded-3xl shadow-card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-black text-primary ">Select Your Seat(s)</h2>
-              <span className="text-[10px] font-black text-muted-foreground opacity-60">
-                {selectedSeats.length} selected
-              </span>
-            </div>
-
-            {/* Legend */}
-            <div className="flex flex-wrap gap-3 mb-5">
-              {legendItems.map(l => (
-                <div key={l.type} className="flex items-center gap-1.5 text-[9px] font-black text-muted-foreground opacity-60">
-                  <div className="w-5 h-5 rounded border-2 flex items-center justify-center text-[9px] font-bold"
-                    style={{
-                      backgroundColor: seatColors[l.type].bg,
-                      borderColor: seatColors[l.type].border,
-                      color: seatColors[l.type].text,
-                    }}>
-                    {l.type === "selected" ? "✓" : ""}
-                  </div>
-                  <span>{l.label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Bus layout (Conceptual) */}
-            <div className="flex flex-col items-center">
-              <div className="flex gap-2 overflow-x-auto pb-6 justify-center w-full">
-                <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(6, 40px)" }}>
-                  {seatData.map(seat => {
-                    const isSelected = selectedSeats.includes(seat.num);
-                    const locker = activeLocks.find(l => l.seatNumber === seat.num);
-                    const isLockedByOthers = locker && locker.lockerId !== lockerId;
-                    const isBooked = selectedBus?.bookedSeats?.includes(seat.num);
-
-                    let type = seat.type;
-                    if (isBooked || isLockedByOthers) type = "booked";
-
-                    const colors = isSelected ? seatColors.selected : seatColors[type];
-                    return (
-                      <button
-                        key={seat.num}
-                        onClick={() => toggleSeat(seat.num)}
-                        disabled={isBooked || isLockedByOthers}
-                        className="w-10 h-10 rounded border-2 text-[10px] font-black transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-30"
-                        style={{
-                          backgroundColor: colors.bg,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        }}
-                      >
-                        {seat.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {isConfirmationRequired && (
-                <div className="w-full mt-2 animate-slide-up">
-                  <div className="bg-primary/5 border border-primary/20 p-4 rounded-2xl flex items-center gap-4">
-                    <div
-                      onClick={() => setConfirmationChecked(!confirmationChecked)}
-                      className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center cursor-pointer transition-all duration-300 ${confirmationChecked
-                        ? "bg-primary border-primary shadow-lg shadow-primary/20"
-                        : "bg-card border-border hover:border-primary/50"
-                        }`}
-                    >
-                      {confirmationChecked && <Check className="w-4 h-4 text-white stroke-[4px]" />}
+            {isRental ? (
+              <div className="space-y-6">
+                <h2 className="text-xs font-black text-primary ">{t('booking.rentalInquiry')}</h2>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.travelDate')}</label>
+                      <Input type="date" value={rentalDate} onChange={e => setRentalDate(e.target.value)} className="bg-secondary border-border" />
                     </div>
-                    <p className="text-[10px] font-black text-foreground leading-tight">
-                      I confirm that I am booking restricted seat(s) for
-                      <span className="font-black text-primary mx-1 ">
-                        {selectedReservedTypes.map((t, i) => {
-                          const label = t === "women" ? "Women" : t === "elderly" ? "Elderly" : "Disabled";
-                          return i === 0 ? label : i === selectedReservedTypes.length - 1 ? ` and ${label}` : `, ${label}`;
-                        }).join("")}
-                      </span>
-                      passengers accordingly.
-                    </p>
+                    <div>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.pickupTime')}</label>
+                      <Input type="time" value={rentalStartTime} onChange={e => setRentalStartTime(e.target.value)} className="bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.duration')}</label>
+                      <Input type="number" value={rentalDuration} onChange={e => setRentalDuration(e.target.value)} placeholder="e.g. 24" className="bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.estimatedKm')}</label>
+                      <Input type="number" value={estimatedKm} onChange={e => setEstimatedKm(e.target.value)} placeholder="KM" className="bg-secondary border-border" />
+                      <p className="text-[8px] font-bold text-muted-foreground mt-1 italic">
+                        {isRoundTrip ? `${t('rental.roundTrip')}: ${Number(estimatedKm) * 2} KM ${t('rental.total')}` : `${t('rental.oneWay')}: ${Number(estimatedKm) * 1.5} KM ${t('rental.total')}`}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.tripType')}</label>
+                      <div className="flex bg-secondary p-1 rounded-xl border border-border">
+                        <button
+                          onClick={() => setIsRoundTrip(true)}
+                          className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${isRoundTrip ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground'}`}
+                        >
+                          {t('rental.roundTrip')}
+                        </button>
+                        <button
+                          onClick={() => setIsRoundTrip(false)}
+                          className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${!isRoundTrip ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground'}`}
+                        >
+                          {t('rental.oneWay')}
+                        </button>
+                      </div>
+                    </div>
+                    <div />
+                    <div>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.fromLocation')}</label>
+                      <Input value={rentalFrom} onChange={e => setRentalFrom(e.target.value)} placeholder={t('rental.pickupPlaceholder')} className="bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.toLocation')}</label>
+                      <Input value={rentalDestination} onChange={e => setRentalDestination(e.target.value)} placeholder={t('rental.dropPlaceholder')} className="bg-secondary border-border" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('rental.purpose')}</label>
+                      <Input value={rentalPurpose} onChange={e => setRentalPurpose(e.target.value)} placeholder={t('rental.purposePlaceholder')} className="bg-secondary border-border" />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                    <p className="text-[10px] font-black text-primary uppercase mb-3">Estimated Bill</p>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-muted-foreground">Renting Price ({rentalDuration}h):</span>
+                        <span className="text-foreground">₹{totalPrice}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-muted-foreground">Petrol Price ({isRoundTrip ? Number(estimatedKm) * 2 : Number(estimatedKm) * 1.5}km total):</span>
+                        <span className="text-accent">₹{rentalFuelCost}</span>
+                      </div>
+                      <div className="h-px bg-border my-1" />
+                      <div className="flex justify-between text-sm font-black">
+                        <span className="text-primary">Total:</span>
+                        <span className="text-primary">₹{rentalGrandTotal}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4">
+                    <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("search")}>
+                      <ChevronLeft className="w-4 h-4 mr-1" /> Back
+                    </Button>
+                    <Button disabled={!rentalDate || !rentalFrom || !rentalDestination || !rentalPurpose || !estimatedKm || !rentalStartTime || !rentalDuration}
+                      onClick={() => setStep("confirm")}
+                      className="h-10 px-6 font-black shadow-lg shadow-primary/20">
+                      Review Request <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              // Existing Seat Selection Logic
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-black text-primary ">{t('booking.steps.seats')}</h2>
+                  <span className="text-[10px] font-black text-muted-foreground opacity-60">
+                    {selectedSeats.length} {t('booking.selected')}
+                  </span>
+                </div>
 
-            {/* Stop Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pt-6 border-t border-border mt-4">
-              <div>
-                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Boarding Point</label>
-                <select
-                  className="w-full h-11 px-3 border border-border bg-secondary rounded-xl text-xs font-bold text-foreground focus:border-primary transition-colors"
-                  value={boardingStop}
-                  onChange={e => setBoardingStop(e.target.value)}
-                >
-                  <option value="">Select Boarding Point</option>
-                  {selectedBus?.route?.stops?.map((s: any) => (
-                    <option key={s.name} value={s.name}>{s.name}</option>
+                {/* Legend */}
+                <div className="flex flex-wrap gap-3 mb-5">
+                  {legendItems.map(l => (
+                    <div key={l.type} className="flex items-center gap-1.5 text-[9px] font-black text-muted-foreground opacity-60">
+                      <div className="w-5 h-5 rounded border-2 flex items-center justify-center text-[9px] font-bold"
+                        style={{
+                          backgroundColor: seatColors[l.type].bg,
+                          borderColor: seatColors[l.type].border,
+                          color: seatColors[l.type].text,
+                        }}>
+                        {l.type === "selected" ? "✓" : ""}
+                      </div>
+                      <span>{t(l.label)}</span>
+                    </div>
                   ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Dropping Point</label>
-                <select
-                  className="w-full h-11 px-3 border border-border bg-secondary rounded-xl text-xs font-bold text-foreground focus:border-primary transition-colors"
-                  value={droppingStop}
-                  onChange={e => setDroppingStop(e.target.value)}
-                >
-                  <option value="">Select Dropping Point</option>
-                  {selectedBus?.route?.stops?.map((s: any) => (
-                    <option key={s.name} value={s.name}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                </div>
 
-            <div className="mt-4 flex items-center justify-between">
-              <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("search")}>
-                <ChevronLeft className="w-4 h-4 mr-1" /> Back
-              </Button>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-muted-foreground opacity-60 mb-2">
-                  {selectedSeats.length} Seat(s) | Total: <span className="font-black text-primary ">₹{totalPrice}</span>
-                </p>
-                <Button disabled={selectedSeats.length === 0 || !boardingStop || !droppingStop || (isConfirmationRequired && !confirmationChecked)}
-                  onClick={() => setStep("details")}
-                  className="h-10 px-6 font-black shadow-lg shadow-primary/20">
-                  Continue <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            </div>
+                {/* Bus layout */}
+                <div className="flex flex-col items-center">
+                  <div className="flex gap-2 overflow-x-auto pb-6 justify-center w-full">
+                    <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(6, 40px)" }}>
+                      {seatData.map(seat => {
+                        const isSelected = selectedSeats.includes(seat.num);
+                        const locker = activeLocks.find(l => l.seatNumber === seat.num);
+                        const isLockedByOthers = locker && locker.lockerId !== lockerId;
+                        const isBooked = selectedBus?.bookedSeats?.includes(seat.num);
+
+                        let type = seat.type;
+                        if (isBooked || isLockedByOthers) type = "booked";
+
+                        const colors = isSelected ? seatColors.selected : seatColors[type];
+                        return (
+                          <button
+                            key={seat.num}
+                            onClick={() => toggleSeat(seat.num)}
+                            disabled={isBooked || isLockedByOthers}
+                            className="w-10 h-10 rounded border-2 text-[10px] font-black transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-30"
+                            style={{
+                              backgroundColor: colors.bg,
+                              borderColor: colors.border,
+                              color: colors.text,
+                            }}
+                          >
+                            {seat.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {isConfirmationRequired && (
+                    <div className="w-full mt-2 animate-slide-up">
+                      <div className="bg-primary/5 border border-primary/20 p-4 rounded-2xl flex items-center gap-4">
+                        <div
+                          onClick={() => setConfirmationChecked(!confirmationChecked)}
+                          className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center cursor-pointer transition-all duration-300 ${confirmationChecked
+                            ? "bg-primary border-primary shadow-lg shadow-primary/20"
+                            : "bg-card border-border hover:border-primary/50"
+                            }`}
+                        >
+                          {confirmationChecked && <Check className="w-4 h-4 text-white stroke-[4px]" />}
+                        </div>
+                        <p className="text-[10px] font-black text-foreground leading-tight">
+                          {t('booking.seatConfirmationPrefix')}
+                          <span className="font-black text-primary mx-1 ">
+                            {selectedReservedTypes.map((t_key, i) => {
+                              const label = t_key === "women" ? t('booking.womenReserved') : t_key === "elderly" ? t('booking.elderlyReserved') : t('booking.disabledReserved');
+                              return i === 0 ? label : i === selectedReservedTypes.length - 1 ? ` ${t('booking.and')} ${label}` : `, ${label}`;
+                            }).join("")}
+                          </span>
+                          {t('booking.seatConfirmationSuffix')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stop Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pt-6 border-t border-border mt-4">
+                  <div>
+                    <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.boardingPoint')}</label>
+                    <select
+                      className="w-full h-11 px-3 border border-border bg-secondary rounded-xl text-xs font-bold text-foreground focus:border-primary transition-colors"
+                      value={boardingStop}
+                      onChange={e => setBoardingStop(e.target.value)}
+                    >
+                      <option value="">{t('booking.selectBoarding')}</option>
+                      {selectedBus?.route?.stops?.map((s: any) => (
+                        <option key={s.name} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.droppingPoint')}</label>
+                    <select
+                      className="w-full h-11 px-3 border border-border bg-secondary rounded-xl text-xs font-bold text-foreground focus:border-primary transition-colors"
+                      value={droppingStop}
+                      onChange={e => setDroppingStop(e.target.value)}
+                    >
+                      <option value="">{t('booking.selectDropping')}</option>
+                      {selectedBus?.route?.stops?.map((s: any) => (
+                        <option key={s.name} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("search")}>
+                    <ChevronLeft className="w-4 h-4 mr-1" /> {t('common.back')}
+                  </Button>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-muted-foreground opacity-60 mb-2">
+                      {selectedSeats.length} {t('booking.seats')} | {t('booking.total')}: <span className="font-black text-primary ">₹{totalPrice}</span>
+                    </p>
+                    <Button disabled={selectedSeats.length === 0 || !boardingStop || !droppingStop || (isConfirmationRequired && !confirmationChecked)}
+                      onClick={() => setStep("details")}
+                      className="h-10 px-6 font-black shadow-lg shadow-primary/20">
+                      {t('common.continue')} <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* Step 3: Passenger Details */}
         {step === "details" && (
           <div className="bg-card border border-border p-6 animate-slide-up space-y-8 rounded-3xl shadow-card">
-            <h2 className="text-xs font-black text-primary ">Passenger Information</h2>
+            <h2 className="text-xs font-black text-primary ">{t('booking.passengerInfo')}</h2>
 
             {passengers.map((passenger, index) => {
               const seat = seatData.find(s => s.num === passenger.seatNum);
@@ -537,18 +682,18 @@ export default function Booking() {
                     <span className="w-6 h-6 rounded bg-primary text-white text-[10px] font-black flex items-center justify-center shadow-md">
                       {passenger.seatNum}
                     </span>
-                    <span className="text-[10px] font-black text-muted-foreground opacity-60">Passenger for Seat {passenger.seatNum}</span>
+                    <span className="text-[10px] font-black text-muted-foreground opacity-60">{t('booking.passengerForSeat')} {passenger.seatNum}</span>
                     {isWomenReserved && (
-                      <span className="text-[8px] font-black bg-pink-500/10 text-pink-600 dark:text-pink-400 px-3 py-1 rounded-full ml-auto border border-pink-500/20 ">Women Reserved</span>
+                      <span className="text-[8px] font-black bg-pink-500/10 text-pink-600 dark:text-pink-400 px-3 py-1 rounded-full ml-auto border border-pink-500/20 ">{t('booking.womenReserved')}</span>
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Full Name</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.fullName')}</label>
                       <Input
                         className="bg-secondary border-border"
-                        placeholder="As per Aadhaar / ID"
+                        placeholder={t('booking.namePlaceholder')}
                         value={passenger.name}
                         onChange={e => {
                           const newPass = [...passengers];
@@ -558,7 +703,7 @@ export default function Booking() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Mobile Number</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.mobileNumber')}</label>
                       <Input
                         className="bg-secondary border-border font-mono text-xs"
                         type="tel"
@@ -576,15 +721,15 @@ export default function Booking() {
                         }}
                       />
                       {passenger.phone && passenger.phone.replace(/\D/g, "").substring(2).length > 0 && passenger.phone.replace(/\D/g, "").substring(2).length < 10 && (
-                        <p className="text-[9px] text-red-600 dark:text-red-400 mt-1 font-black ">Please enter a valid number</p>
+                        <p className="text-[9px] text-red-600 dark:text-red-400 mt-1 font-black ">{t('booking.invalidNumber')}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Age</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.age')}</label>
                       <Input
                         className="bg-secondary border-border"
                         type="number"
-                        placeholder="Age"
+                        placeholder={t('booking.agePlaceholder')}
                         min="1"
                         max="120"
                         value={passenger.age}
@@ -598,11 +743,11 @@ export default function Booking() {
                         }}
                       />
                       {passenger.age && (parseInt(passenger.age) < 1 || parseInt(passenger.age) > 120) && (
-                        <p className="text-[9px] text-red-600 dark:text-red-400 mt-1 font-black ">Please enter a valid age</p>
+                        <p className="text-[9px] text-red-600 dark:text-red-400 mt-1 font-black ">{t('booking.invalidAge')}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">Gender</label>
+                      <label className="block text-[9px] font-black text-muted-foreground opacity-50 mb-1.5">{t('booking.gender')}</label>
                       <select
                         className={`w-full h-10 px-3 border rounded-xl text-xs font-bold bg-secondary border-border text-foreground transition-all ${isWomenReserved ? "cursor-not-allowed opacity-50" : ""}`}
                         value={passenger.gender}
@@ -612,12 +757,12 @@ export default function Booking() {
                           newPass[index].gender = e.target.value;
                           setPassengers(newPass);
                         }}>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
+                        <option value="male">{t('booking.male')}</option>
+                        <option value="female">{t('booking.female')}</option>
+                        <option value="other">{t('booking.other')}</option>
                       </select>
                       {isWomenReserved && (
-                        <p className="text-[8px] text-primary/60 mt-1 font-black ">Gender locked for reserved seat</p>
+                        <p className="text-[8px] text-primary/60 mt-1 font-black ">{t('booking.genderLocked')}</p>
                       )}
                     </div>
                   </div>
@@ -627,7 +772,7 @@ export default function Booking() {
 
             <div className="flex items-center justify-between pt-4">
               <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("seats")}>
-                <ChevronLeft className="w-4 h-4 mr-1" /> Back
+                <ChevronLeft className="w-4 h-4 mr-1" /> {t('common.back')}
               </Button>
               <Button onClick={() => setStep("confirm")}
                 disabled={passengers.some(p =>
@@ -638,7 +783,7 @@ export default function Booking() {
                   parseInt(p.age) > 120
                 )}
                 className="h-10 px-6 font-black shadow-lg shadow-primary/20">
-                Review Booking <ChevronRight className="w-4 h-4 ml-1" />
+                {t('booking.reviewBooking')} <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -648,51 +793,81 @@ export default function Booking() {
         {step === "confirm" && (
           <div className="animate-slide-up space-y-4">
             <div className="bg-card border border-border p-6 rounded-3xl shadow-card">
-              <h2 className="text-xs font-black text-primary mb-4">Booking Summary</h2>
+              <h2 className="text-xs font-black text-primary mb-4">{isRental ? t('booking.rentalRequestSummary') : t('booking.bookingSummary')}</h2>
               <div className="space-y-4">
-                {[
-                  ["Route", `${selectedBus.route.from} → ${selectedBus.route.to}`],
-                  ["Bus No.", `${selectedBus.busNumber} (${selectedBus.type})`],
-                  ["Departure", selectedBus.departureTime],
-                  ["Dropping At", droppingStop],
-                  ["Seats", selectedSeats.join(", ")],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between py-2 border-b border-border">
-                    <span className="text-[10px] font-black text-muted-foreground opacity-50">{label}</span>
-                    <span className="text-xs font-black text-foreground">{value}</span>
-                  </div>
-                ))}
-
-                <div className="pt-2">
-                  <span className="text-[9px] font-black text-muted-foreground block mb-3 opacity-40">Passenger List</span>
-                  <div className="space-y-2">
-                    {passengers.map(p => (
-                      <div key={p.seatNum} className="flex items-center justify-between p-3 bg-secondary rounded-xl border border-border">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-black text-foreground ">{p.name}</span>
-                          <span className="text-[9px] font-black text-muted-foreground opacity-50">{p.gender} • {p.age} Yrs • {p.phone}</span>
-                        </div>
-                        <span className="w-6 h-6 rounded bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center border border-primary/20 shadow-sm">
-                          {p.seatNum}
-                        </span>
+                {isRental ? (
+                  <>
+                    {[
+                      [t('booking.busOperator'), selectedBus.operator],
+                      [t('booking.busNo'), `${selectedBus.busNumber} (${selectedBus.type})`],
+                      [t('rental.travelDate'), `${rentalDate} @ ${rentalStartTime}`],
+                      [t('rental.tripType'), isRoundTrip ? t('rental.roundTrip') : t('rental.oneWay')],
+                      [t('rental.fromLocation'), rentalFrom],
+                      [t('rental.toLocation'), rentalDestination],
+                      [t('rental.duration'), `${rentalDuration} ${t('common.hours')}`],
+                      [t('booking.tripDistance'), `${estimatedKm} ${t('booking.km')}`],
+                      [t('booking.totalKm'), `${isRoundTrip ? Number(estimatedKm) * 2 : Number(estimatedKm) * 1.5} ${t('booking.km')}`],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between py-2 border-b border-border">
+                        <span className="text-[10px] font-black text-muted-foreground opacity-50">{label}</span>
+                        <span className="text-xs font-black text-foreground">{value}</span>
                       </div>
                     ))}
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <>
+                    {[
+                      [t('booking.route'), `${selectedBus.route.from} → ${selectedBus.route.to}`],
+                      [t('booking.busNo'), `${selectedBus.busNumber} (${selectedBus.type})`],
+                      [t('booking.dep'), selectedBus.departureTime],
+                      [t('booking.droppingPoint'), droppingStop],
+                      [t('booking.seats'), selectedSeats.join(", ")],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between py-2 border-b border-border">
+                        <span className="text-[10px] font-black text-muted-foreground opacity-50">{label}</span>
+                        <span className="text-xs font-black text-foreground">{value}</span>
+                      </div>
+                    ))}
+
+                    <div className="pt-2">
+                      <span className="text-[9px] font-black text-muted-foreground block mb-3 opacity-40">{t('booking.passengerList')}</span>
+                      <div className="space-y-2">
+                        {passengers.map(p => (
+                          <div key={p.seatNum} className="flex items-center justify-between p-3 bg-secondary rounded-xl border border-border">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-black text-foreground ">{p.name}</span>
+                              <span className="text-[9px] font-black text-muted-foreground opacity-50">{p.gender} • {p.age} {t('booking.yrs')} • {p.phone}</span>
+                            </div>
+                            <span className="w-6 h-6 rounded bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center border border-primary/20 shadow-sm">
+                              {p.seatNum}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="flex items-center justify-between py-4 mt-4 border-t-2 border-dashed border-border">
-                  <span className="text-xs font-black text-primary">Total Amount</span>
-                  <span className="text-xl font-black text-primary">₹{totalPrice}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-primary">{t('booking.totalEstimate')}</span>
+                    {isRental && (
+                      <span className="text-[8px] font-black text-muted-foreground italic">
+                        ({t('booking.baseFare')} ₹{totalPrice} + {t('booking.petrol')} ₹{rentalFuelCost})
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xl font-black text-primary">₹{isRental ? rentalGrandTotal : totalPrice}</span>
                 </div>
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep("details")}>
-                <ChevronLeft className="w-4 h-4 mr-1" /> Back
+              <Button variant="outline" size="sm" className="font-black text-[9px] border-border" onClick={() => setStep(isRental ? "seats" : "details")}>
+                <ChevronLeft className="w-4 h-4 mr-1" /> {t('common.back')}
               </Button>
-              <Button size="lg" className="h-12 px-8 font-black shadow-lg shadow-primary/20" onClick={() => setStep("payment")}>
-                <Check className="w-4 h-4 mr-2" />
-                Proceed to Payment (₹{totalPrice})
+              <Button onClick={handleBooking} disabled={loading} className="h-10 px-6 font-black shadow-lg shadow-primary/20">
+                {loading ? t('common.loading') : (isRental ? t('booking.submitRentalRequest') : t('booking.confirmAndBook'))}
+                {!loading && <Check className="w-4 h-4 ml-1" />}
               </Button>
             </div>
           </div>
@@ -703,20 +878,16 @@ export default function Booking() {
           <div className="animate-slide-up space-y-4 max-w-md mx-auto">
             <div className="bg-card border border-border p-8 text-center border-primary/20 shadow-xl overflow-hidden relative rounded-3xl">
               <div className="absolute top-0 right-0 p-3 bg-primary/5 text-primary text-[10px] font-black border-l border-b border-primary/20">
-                Secure Gateway
+                {t('payment.secureGateway')}
               </div>
 
-              <h2 className="text-xl font-black text-foreground mb-1 ">Scan & Pay</h2>
-              <p className="text-[9px] text-muted-foreground font-black mb-6 opacity-60 ">UPI Payment for Seat Booking</p>
+              <h2 className="text-xl font-black text-foreground mb-1 ">{t('payment.scanAndPay')}</h2>
+              <p className="text-[9px] text-muted-foreground font-black mb-6 opacity-60 ">{t('payment.upiSubtitle')}</p>
 
               <div className="bg-white p-4 rounded-2xl shadow-inner border border-border inline-block mb-6 relative group">
-                {/* 
-                  UPI QR Generator
-                  Standard UPI URI: upi://pay?pa={VPA}&pn={NAME}&am={AMOUNT}&cu=INR&tn={NOTE}
-                */}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${selectedBus.ownerUPI || '8302391227-2@ybl'}&pn=${selectedBus.operator}&am=${totalPrice}&cu=INR&tn=YatraSetuBooking`)}`}
-                  alt="UPI QR Code"
+                  alt={t('payment.qrAlt')}
                   className="w-48 h-48 mx-auto"
                 />
                 <div className="absolute inset-0 border-2 border-primary/20 rounded-2xl pointer-events-none group-hover:border-primary/40 transition-colors"></div>
@@ -725,27 +896,27 @@ export default function Booking() {
               <div className="space-y-4 mb-8">
                 <div className="flex flex-col items-center">
                   <span className="text-3xl font-black text-primary ">₹{totalPrice}</span>
-                  <span className="text-[9px] font-black text-muted-foreground opacity-40">Payable Amount</span>
+                  <span className="text-[9px] font-black text-muted-foreground opacity-40">{t('payment.payableAmount')}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-left">
                   <div className="p-3 bg-secondary rounded-xl border border-border">
-                    <span className="text-[8px] font-black text-muted-foreground block mb-1 opacity-40">Receiver</span>
+                    <span className="text-[8px] font-black text-muted-foreground block mb-1 opacity-40">{t('payment.receiver')}</span>
                     <span className="text-[10px] font-black text-foreground truncate block ">{selectedBus.operator}</span>
                   </div>
                   <div className="p-3 bg-secondary rounded-xl border border-border">
-                    <span className="text-[8px] font-black text-muted-foreground block mb-1 opacity-40">UPI ID</span>
+                    <span className="text-[8px] font-black text-muted-foreground block mb-1 opacity-40">{t('payment.upiId')}</span>
                     <span className="text-[10px] font-black text-foreground truncate block ">{selectedBus.ownerUPI || '8302391227-2@ybl'}</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-center gap-2 mb-6 text-primary dark:text-blue-400 bg-primary-light/10 py-2 rounded-lg border border-primary/20">
-                <span className="text-[10px] font-black ">Expires In:</span>
+                <span className="text-[10px] font-black ">{t('payment.expiresIn')}:</span>
                 <span className="text-sm font-mono font-black ">{Math.floor(paymentTimer / 60)}:{(paymentTimer % 60).toString().padStart(2, '0')}</span>
               </div>
 
-              <p className="text-[9px] text-muted-foreground mb-6 opacity-40 font-black ">Please do not refresh or go back after scanning.</p>
+              <p className="text-[9px] text-muted-foreground mb-6 opacity-40 font-black ">{t('payment.doNotRefresh')}</p>
 
               <Button
                 size="lg"
@@ -753,7 +924,7 @@ export default function Booking() {
                 onClick={handleBooking}
                 disabled={loading || paymentTimer <= 0}
               >
-                {loading ? "Verifying Transaction..." : "I Have Paid — Confirm Booking"}
+                {loading ? t('payment.verifying') : t('payment.confirmButton')}
               </Button>
             </div>
 
@@ -762,7 +933,7 @@ export default function Booking() {
                 onClick={() => setStep("confirm")}
                 className="text-[9px] font-black text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 opacity-60"
               >
-                <ChevronLeft className="w-3 h-3" /> Edit Booking
+                <ChevronLeft className="w-3 h-3" /> {t('payment.editBooking')}
               </button>
             </div>
           </div>
@@ -774,26 +945,30 @@ export default function Booking() {
             <div className="w-20 h-20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
               <Check className="w-10 h-10 shadow-sm" />
             </div>
-            <h2 className="text-2xl font-black text-primary mb-2 ">Booking Successful!</h2>
-            <p className="text-muted-foreground text-xs mb-8 font-black opacity-60">Your ticket has been confirmed and stored safely.</p>
+            <h2 className="text-2xl font-black text-primary mb-2 ">{isRental ? t('booking.successRental') : t('booking.successBooking')}</h2>
+            <p className="text-muted-foreground text-xs mb-8 font-black opacity-60">
+              {isRental ? t('booking.rentalSuccessDesc') : t('booking.bookingSuccessDesc')}
+            </p>
 
             <div className="bg-secondary rounded-2xl p-6 mb-8 text-left border border-border">
               <div className="flex justify-between mb-4">
-                <span className="text-[10px] font-black text-muted-foreground opacity-40">PNR Number</span>
+                <span className="text-[10px] font-black text-muted-foreground opacity-40">{t('booking.pnrNumber')}</span>
                 <span className="text-sm font-mono font-black text-primary ">{bookingResult?.pnr}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[10px] font-black text-muted-foreground opacity-40">Total Paid</span>
+                <span className="text-[10px] font-black text-muted-foreground opacity-40">{isRental ? t('booking.totalAmount') : t('booking.totalPaid')}</span>
                 <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 ">₹{bookingResult?.amount}</span>
               </div>
             </div>
 
             <div className="flex gap-3 justify-center">
               <Button variant="outline" className="font-black text-[9px] border-border" asChild>
-                <Link to="/">Back to Home</Link>
+                <Link to="/"> {t('common.backToHome')}</Link>
               </Button>
               <Button className="font-black text-[9px] " asChild>
-                <Link to="/verify">Verify Ticket</Link>
+                <Link to={isRental ? "/profile/bookings" : "/verify"}>
+                  {isRental ? t('booking.myRequests') : t('booking.verifyTicket')}
+                </Link>
               </Button>
             </div>
           </div>

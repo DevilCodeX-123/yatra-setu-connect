@@ -29,8 +29,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function Login() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const auth = useAuth();
     const [isLogin, setIsLogin] = useState(true);
@@ -73,7 +75,7 @@ export default function Login() {
             const data = await response.json();
 
             if (response.ok) {
-                toast.success("Account Created Successfully!");
+                toast.success(t('toasts.profileUpdateSuccess')); // Reusing or adding specific one
                 if (data.token) {
                     auth.login(data.token, data.user || data);
                 }
@@ -116,16 +118,16 @@ export default function Login() {
                 });
                 const data = await response.json();
                 if (response.ok) {
-                    toast.success("Login Successful!");
+                    toast.success(t('toasts.loginSuccess'));
                     if (data.token) {
                         auth.login(data.token, data.user || data);
                     }
                     redirectUserByRole((data.user || data).role || 'Passenger');
                 } else {
-                    toast.error(data.message || "Invalid credentials");
+                    toast.error(data.message || t('toasts.loginError'));
                 }
             } catch (err) {
-                toast.error("Failed to connect to server");
+                toast.error(t('toasts.profileFetchError')); // Connection error
             } finally {
                 setIsLoading(false);
             }
@@ -191,17 +193,17 @@ export default function Login() {
 
                         <div className="hidden lg:block px-10 pt-10 pb-2">
                             <Badge variant="outline" className="mb-4 text-[10px] font-black tracking-[0.2em] border-primary/20 bg-primary/5 text-primary rounded-lg px-3 py-1">
-                                {isLogin ? "IDENTITY VERIFICATION" : "NEW REGISTRATION"}
+                                {isLogin ? t('login.title') : t('login.registration')}
                             </Badge>
-                            <h2 className="text-4xl font-black text-primary">{isLogin ? "Welcome Back" : "Create Account"}</h2>
-                            <p className="text-[10px] font-black text-muted-foreground opacity-60 mt-2">{isLogin ? "Sign in to your Yatra Setu account" : "Register for official portal services"}</p>
+                            <h2 className="text-4xl font-black text-primary">{isLogin ? t('login.welcome') : t('login.createAccount')}</h2>
+                            <p className="text-[10px] font-black text-muted-foreground opacity-60 mt-2">{isLogin ? t('login.subtitle') : t('login.registration')}</p>
                         </div>
 
                         <CardContent className="space-y-6 pt-8 px-8 sm:px-10">
                             <form onSubmit={handleSubmit} className="space-y-5">
                                 <div className="space-y-2">
                                     <Label htmlFor="email" className="text-[10px] font-black text-muted-foreground ml-1 opacity-60 flex items-center gap-2">
-                                        <Mail className="w-3 h-3" /> Email Address
+                                        <Mail className="w-3 h-3" /> {t('login.emailLabel')}
                                     </Label>
                                     <Input
                                         id="email"
@@ -218,7 +220,7 @@ export default function Login() {
                                     <>
                                         <div className="space-y-2">
                                             <Label htmlFor="name" className="text-[10px] font-black text-muted-foreground ml-1 opacity-60 flex items-center gap-2">
-                                                <User className="w-3 h-3" /> Full Name
+                                                <User className="w-3 h-3" /> {t('login.fullName')}
                                             </Label>
                                             <Input
                                                 id="name"
@@ -233,7 +235,7 @@ export default function Login() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="age" className="text-[10px] font-black text-muted-foreground ml-1 opacity-60 flex items-center gap-2">
-                                                    <Calendar className="w-3 h-3" /> Age
+                                                    <Calendar className="w-3 h-3" /> {t('login.age')}
                                                 </Label>
                                                 <Input
                                                     id="age"
@@ -246,7 +248,7 @@ export default function Login() {
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-black text-muted-foreground ml-1 opacity-60">Gender</Label>
+                                                <Label className="text-[10px] font-black text-muted-foreground ml-1 opacity-60">{t('login.gender')}</Label>
                                                 <RadioGroup
                                                     value={formData.gender}
                                                     onValueChange={(val) => setFormData({ ...formData, gender: val })}
@@ -264,15 +266,15 @@ export default function Login() {
 
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black text-muted-foreground ml-1 opacity-60 flex items-center gap-2">
-                                                <Building2 className="w-3 h-3" /> Professional Role
+                                                <Building2 className="w-3 h-3" /> {t('login.professionalRole')}
                                             </Label>
                                             <Select value={mainRole} onValueChange={setMainRole}>
                                                 <SelectTrigger className="h-14 rounded-2xl bg-secondary border border-border focus:ring-primary/20 font-black text-[10px] shadow-sm">
-                                                    <SelectValue placeholder="Choose your role" />
+                                                    <SelectValue placeholder={t('login.chooseRole')} />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-card border border-border rounded-xl">
-                                                    <SelectItem value="Passenger" className="text-[10px] font-black py-3">Passenger</SelectItem>
-                                                    <SelectItem value="Organization" className="text-[10px] font-black py-3 text-primary">Bus Organization</SelectItem>
+                                                    <SelectItem value="Passenger" className="text-[10px] font-black py-3">{t('login.passenger')}</SelectItem>
+                                                    <SelectItem value="Organization" className="text-[10px] font-black py-3 text-primary">{t('login.organization')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -282,9 +284,9 @@ export default function Login() {
                                 <div className="space-y-2 relative">
                                     <div className="flex justify-between items-center px-1">
                                         <Label htmlFor="password" className="text-[10px] font-black text-muted-foreground opacity-60 flex items-center gap-2">
-                                            <Lock className="w-3 h-3" /> Password
+                                            <Lock className="w-3 h-3" /> {t('login.passwordLabel')}
                                         </Label>
-                                        {isLogin && <button type="button" className="text-[8px] font-black text-primary hover:underline">Forgot?</button>}
+                                        {isLogin && <button type="button" className="text-[8px] font-black text-primary hover:underline">{t('login.forgot')}</button>}
                                     </div>
                                     <div className="relative group">
                                         <Input
@@ -309,7 +311,7 @@ export default function Login() {
                                 {!isLogin && (
                                     <div className="space-y-2">
                                         <Label htmlFor="confirmPassword" className="text-[10px] font-black text-muted-foreground ml-1 opacity-60 flex items-center gap-2">
-                                            <Lock className="w-3 h-3" /> Confirm Password
+                                            <Lock className="w-3 h-3" /> {t('login.passwordLabel')}
                                         </Label>
                                         <div className="relative group">
                                             <Input
@@ -342,9 +344,9 @@ export default function Login() {
                                         />
                                         <div className="grid gap-1.5 leading-none">
                                             <Label htmlFor="abled" className="text-[10px] font-black tracking-wide leading-none cursor-pointer flex items-center gap-2">
-                                                <PersonStanding className="w-3.5 h-3.5" /> Physically Abled / Disabled
+                                                <PersonStanding className="w-3.5 h-3.5" /> {t('login.physicallyAbled')}
                                             </Label>
-                                            <p className="text-[8px] text-muted-foreground font-black opacity-40">Priority seating & assistance will be active.</p>
+                                            <p className="text-[8px] text-muted-foreground font-black opacity-40">{t('login.priorityDesc')}</p>
                                         </div>
                                     </div>
                                 )}
@@ -357,11 +359,11 @@ export default function Login() {
                                     {isLoading ? (
                                         <div className="flex items-center gap-3">
                                             <div className="w-5 h-5 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-                                            <span>Processing...</span>
+                                            <span>{t('login.processing')}</span>
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-3">
-                                            <span>{isLogin ? "Sign Into Portal" : "Join Smart Network"}</span>
+                                            <span>{isLogin ? t('login.portalEntry') : t('login.joinNetwork')}</span>
                                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                         </div>
                                     )}
@@ -376,7 +378,7 @@ export default function Login() {
                                     }}
                                     className="text-xs font-medium text-primary hover:text-primary-light transition-colors"
                                 >
-                                    {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Log In"}
+                                    {isLogin ? t('login.noAccount') : t('login.hasAccount')}
                                 </button>
                             </div>
                         </CardContent>
@@ -388,7 +390,7 @@ export default function Login() {
                                     <Lock className="w-5 h-5 text-primary-light" />
                                 </div>
                                 <p className="text-[8px] font-black text-muted-foreground tracking-[0.3em] opacity-40">
-                                    Official National Transport Gateway
+                                    {t('login.officialGateway')}
                                 </p>
                             </div>
                         </CardFooter>
@@ -403,18 +405,18 @@ export default function Login() {
                         <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-2">
                             <Building2 className="w-8 h-8 text-primary" />
                         </div>
-                        <DialogTitle className="text-2xl font-black text-center ">Organization Details</DialogTitle>
+                        <DialogTitle className="text-2xl font-black text-center ">{t('login.orgDetails')}</DialogTitle>
                         <DialogDescription className="text-center font-medium">
-                            Please specify your professional role within the bus organization to access your dedicated panel.
+                            {t('login.orgRoleDesc')}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
                         <RadioGroup value={orgRole} onValueChange={setOrgRole} className="grid grid-cols-1 gap-4">
                             {[
-                                { id: "Owner", label: "Bus Owner", desc: "Manage fleet, staff, and financial reports.", icon: <UserCheck className="w-4 h-4" /> },
-                                { id: "Employee", label: "Bus Employee", desc: "Access routes, schedules, and attendance.", icon: <Briefcase className="w-4 h-4" /> },
-                                { id: "Owner+Employee", label: "Owner + Employee", desc: "Complete access to all fleet and staff tools.", icon: <Bus className="w-4 h-4" /> }
+                                { id: "Owner", label: t('login.owner'), desc: t('login.ownerDesc'), icon: <UserCheck className="w-4 h-4" /> },
+                                { id: "Employee", label: t('login.employee'), desc: t('login.employeeDesc'), icon: <Briefcase className="w-4 h-4" /> },
+                                { id: "Owner+Employee", label: t('login.ownerEmployee'), desc: t('login.ownerEmployeeDesc'), icon: <Bus className="w-4 h-4" /> }
                             ].map((item) => (
                                 <div key={item.id} className="relative group">
                                     <RadioGroupItem value={item.id} id={item.id} className="peer sr-only" />
@@ -446,7 +448,7 @@ export default function Login() {
                                 await triggerSignup(orgRole);
                             }}
                         >
-                            Confirm & Join
+                            {t('login.confirmJoin')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

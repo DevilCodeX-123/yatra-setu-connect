@@ -41,8 +41,16 @@ const BusSchema = new mongoose.Schema({
         source: { type: String, enum: ['gps', 'driver', 'conductor', 'manual'] },
         updatedAt: { type: Date },
     },
+    mileage: { type: Number, default: 4.0 }, // km/l
+    rentalPricePerDay: { type: Number, default: 5000 },
+    rentalPricePerHour: { type: Number, default: 500 },
+    returnChargePerKm: { type: Number, default: 15 }, // Deprecated or for specific extra costs
+    oneWayReturnChargePercentage: { type: Number, default: 50 }, // Percentage of distance charged for return on one-way
+    rentalCapacity: { type: Number, default: 40 },
+    bookedDates: [{ type: String }], // ISO dates string
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
+
 
 module.exports = mongoose.model('Bus', BusSchema);
 

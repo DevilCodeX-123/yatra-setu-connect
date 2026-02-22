@@ -36,7 +36,7 @@ export const SplashLoader: React.FC = () => {
                         stroke="white"
                         strokeWidth="2"
                         fill="none"
-                        className={`transition-all duration-[1500ms] ease-out ${phase >= 1 ? 'stroke-dashoffset-0' : 'stroke-dashoffset-[300]'}`}
+                        className={`transition-all transition-duration-[1500ms] ease-out ${phase >= 1 ? 'stroke-dashoffset-0' : 'stroke-dashoffset-[300]'}`}
                         style={{ strokeDasharray: 300, strokeDashoffset: phase >= 1 ? 0 : 300 }}
                     />
                 </svg>
@@ -62,7 +62,7 @@ export const SplashLoader: React.FC = () => {
 
             {/* Minimal Loading Bar */}
             <div className="absolute bottom-20 w-40 h-1 bg-white/10 rounded-full overflow-hidden">
-                <div className={`h-full bg-blue-400 transition-all duration-[3000ms] ease-linear ${phase >= 1 ? 'w-full' : 'w-0'}`} />
+                <div className={`h-full bg-blue-400 transition-all transition-duration-[3000ms] ease-linear ${phase >= 1 ? 'w-full' : 'w-0'}`} />
             </div>
 
         </div>

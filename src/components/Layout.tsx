@@ -3,6 +3,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,6 +11,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, noFooter }: LayoutProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col flex-1">
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
@@ -18,7 +20,7 @@ export default function Layout({ children, noFooter }: LayoutProps) {
             <SidebarTrigger className="text-primary" />
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
             <div className="hidden md:block">
-              <p className="text-[9px] font-black tracking-[0.3em] text-primary">Yatra Setu Portal</p>
+              <p className="text-[9px] font-black tracking-[0.3em] text-primary">{t('layout.portalName')}</p>
             </div>
           </div>
           <Navbar minimal />

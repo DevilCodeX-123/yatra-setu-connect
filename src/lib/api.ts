@@ -59,6 +59,14 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/users/transactions`, { headers: getAuthHeaders() });
         return res.json();
     },
+    updateProfile: async (userData: any) => {
+        const res = await fetch(`${API_BASE_URL}/users/profile`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(userData)
+        });
+        return res.json();
+    },
     topupWallet: async (amount: number, source: string) => {
         const res = await fetch(`${API_BASE_URL}/users/wallet/topup`, {
             method: 'POST',
@@ -124,5 +132,58 @@ export const api = {
             body: JSON.stringify(busData)
         });
         return res.json();
+    },
+
+    // Rental
+    createRentalRequest: async (rentalData: any) => {
+        const res = await fetch(`${API_BASE_URL}/bookings/rental-request`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(rentalData)
+        });
+        return res.json();
+    },
+    getOwnerRequests: async () => {
+        const res = await fetch(`${API_BASE_URL}/bookings/owner/requests`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    updateRequestStatus: async (requestId: string, status: string) => {
+        const res = await fetch(`${API_BASE_URL}/bookings/owner/request/${requestId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status })
+        });
+        return res.json();
+    },
+    updateBusSettings: async (busId: string, settings: any) => {
+        const res = await fetch(`${API_BASE_URL}/bookings/owner/bus/${busId}/settings`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(settings)
+        });
+        return res.json();
+    },
+    payDeposit: async (bookingId: string) => {
+        const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/pay-deposit`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    addPassenger: async (passengerData: any) => {
+        const res = await fetch(`${API_BASE_URL}/users/passengers`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(passengerData)
+        });
+        return res.json();
+    },
+    deletePassenger: async (id: string) => {
+        const res = await fetch(`${API_BASE_URL}/users/passengers/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        return res.json();
     }
 };
+

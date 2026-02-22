@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./components/AppSidebar";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { LanguageProvider, useTranslation } from "./contexts/LanguageContext";
 import Index from "./pages/Index";
 import Booking from "./pages/Booking";
 import VerifyTicket from "./pages/VerifyTicket";
@@ -46,6 +47,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AppShell = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   const noSidebarRoutes = ["/login", "/404", "/employee"];
   const showSidebar = isAuthenticated && !noSidebarRoutes.includes(location.pathname);
 
@@ -70,12 +72,12 @@ const AppShell = () => {
           <Route path="/profile/info" element={<ProtectedRoute><ProfileInfo /></ProtectedRoute>} />
           <Route path="/profile/passengers" element={<ProtectedRoute><ProfilePassengers /></ProtectedRoute>} />
           <Route path="/profile/wallet" element={<ProtectedRoute><ProfileWallet /></ProtectedRoute>} />
-          <Route path="/profile/gst" element={<ProtectedRoute><ProfilePlaceholder title="GST Details" /></ProtectedRoute>} />
-          <Route path="/profile/irctc" element={<ProtectedRoute><ProfilePlaceholder title="IRCTC Details" /></ProtectedRoute>} />
-          <Route path="/profile/offers" element={<ProtectedRoute><ProfilePlaceholder title="Active Offers" /></ProtectedRoute>} />
-          <Route path="/profile/referrals" element={<ProtectedRoute><ProfilePlaceholder title="Referral Program" /></ProtectedRoute>} />
-          <Route path="/profile/about" element={<ProtectedRoute><ProfilePlaceholder title="About Yatra Setu" /></ProtectedRoute>} />
-          <Route path="/profile/rate" element={<ProtectedRoute><ProfilePlaceholder title="Rate Experience" /></ProtectedRoute>} />
+          <Route path="/profile/gst" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.gst')} /></ProtectedRoute>} />
+          <Route path="/profile/irctc" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.irctc')} /></ProtectedRoute>} />
+          <Route path="/profile/offers" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.offers')} /></ProtectedRoute>} />
+          <Route path="/profile/referrals" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.referrals')} /></ProtectedRoute>} />
+          <Route path="/profile/about" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.about')} /></ProtectedRoute>} />
+          <Route path="/profile/rate" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.rate')} /></ProtectedRoute>} />
           <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
           <Route path="/tracking/:id" element={<ProtectedRoute><BusTracking /></ProtectedRoute>} />
           <Route path="/passenger" element={<ProtectedRoute><PassengerDashboard /></ProtectedRoute>} />
@@ -95,17 +97,19 @@ const AppShell = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <SidebarProvider defaultOpen={true}>
-          <BrowserRouter>
-            <AppShell />
-          </BrowserRouter>
-        </SidebarProvider>
-      </TooltipProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <SidebarProvider defaultOpen={true}>
+            <BrowserRouter>
+              <AppShell />
+            </BrowserRouter>
+          </SidebarProvider>
+        </TooltipProvider>
+      </AuthProvider>
+    </LanguageProvider>
   </QueryClientProvider>
 );
 
