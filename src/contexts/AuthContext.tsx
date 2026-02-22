@@ -6,6 +6,12 @@ interface User {
     email: string;
     role: string;
     phone?: string;
+    age?: number | string;
+    gender?: string;
+    address?: {
+        city?: string;
+        state?: string;
+    };
     walletBalance?: number;
     upiId?: string;
 }

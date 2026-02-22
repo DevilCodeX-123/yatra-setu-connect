@@ -2,7 +2,8 @@ import {
     ChevronRight, ClipboardList, User, Users, Train, Wallet,
     CreditCard, FileText, Tag, UserPlus, Info, Star, HelpCircle,
     Settings, Flag, CircleDollarSign, Languages, Palette, Bell,
-    UserSquare2, History, Home, Bus, CreditCard as PaymentIcon
+    UserSquare2, History, Home, Bus, CreditCard as PaymentIcon,
+    UserCircle, Route
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -10,9 +11,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 const sidebarItems = [
     { href: "/", label: "Home", icon: <Home className="w-4 h-4" /> },
     { href: "/transactions", label: "Transaction", icon: <History className="w-4 h-4" /> },
-    { href: "/account", label: "Account", icon: <Settings className="w-4 h-4" /> },
-    { href: "/lentings", label: "Lentings", icon: <Bus className="w-4 h-4" /> },
-    { href: "/profile", label: "Profile", icon: <User className="w-4 h-4" /> },
+    { href: "/account", label: "Account", icon: <UserCircle className="w-4 h-4" /> }, // Updated to use UserCircle and /account
+    { href: "/buses", label: "Buses", icon: <Bus className="w-4 h-4" /> }, // Added Buses
+    { href: "/profile/past-rides", label: "Past Rides", icon: <Route className="w-4 h-4" /> }, // Added Past Rides
     { href: "/support", label: "Support", icon: <HelpCircle className="w-4 h-4" /> },
 ];
 
@@ -115,7 +116,7 @@ export default function Profile() {
                         <SectionHeader label="My details" />
                         <MenuItem icon={ClipboardList} label="Bookings" to="/profile/bookings" />
                         <MenuItem icon={History} label="Past Rides" subtitle="Completed journeys & eco impact" to="/profile/past-rides" />
-                        <MenuItem icon={User} label="Personal information" to="/profile/info" />
+                        <MenuItem icon={User} label="Account & Personal Info" to="/account" />
                         <MenuItem icon={Users} label="Passengers" to="/profile/passengers" />
                         <MenuItem icon={Train} label="IRCTC details" to="/profile/irctc" />
 

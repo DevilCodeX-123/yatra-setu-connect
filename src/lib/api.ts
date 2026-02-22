@@ -2,17 +2,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 export default API_BASE_URL;
 
 const getAuthHeaders = () => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return { 'Content-Type': 'application/json' };
-    try {
-        const { token } = JSON.parse(userStr);
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        };
-    } catch {
-        return { 'Content-Type': 'application/json' };
-    }
+    const token = localStorage.getItem('ys_token');
+    if (!token) return { 'Content-Type': 'application/json' };
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
 };
 
 export const api = {

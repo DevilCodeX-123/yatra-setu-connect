@@ -37,10 +37,17 @@ const queryClient = new QueryClient();
 
 // Guard: sirf logged-in users ke liye
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
+  const { isAuthenticated, token } = useAuth();
+  const hasLocalToken = !!localStorage.getItem("ys_token");
+
+  // Agat context authenticated nahi hai, but token exist karta hai, 
+  // toh hum assume kar sakte hain ki loading ya refresh state mein hai.
+  if (!isAuthenticated && !hasLocalToken) {
     return <Navigate to="/login" replace />;
   }
+
+  // Optional: Add a loading spinner here if !isAuthenticated && hasLocalToken
+
   return <>{children}</>;
 };
 
@@ -64,7 +71,7 @@ const AppShell = () => {
           <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
           <Route path="/verify" element={<ProtectedRoute><VerifyTicket /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute><ProfileInfo /></ProtectedRoute>} />
           <Route path="/buses" element={<ProtectedRoute><Buses /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/profile/bookings" element={<ProtectedRoute><ProfileBookings /></ProtectedRoute>} />

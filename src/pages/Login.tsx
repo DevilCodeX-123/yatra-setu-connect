@@ -1,5 +1,5 @@
 import API_BASE_URL from '@/lib/api';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,22 @@ export default function Login() {
     const [showOrgModal, setShowOrgModal] = useState(false);
     const [mainRole, setMainRole] = useState("Passenger");
     const [orgRole, setOrgRole] = useState("Owner");
+
+    useEffect(() => {
+        if (auth.isAuthenticated) {
+            const role = auth.user?.role || 'Passenger';
+            console.log("Auto-redirecting authenticated user with role:", role);
+            if (role === 'Passenger') {
+                navigate("/profile");
+            } else if (role === 'Owner' || role === 'Owner+Employee' || role === 'Admin') {
+                navigate("/owner");
+            } else if (role === 'Employee') {
+                navigate("/employee");
+            } else {
+                navigate("/profile");
+            }
+        }
+    }, [auth.isAuthenticated, auth.user, navigate]);
 
     const [formData, setFormData] = useState({
         email: "",
@@ -92,15 +108,8 @@ export default function Login() {
     };
 
     const redirectUserByRole = (role: string) => {
-        if (role === 'Passenger') {
-            navigate("/profile");
-        } else if (role === 'Owner' || role === 'Owner+Employee' || role === 'Admin') {
-            navigate("/owner");
-        } else if (role === 'Employee') {
-            navigate("/employee");
-        } else {
-            navigate("/profile");
-        }
+        // Redirection now handled by useEffect
+        console.log("Auth state updated, waiting for useEffect to redirect...", role);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

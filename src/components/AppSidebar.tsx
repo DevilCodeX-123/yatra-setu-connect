@@ -40,11 +40,10 @@ const menuGroups = {
   consumer: [
     { title: "sidebar.home", url: "/", icon: Home },
     { title: "sidebar.transaction", url: "/transactions", icon: History },
-    { title: "sidebar.account", url: "/account", icon: UserCircle },
     { title: "sidebar.buses", url: "/buses", icon: Bus },
-    { title: "sidebar.profile", url: "/profile", icon: User },
     { title: "sidebar.pastRides", url: "/profile/past-rides", icon: Route },
     { title: "sidebar.employee", url: "/employee", icon: Shield },
+    { title: "Profile", url: "/account", icon: UserCircle },
     { title: "sidebar.support", url: "/support", icon: HelpCircle },
   ],
   passenger: [

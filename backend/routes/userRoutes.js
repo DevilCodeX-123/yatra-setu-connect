@@ -71,6 +71,10 @@ router.post('/login', async (req, res) => {
             id: 'demo-123',
             name: 'Yatra Setu Admin',
             email: email,
+            phone: '9988776655',
+            age: 28,
+            gender: 'Male',
+            address: { city: 'Mumbai', state: 'Maharashtra' },
             role: email.includes('admin') ? 'Admin' : 'Passenger',
             walletBalance: 2500
         };
@@ -103,7 +107,15 @@ router.post('/login', async (req, res) => {
 // Get user profile
 router.get('/profile', verifyToken, requireAuth, async (req, res) => {
     if (mongoose.connection.readyState !== 1) {
-        return res.json({ ...req.user, walletBalance: 2500, phone: '9988776655', upiId: 'demo@ybl' });
+        return res.json({
+            ...req.user,
+            walletBalance: 2500,
+            phone: '9988776655',
+            age: 28,
+            gender: 'Male',
+            address: { city: 'Mumbai', state: 'Maharashtra' },
+            upiId: 'demo@ybl'
+        });
     }
     try {
         const user = await User.findById(req.user.id).select('-password');
