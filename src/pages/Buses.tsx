@@ -15,7 +15,7 @@ export default function Buses() {
         const fetchBuses = async () => {
             try {
                 const data = await api.getBuses();
-                setBuses(data);
+                setBuses(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error("Failed to fetch buses:", err);
             } finally {
@@ -70,7 +70,7 @@ export default function Buses() {
                                                         </h3>
                                                         <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded text-[10px] font-black">
                                                             <span className="text-[10px]">★</span>
-                                                            {bus.rating?.toFixed(1) || "4.0"}
+                                                            {(Number(bus.rating) || 4.0).toFixed(1)}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">

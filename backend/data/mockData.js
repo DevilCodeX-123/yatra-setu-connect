@@ -60,6 +60,45 @@ const generateMassiveMockBuses = () => {
     return [...basic, ...extra];
 };
 
+const MOCK_OFFICIAL_BUSES = [
+    {
+        _id: 'off001', busNumber: 'DL-01-S-1001', orgCategory: 'School', orgName: 'Delhi Public School, Noida',
+        state: 'Delhi', district: 'New Delhi', town: 'Noida', pinCode: '201301',
+        status: 'Active', liveLocation: { lat: 28.5355, lng: 77.3910 }, route: { from: 'Noida Sec 62', to: 'DPS Noida' }
+    },
+    {
+        _id: 'off002', busNumber: 'KA-01-C-2002', orgCategory: 'College', orgName: 'BMS College of Engineering',
+        state: 'Karnataka', district: 'Bengaluru Urban (Bangalore)', town: 'Bengaluru (Bangalore)', pinCode: '560019',
+        status: 'Active', liveLocation: { lat: 12.9351, lng: 77.6101 }, route: { from: 'Koramangala', to: 'BMS College' }
+    },
+    {
+        _id: 'off003', busNumber: 'MH-12-B-3003', orgCategory: 'Office', orgName: 'Infosys Pune Campus',
+        state: 'Maharashtra', district: 'Pune', town: 'Pune', pinCode: '411057',
+        status: 'Active', liveLocation: { lat: 18.5679, lng: 73.9143 }, route: { from: 'Kothrud', to: 'Infosys Campus' }
+    },
+    {
+        _id: 'off004', busNumber: 'KA-01-S-4004', orgCategory: 'School', orgName: 'Kendriya Vidyalaya, HSR Layout',
+        state: 'Karnataka', district: 'Bengaluru Urban (Bangalore)', town: 'Bengaluru (Bangalore)', pinCode: '560102',
+        status: 'Active', liveLocation: { lat: 12.9121, lng: 77.6446 }, route: { from: 'HSR Layout', to: 'KV School' }
+    },
+    {
+        _id: 'off005', busNumber: 'RJ-14-O-5005', orgCategory: 'Office', orgName: 'HCL Technologies Jaipur',
+        state: 'Rajasthan', district: 'Jaipur', town: 'Jaipur', pinCode: '302022',
+        status: 'Active', liveLocation: { lat: 26.9124, lng: 75.7873 }, route: { from: 'Mansarovar', to: 'HCL Campus' }
+    },
+    {
+        _id: 'off006', busNumber: 'KA-01-C-6677', orgCategory: 'College', orgName: 'IIT Campus Bengaluru',
+        state: 'Karnataka', district: 'Bengaluru Urban (Bangalore)', town: 'Bengaluru (Bangalore)', pinCode: '560001',
+        status: 'Active', liveLocation: { lat: 12.9716, lng: 77.5946 }, route: { from: 'Majestic', to: 'IIT Campus' }
+    },
+    {
+        _id: 'off007', busNumber: 'RJ-20-C-7007', orgCategory: 'College', orgName: 'RTU Kota',
+        state: 'Rajasthan', district: 'Kota', town: 'Kota', pinCode: '324010', activationCode: '123456',
+        status: 'Active', liveLocation: { lat: 25.1311, lng: 75.8034 }, route: { from: 'Nayapura', to: 'RTU Campus' }
+    }
+];
+
 module.exports = {
-    MOCK_BUSES: generateMassiveMockBuses()
+    MOCK_BUSES: generateMassiveMockBuses(),
+    MOCK_OFFICIAL_BUSES
 };

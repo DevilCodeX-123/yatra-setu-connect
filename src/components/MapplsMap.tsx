@@ -33,20 +33,40 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
     const [error, setError] = useState<string | null>(null);
     const [mapReady, setMapReady] = useState(false);
 
+    // Follow Mode State
+    const [isFollowing, setIsFollowing] = useState(true);
+
+    // State to store the full decoded path for trimming
+    const [fullDecodedPath, setFullDecodedPath] = useState<{ lat: number; lng: number }[]>([]);
+
     const sdkKey = import.meta.env.VITE_MAPPLS_SDK_KEY;
 
     // ===== 1. INITIALIZE MAP =====
-    const initMap = () => {
+    const initMap = (retryCount = 0) => {
+        console.log(`Mappls: Initializing map (attempt ${retryCount + 1})...`);
+
         if (!window.mappls) {
-            setError("Mappls SDK not loaded.");
+            if (retryCount < 8) {
+                console.log("Mappls: SDK not found yet, retrying in 500ms...");
+                setTimeout(() => initMap(retryCount + 1), 500);
+                return;
+            }
+            setError("Mappls SDK failed to load. Please check your internet connection.");
             setLoading(false);
             return;
         }
 
         const createMap = () => {
             try {
+                const container = document.getElementById('mappls-map-container');
+                if (!container) {
+                    console.error("Mappls: Map container div not found!");
+                    return;
+                }
+
+                console.log("Mappls: Creating map instance...");
                 const mapObj = new window.mappls.Map('mappls-map-container', {
-                    center: [12.9716, 77.5946], // Bengaluru [lat, lng]
+                    center: [12.9716, 77.5946], // Bengaluru
                     zoom: 10,
                     zoomControl: true,
                     search: false,
@@ -54,51 +74,102 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
 
                 mapInstance.current = mapObj;
 
+                // DETECT MANUAL INTERACTION to pause Follow Mode
+                const stopFollowing = () => {
+                    setIsFollowing(false);
+                    console.log("Mappls: Manual interaction detected, pausing Follow Mode");
+                };
+
+                mapObj.on('dragstart', stopFollowing);
+                mapObj.on('zoomstart', stopFollowing);
+
                 const onMapReady = () => {
                     if (!mapReady) {
                         setMapReady(true);
                         setLoading(false);
-                        console.log("Mappls: Map Ready");
-                        // Small delay to let the map fully render before adding overlays
+                        console.log("Mappls: Map Ready & Fully Rendered");
                         setTimeout(() => {
                             if (mapObj.resize) mapObj.resize();
-                            drawAll();
-                        }, 800);
+                            drawStatic();
+                            drawDynamic();
+                        }, 500);
                     }
                 };
 
-                // Listen for map load event
                 if (mapObj.addListener) mapObj.addListener('load', onMapReady);
-                else if (mapObj.on) mapObj.on('load', onMapReady);
+                if (mapObj.on) mapObj.on('load', onMapReady);
 
-                // Safety fallback if event never fires
                 setTimeout(() => {
-                    if (!mapReady) onMapReady();
-                }, 5000);
+                    if (!mapReady) {
+                        console.log("Mappls: Load event timed out, forcing ready state");
+                        onMapReady();
+                    }
+                }, 4000);
 
             } catch (err: any) {
-                setError(`Map creation failed: ${err.message}`);
+                console.error("Mappls: Map creation error:", err);
+                setError(`Map setup failed: ${err.message}`);
                 setLoading(false);
             }
         };
 
         if (window.mappls.initialize) {
-            window.mappls.initialize(sdkKey, createMap);
+            try {
+                window.mappls.initialize(sdkKey, createMap);
+            } catch (err) {
+                console.warn("Mappls: initialize call failed, trying direct creation", err);
+                createMap();
+            }
         } else {
             createMap();
         }
     };
 
-    // ===== 2. DRAW ALL (markers + route) =====
-    const drawAll = () => {
+    // ===== 2. DRAWING LOGIC =====
+
+    // Initial draw for static elements (stops, road geometry)
+    const drawStatic = () => {
         const map = mapInstance.current;
         if (!map || !mapReady) return;
 
-        clearAll();
+        console.log("Mappls: Drawing static overlays (stops, route)...");
+
+        // Only clear markers and initial route
+        markersRef.current.forEach(m => { try { if (m.remove) m.remove(); } catch (e) { } });
+        markersRef.current = [];
+
+        if (polylineRef.current) { try { if (polylineRef.current.remove) polylineRef.current.remove(); } catch (e) { } polylineRef.current = null; }
+        if (routeLayerRef.current) { try { if (routeLayerRef.current.remove) routeLayerRef.current.remove(); } catch (e) { } routeLayerRef.current = null; }
+
         addMarkers();
         addRoute();
+    };
+
+    // Update for dynamic elements (bus, user, trimming)
+    const drawDynamic = () => {
+        const map = mapInstance.current;
+        if (!map || !mapReady) return;
+
+        console.log("Mappls: Updating dynamic overlays...");
         updateBusMarker();
         updateUserMarker();
+    };
+
+    // Helper to find index of closest point in the path to the bus
+    const getClosestPathIndex = (busPos: { lat: number, lng: number }, path: { lat: number, lng: number }[]) => {
+        let minIdx = 0;
+        let minDist = Infinity;
+
+        for (let i = 0; i < path.length; i++) {
+            const dx = busPos.lat - path[i].lat;
+            const dy = busPos.lng - path[i].lng;
+            const d = dx * dx + dy * dy;
+            if (d < minDist) {
+                minDist = d;
+                minIdx = i;
+            }
+        }
+        return minIdx;
     };
 
     // ===== 3. CLEAR ALL OVERLAYS =====
@@ -203,16 +274,66 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
         const { lat, lng } = busLocation;
         if (isNaN(lat) || isNaN(lng)) return;
 
+        // Dynamic Path Trimming Logic
+        if (fullDecodedPath.length > 0) {
+            const startIdx = getClosestPathIndex({ lat, lng }, fullDecodedPath);
+            const remainingPath = fullDecodedPath.slice(startIdx);
+
+            if (remainingPath.length >= 2) {
+                const path = remainingPath.map(p => new window.mappls.LatLng(p.lat, p.lng));
+
+                // OPTIMIZATION: Update existing path instead of clearing/redrawing
+                if (routeLayerRef.current) {
+                    try {
+                        if (routeLayerRef.current.setPath) {
+                            routeLayerRef.current.setPath(path);
+                        } else {
+                            // Fallback if setPath is missing in this version
+                            routeLayerRef.current.remove();
+                            routeLayerRef.current = new window.mappls.Polyline({
+                                map: map,
+                                path: path,
+                                strokeColor: '#2563eb',
+                                strokeWeight: 7,
+                                strokeOpacity: 0.9,
+                                fitBounds: false
+                            });
+                        }
+                    } catch (e) {
+                        console.warn("Mappls: setPath failed, redrawing.", e);
+                    }
+                } else {
+                    // Initial creation
+                    const trimmedPoly = new window.mappls.Polyline({
+                        map: map,
+                        path: path,
+                        strokeColor: '#2563eb',
+                        strokeWeight: 7,
+                        strokeOpacity: 0.9,
+                        fitBounds: false
+                    });
+                    routeLayerRef.current = trimmedPoly;
+                }
+            }
+        }
+
         const busMarkerHTML = `
+            <style>
+                @keyframes busPulse {
+                    0% { transform: scale(1) rotate(45deg); box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
+                    50% { transform: scale(1.1) rotate(45deg); box-shadow: 0 0 0 20px rgba(16,185,129,0); }
+                    100% { transform: scale(1) rotate(45deg); box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+                }
+            </style>
             <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-                <div style="background:#10b981;color:#fff;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:900;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,0.2);text-transform:;letter-spacing:0.5px;border:1px solid rgba(255,255,255,0.3);">
-                    LIVE BUS
+                <div style="background:#059669;color:#fff;border-radius:12px;padding:4px 12px;font-size:10px;font-weight:900;margin-bottom:8px;box-shadow:0 8px 16px rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:1px;border:1.5px solid rgba(255,255,255,0.4);white-space:nowrap;backdrop-blur:md;">
+                    MAIN BUS
                 </div>
-                <div style="width:32px;height:32px;background:#10b981;border:3px solid #fff;border-radius:12px;box-shadow:0 4px 12px rgba(16,185,129,0.4);display:flex;align-items:center;justify-center;transform:rotate(45deg);">
-                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="3" fill="none" style="transform:rotate(-45deg);margin:auto;">
-                        <circle cx="7" cy="17" r="2"></circle>
-                        <circle cx="17" cy="17" r="2"></circle>
+                <div style="width:44px;height:44px;background:#10b981;border:4px solid #fff;border-radius:16px;box-shadow:0 10px 25px rgba(16,185,129,0.6);display:flex;align-items:center;justify-content:center;animation:busPulse 2s infinite ease-in-out;">
+                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="white" stroke-width="3" fill="none" style="transform:rotate(-45deg);">
                         <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h10"></path>
+                        <circle cx="7" cy="17" r="2" fill="white"></circle>
+                        <circle cx="17" cy="17" r="2" fill="white"></circle>
                     </svg>
                 </div>
             </div>
@@ -221,15 +342,22 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
         try {
             if (busMarkerRef.current) {
                 busMarkerRef.current.setPosition({ lat, lng });
+                // Auto-center as the bus moves (smoothly) ONLY IF in Follow Mode
+                if (isFollowing) {
+                    map.setCenter({ lat, lng });
+                }
             } else {
                 busMarkerRef.current = new window.mappls.Marker({
                     map: map,
                     position: { lat, lng },
                     html: busMarkerHTML,
-                    width: 60,
-                    height: 60,
-                    offset: [0, -20]
+                    width: 80,
+                    height: 80,
+                    offset: [0, -30]
                 });
+                // Initial center on bus
+                map.setCenter({ lat, lng });
+                map.setZoom(14);
             }
         } catch (e) {
             console.warn("Mappls: Failed to update bus marker", e);
@@ -432,6 +560,8 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
             }
 
             if (pts.length > 0) {
+                setFullDecodedPath(pts); // STORE for trimming
+
                 // Remove previous layers
                 if (polylineRef.current) {
                     try { polylineRef.current.remove(); } catch (e) { }
@@ -442,7 +572,14 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
                     routeLayerRef.current = null;
                 }
 
-                const path = pts.map(p => new window.mappls.LatLng(p.lat, p.lng));
+                // Initial draw (full or starting from bus)
+                let renderPts = pts;
+                if (busLocation) {
+                    const startIdx = getClosestPathIndex(busLocation, pts);
+                    renderPts = pts.slice(startIdx);
+                }
+
+                const path = renderPts.map(p => new window.mappls.LatLng(p.lat, p.lng));
                 const roadPoly = new window.mappls.Polyline({
                     map: map,
                     path: path,
@@ -452,7 +589,7 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
                     fitBounds: false
                 });
                 routeLayerRef.current = roadPoly;
-                console.log(`Mappls: Road route rendered smoothly (${pts.length} pts)`);
+                console.log(`Mappls: Initial road route rendered (${renderPts.length} pts)`);
             }
         } catch (e) {
             console.warn("Mappls: Failed to draw road route from geometry", e);
@@ -465,7 +602,15 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
         if (!map || points.length < 2) return;
 
         try {
-            const path = points.map(p => new window.mappls.LatLng(p.lat, p.lng));
+            setFullDecodedPath(points); // Support trimming for fallback too
+
+            let renderPts = points;
+            if (busLocation) {
+                const startIdx = getClosestPathIndex(busLocation, points);
+                renderPts = points.slice(startIdx);
+            }
+
+            const path = renderPts.map(p => new window.mappls.LatLng(p.lat, p.lng));
             const poly = new window.mappls.Polyline({
                 map: map,
                 path: path,
@@ -476,7 +621,7 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
                 dasharray: dash,
             });
             polylineRef.current = poly;
-            console.log("Mappls: Fallback polyline drawn");
+            console.log("Mappls: Fallback polyline drawn (with trimming support)");
         } catch (e) {
             console.warn("Mappls: Polyline draw failed", e);
         }
@@ -491,24 +636,28 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
         }
 
         const scriptId = 'mappls-sdk-script';
-        if (!document.getElementById(scriptId)) {
-            const s = document.createElement('script');
-            s.id = scriptId;
-            // Upgrade to v3.2 for better stability and remove explicit CSS to avoid 412 error
-            s.src = `https://sdk.mappls.com/map/sdk/web?v=3.2&access_token=${sdkKey}`;
-            s.async = true;
-            s.onload = () => {
-                console.log("Mappls: SDK v3.2 script loaded");
-                setTimeout(initMap, 1000);
-            };
-            s.onerror = () => {
-                setError("Failed to load map engine.");
-                setLoading(false);
-            };
-            document.head.appendChild(s);
-        } else if (window.mappls) {
-            initMap();
+
+        // CLEANUP: Remove any existing scripts if they failed
+        const existingScript = document.getElementById(scriptId);
+        if (existingScript) {
+            existingScript.remove();
         }
+
+        const s = document.createElement('script');
+        s.id = scriptId;
+        // Use v3 (stable) and ensure access_token is first
+        s.src = `https://sdk.mappls.com/map/sdk/web?v=3&access_token=${sdkKey}`;
+        s.async = true;
+        s.onload = () => {
+            console.log("Mappls: SDK v3 script loaded successfully");
+            setTimeout(() => initMap(0), 1000);
+        };
+        s.onerror = () => {
+            console.error("Mappls: Script load error!");
+            setError("Failed to load map engine. Check SDK key or internet.");
+            setLoading(false);
+        };
+        document.head.appendChild(s);
 
         return () => {
             if (mapInstance.current) {
@@ -517,12 +666,19 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
         };
     }, []);
 
-    // ===== LIFECYCLE: Re-draw on data change =====
+    // ===== LIFECYCLE: Static Data (Stops, Route Geometry) =====
     useEffect(() => {
         if (mapReady) {
-            drawAll();
+            drawStatic();
         }
-    }, [markers, routePoints, busLocation, userLocation, mapReady]);
+    }, [markers, routePoints, mapReady]);
+
+    // ===== LIFECYCLE: Dynamic Data (Bus, User Location) =====
+    useEffect(() => {
+        if (mapReady) {
+            drawDynamic();
+        }
+    }, [busLocation, userLocation, mapReady]);
 
     return (
         <div className={`relative w-full h-full overflow-hidden bg-slate-100 ${className}`} style={{ minHeight: '350px' }}>
@@ -545,6 +701,30 @@ export default function MapplsMap({ markers = [], routePoints, busLocation, user
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* Re-center Button - Visible when manual interaction paused auto-follow */}
+            {!isFollowing && mapReady && (
+                <button
+                    onClick={() => {
+                        setIsFollowing(true);
+                        if (busLocation && mapInstance.current) {
+                            mapInstance.current.setCenter({ lat: busLocation.lat, lng: busLocation.lng });
+                            mapInstance.current.setZoom(14);
+                        }
+                    }}
+                    className="absolute top-4 right-4 z-[50] p-3 bg-white/90 backdrop-blur-md border border-slate-200 rounded-2xl shadow-2xl hover:bg-white transition-all group active:scale-95 animate-in fade-in slide-in-from-top-2 duration-300"
+                >
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                            </svg>
+                        </div>
+                        <span className="text-[10px] font-black text-slate-800 tracking-tight uppercase pr-1">Re-center Bus</span>
+                    </div>
+                </button>
             )}
         </div>
     );

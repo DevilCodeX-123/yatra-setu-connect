@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Shield,
   School,
+  Building2,
   Route,
   CreditCard,
   Wifi
@@ -42,8 +43,8 @@ const menuGroups = {
     { title: "sidebar.transaction", url: "/transactions", icon: History },
     { title: "sidebar.buses", url: "/buses", icon: Bus },
     { title: "sidebar.pastRides", url: "/profile/past-rides", icon: Route },
-    { title: "sidebar.employee", url: "/employee", icon: Shield },
     { title: "Profile", url: "/account", icon: UserCircle },
+    { title: "sidebar.orgTracking", url: "/official-tracking", icon: Building2 },
     { title: "sidebar.support", url: "/support", icon: HelpCircle },
   ],
   passenger: [

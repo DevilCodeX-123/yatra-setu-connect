@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Search, MapPin, Calendar, Clock, Users, ArrowRight,
   CheckCircle, Radio, Bus, Leaf, Shield, TrendingUp,
-  ChevronRight, Star, AlertCircle, Navigation
+  ChevronRight, Star, AlertCircle, Navigation, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,15 @@ export default function Home() {
   const [showToSuggestions, setShowToSuggestions] = useState(false);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const today = getLocalDateString(new Date());
 
   useEffect(() => {
     const init = async () => {
@@ -92,15 +101,6 @@ export default function Home() {
       }
     }
   };
-
-  const getLocalDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const today = getLocalDateString(new Date());
 
   const toggleDate = (dateStr: string) => {
     // Force single selection as requested
@@ -168,7 +168,7 @@ export default function Home() {
           </div>
 
           {/* Search Card */}
-          <div className="max-w-4xl mx-auto bg-card border border-border shadow-2xl rounded-[32px] p-6 md:p-8 backdrop-blur-xl relative z-10">
+          <div className="max-w-4xl mx-auto bg-card dark:bg-[#0B1120] border border-border dark:border-blue-900/30 shadow-2xl rounded-[32px] p-6 md:p-8 backdrop-blur-xl relative z-10">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-black text-muted-foreground mb-2 ml-1 opacity-60">
@@ -324,7 +324,7 @@ export default function Home() {
       </section>
 
       {/* Stats Bar */}
-      <section className="bg-card border-b border-border shadow-sm">
+      <section className="bg-card dark:bg-[#03081E] border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
@@ -365,7 +365,7 @@ export default function Home() {
           <div className="grid gap-4">
             {loading ? (
               // ... loading state
-              <div className="text-center py-20 bg-secondary/50 rounded-3xl border border-dashed border-border">
+              <div className="text-center py-20 bg-secondary/50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-border">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                   <p className="font-black text-xs opacity-60">Scanning Network...</p>
@@ -373,9 +373,9 @@ export default function Home() {
               </div>
             ) : liveBuses.length === 0 ? (
               // ... empty state
-              <div className="bg-card border border-border p-16 text-center rounded-[32px] shadow-card">
+              <div className="bg-card dark:bg-[#0B1120] border border-border p-16 text-center rounded-[32px] shadow-card">
                 <div className="max-w-xs mx-auto space-y-4">
-                  <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+                  <div className="w-20 h-20 bg-secondary dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Bus className="w-8 h-8 text-muted-foreground opacity-20" />
                   </div>
                   <p className="text-xl font-black text-foreground">{t('bus.noBuses')}</p>
@@ -384,7 +384,7 @@ export default function Home() {
               </div>
             ) : (
               liveBuses.map((bus, idx) => (
-                <div key={bus._id} className={`bg-card border ${idx === 0 ? 'border-amber-500/50 shadow-amber-500/10' : 'border-border'} p-6 flex flex-col md:flex-row md:items-center gap-6 hover:shadow-2xl transition-all rounded-[28px] group relative overflow-hidden`}>
+                <div key={bus._id} className={`bg-card dark:bg-[#0B1120] border ${idx === 0 ? 'border-amber-500/50 shadow-amber-500/10' : 'border-border dark:border-blue-900/20'} p-6 flex flex-col md:flex-row md:items-center gap-6 hover:shadow-2xl transition-all rounded-[28px] group relative overflow-hidden`}>
                   {idx === 0 && (
                     <div className="absolute top-0 right-0 px-4 py-1 bg-gradient-to-l from-amber-500 to-amber-600 text-white text-[8px] font-black italic tracking-widest rounded-bl-xl shadow-lg flex items-center gap-1.5 z-10">
                       <Star className="w-2.5 h-2.5 fill-white" />
@@ -496,7 +496,7 @@ export default function Home() {
       {/* Quick Actions */}
       <section className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <Link to="/booking" className="bg-card border border-border p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
+          <Link to="/booking" className="bg-card dark:bg-[#0B1120] border border-border dark:border-blue-900/20 p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-12 translate-x-12" />
             <div className="p-4 rounded-2xl shrink-0 bg-primary/10 group-hover:scale-110 transition-transform">
               <Bus className="w-7 h-7 text-primary" />
@@ -508,7 +508,7 @@ export default function Home() {
             <ArrowRight className="w-4 h-4 ml-auto text-primary/30 group-hover:translate-x-1 transition-transform" />
           </Link>
 
-          <Link to="/verify" className="bg-card border border-border p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
+          <Link to="/verify" className="bg-card dark:bg-[#0B1120] border border-border dark:border-blue-900/20 p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -translate-y-12 translate-x-12" />
             <div className="p-4 rounded-2xl shrink-0 bg-emerald-500/10 group-hover:scale-110 transition-transform">
               <CheckCircle className="w-7 h-7 text-emerald-600" />
@@ -520,7 +520,19 @@ export default function Home() {
             <ArrowRight className="w-4 h-4 ml-auto text-emerald-500/30 group-hover:translate-x-1 transition-transform" />
           </Link>
 
-          <Link to="/emergency" className="bg-card border border-red-500/20 p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
+          <Link to="/official-tracking" className="bg-card dark:bg-[#0B1120] border border-border dark:border-blue-900/20 p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-12 translate-x-12" />
+            <div className="p-4 rounded-2xl shrink-0 bg-blue-500/10 group-hover:scale-110 transition-transform">
+              <Building2 className="w-7 h-7 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-foreground">{t('nav.orgTracking')}</h3>
+              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('nav.orgTrackingDesc')}</p>
+            </div>
+            <ArrowRight className="w-4 h-4 ml-auto text-blue-500/30 group-hover:translate-x-1 transition-transform" />
+          </Link>
+
+          <Link to="/emergency" className="bg-card dark:bg-[#0B1120] border border-red-500/20 p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -translate-y-12 translate-x-12" />
             <div className="p-4 rounded-2xl shrink-0 bg-red-500/10 group-hover:scale-110 transition-transform text-red-600">
               <AlertCircle className="w-7 h-7" />
@@ -535,7 +547,7 @@ export default function Home() {
       </section>
 
       {/* Why Yatra Setu? (Features) */}
-      <section className="bg-secondary/30 dark:bg-secondary/10 py-20 border-t border-border">
+      <section className="bg-secondary/30 dark:bg-black py-20 border-t border-border">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary mb-4">{t('home.why.badge')}</div>
@@ -548,8 +560,8 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {featureItems.map(f => (
-              <div key={f.titleKey} className="bg-card border border-border p-8 rounded-[32px] text-center hover:shadow-2xl transition-all group">
-                <div className="inline-flex p-4 rounded-2xl mb-6 bg-secondary group-hover:bg-primary group-hover:text-white transition-all">
+              <div key={f.titleKey} className="bg-card dark:bg-[#0B1120] border border-border dark:border-blue-900/20 p-8 rounded-[32px] text-center hover:shadow-2xl hover:shadow-primary/5 transition-all group">
+                <div className="inline-flex p-4 rounded-2xl mb-6 bg-secondary dark:bg-slate-900 group-hover:bg-primary group-hover:text-white transition-all">
                   <f.icon className="w-6 h-6 text-primary group-hover:text-white" />
                 </div>
                 <h3 className="text-lg font-black text-foreground mb-3">{t(f.titleKey)}</h3>

@@ -18,7 +18,6 @@ import AdminPanel from "./pages/AdminPanel";
 import SchoolBus from "./pages/SchoolBus";
 import Emergency from "./pages/Emergency";
 import Transactions from "./pages/Transactions";
-import Account from "./pages/Account";
 import Buses from "./pages/Buses";
 import Profile from "./pages/Profile";
 import ProfileBookings from "./pages/ProfileBookings";
@@ -32,6 +31,7 @@ import BusTracking from "./pages/BusTracking";
 import Login from "./pages/Login";
 import RouteSelection from "./pages/RouteSelection";
 import NotFound from "./pages/NotFound";
+import OrganizationTracking from "./pages/OrganizationTracking";
 
 const queryClient = new QueryClient();
 
@@ -95,12 +95,15 @@ const AppShell = () => {
           <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
           <Route path="/school-bus" element={<ProtectedRoute><SchoolBus /></ProtectedRoute>} />
           <Route path="/emergency" element={<ProtectedRoute><Emergency /></ProtectedRoute>} />
+          <Route path="/official-tracking" element={<ProtectedRoute><OrganizationTracking /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
     </div>
   );
 };
+
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -111,7 +114,9 @@ const App = () => (
           <Sonner />
           <SidebarProvider defaultOpen={true}>
             <BrowserRouter>
-              <AppShell />
+              <ErrorBoundary>
+                <AppShell />
+              </ErrorBoundary>
             </BrowserRouter>
           </SidebarProvider>
         </TooltipProvider>

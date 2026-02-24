@@ -32,6 +32,10 @@ const UserSchema = new mongoose.Schema({
     upiId: { type: String },
     activationCode: { type: String },
     assignedBus: { type: mongoose.Schema.Types.ObjectId, ref: 'Bus' },
+    authorizedBuses: [{
+        bus: { type: mongoose.Schema.Types.ObjectId, ref: 'Bus' },
+        nickname: { type: String }
+    }],
     savedPassengers: [PassengerSchema],
     pnrHistory: [{ type: String }]
 }, {

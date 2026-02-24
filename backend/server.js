@@ -135,6 +135,7 @@ const mapRoutes = require('./routes/mapRoutes');
 const authRoutes = require('./routes/authRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
+const trackingRoutes = require('./routes/trackingRoutes');
 
 app.use('/api/buses', busRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -144,5 +145,6 @@ app.use('/api', miscRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/owner', ownerRoutes);
+app.use('/api/tracking', trackingRoutes);
 
 startServer();

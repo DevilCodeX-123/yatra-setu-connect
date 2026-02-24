@@ -85,6 +85,11 @@ export default function BusTracking() {
     const [speed, setSpeed] = useState(53);
     const [occupancy, setOccupancy] = useState(24);
 
+    // Adaptive Speed Logic States
+    const BASELINE_SPEED = 50;
+    const [calculationSpeed, setCalculationSpeed] = useState(BASELINE_SPEED);
+    const [speedStableTicks, setSpeedStableTicks] = useState(0);
+
     // Advanced SOS States
     const [sosHoldProgress, setSosHoldProgress] = useState(0);
     const [isSosHolding, setIsSosHolding] = useState(false);
@@ -113,8 +118,9 @@ export default function BusTracking() {
 
     const currentStationIndex = stations.findIndex(s => s.status === "In Transit");
     const nextUpcomingStation = useMemo(() => {
-        return stations.find(s => s.status === "Upcoming")?.name || busData.destination;
-    }, [stations, busData.destination]);
+        const next = stations.find(s => s.status === "Upcoming") || stations[stations.length - 1];
+        return next?.name || "Destination";
+    }, [stations]);
 
     // ===== 1. FETCH PRECISE ROUTE GEOMETRY =====
     useEffect(() => {
@@ -137,30 +143,60 @@ export default function BusTracking() {
     // ===== 2. SIMULATION LOGIC (Live Tracking) =====
     useEffect(() => {
         // Start position
-        let currentIdx = 0;
         const pts = busData.markers.map(m => ({ lat: m.lat, lng: m.lon }));
+        const dest = pts[pts.length - 1];
 
         if (!busLocation && pts.length > 0) {
             setBusLocation(pts[0]);
         }
 
         const interval = setInterval(() => {
-            // Update ETA and Speed
-            setEta(prev => Math.max(1, prev - (Math.random() > 0.9 ? 1 : 0)));
+            // Update Speed with slight fluctuation
             setSpeed(prev => {
                 const delta = Math.floor(Math.random() * 5) - 2;
-                return Math.max(45, Math.min(65, prev + delta));
+                const newSpeed = Math.max(45, Math.min(65, prev + delta));
+
+                // Adaptive Stability Check: 
+                // If current speed differs from calculation speed by > 8 km/h
+                // increment stability ticks. After ~40 ticks (~2 simulation mins),
+                // adopt the new speed for ETA calculation.
+                setCalculationSpeed(calcSpeed => {
+                    const diff = Math.abs(newSpeed - calcSpeed);
+                    if (diff > 8) {
+                        setSpeedStableTicks(t => {
+                            if (t >= 40) { // Stable for ~2 mins (40 * 3s = 120s)
+                                console.log(`Mappls: Speed stabilized at ${newSpeed}km/h. Updating ETA calc.`);
+                                return 0; // Reset
+                            }
+                            return t + 1;
+                        });
+                        // If we reached the limit, the next tick will use the new calcSpeed
+                        if (speedStableTicks >= 40) return newSpeed;
+                    } else {
+                        setSpeedStableTicks(0);
+                    }
+                    return calcSpeed;
+                });
+
+                return newSpeed;
             });
 
             // Move bus along the points
             setBusLocation(prev => {
                 if (!prev) return pts[0];
-                const target = pts[pts.length - 1];
                 const step = 0.0005;
-                const dLat = target.lat - prev.lat;
-                const dLng = target.lng - prev.lng;
+                const dLat = dest.lat - prev.lat;
+                const dLng = dest.lng - prev.lng;
                 const distance = Math.sqrt(dLat * dLat + dLng * dLng);
-                if (distance < step) return target;
+
+                // Calculate Real-Time ETA based on Distance and Calculation Speed
+                const distMeters = getDistance(prev.lat, prev.lng, dest.lat, dest.lng);
+                const distKm = distMeters / 1000;
+                const timeHours = distKm / calculationSpeed;
+                const timeMins = Math.max(1, Math.round(timeHours * 60));
+                setEta(timeMins);
+
+                if (distance < step) return dest;
                 return {
                     lat: prev.lat + (dLat / distance) * step,
                     lng: prev.lng + (dLng / distance) * step,
@@ -169,7 +205,7 @@ export default function BusTracking() {
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [busData.markers]);
+    }, [busData.markers, calculationSpeed, speedStableTicks]);
 
     // ===== 3. GPS MATCHING & PROXIMITY LOGIC =====
     useEffect(() => {
@@ -403,7 +439,7 @@ export default function BusTracking() {
                                     onClick={() => setIsPresenceCollapsed(!isPresenceCollapsed)}
                                     className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center hover:bg-secondary/50 transition-colors border-r border-border/50"
                                 >
-                                    <ChevronLeft className={`w-5 h-5 text-primary transition-transform duration-500 ${isPresenceCollapsed ? 'rotate-180' : ''}`} />
+                                    <ChevronLeft className={`w-5 h-5 text-primary transition-transform duration-500 ${isPresenceCollapsed ? '' : 'rotate-180'}`} />
                                 </button>
 
                                 <div className="pl-12 pr-6 py-6 flex flex-col gap-4">
@@ -684,45 +720,69 @@ export default function BusTracking() {
                     </div>
 
                     {/* ERGONOMIC BOTTOM TRAY */}
-                    <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 z-[120] pointer-events-none">
-                        <div className="max-w-7xl mx-auto flex items-center justify-end sm:justify-between gap-4 pointer-events-auto">
+                    <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-8 z-[120] pointer-events-none">
+                        <div className="max-w-7xl mx-auto flex flex-col items-center gap-6 pointer-events-auto">
 
-                            {/* COMPACT STATUS PILL (Hidden on mobile if SOS is prominent, or redesigned) */}
-                            <div className="hidden sm:flex flex-1 bg-card/90 border border-border rounded-[32px] py-4 px-8 items-center justify-between shadow-elevated backdrop-blur-3xl relative overflow-hidden group max-w-lg">
-                                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="flex flex-col relative z-10">
-                                    <span className="text-[8px] font-black text-muted-foreground tracking-[0.3em] mb-0.5 opacity-60">Live Eta</span>
-                                    <span className="text-lg font-black text-primary">{eta} Mins Away</span>
+                            {/* SOS BUTTON & CONTROLS (Moved Above) */}
+                            <div className="flex items-center justify-center gap-4">
+                                {/* SOS BUTTON (3s Hold) */}
+                                <div className="relative group">
+                                    <svg className="absolute -inset-1.5 w-[84px] h-[84px] -rotate-90 pointer-events-none group-hover:scale-110 transition-transform">
+                                        <circle cx="42" cy="42" r="36" fill="none" stroke="red" strokeWidth="5" strokeDasharray="226" strokeDashoffset={226 - (226 * sosHoldProgress / 100)} className="transition-all duration-100 ease-linear shadow-lg" />
+                                    </svg>
+                                    <button
+                                        onMouseDown={() => setIsSosHolding(true)}
+                                        onMouseUp={() => setIsSosHolding(false)}
+                                        onTouchStart={() => setIsSosHolding(true)}
+                                        onTouchEnd={() => setIsSosHolding(false)}
+                                        className="w-18 h-18 sm:w-20 sm:h-20 bg-red-600 rounded-[32px] flex flex-col items-center justify-center shadow-[0_20px_50px_rgba(220,38,38,0.5)] active:scale-95 transition-all border-4 border-background relative z-10 shrink-0"
+                                    >
+                                        <AlertTriangle className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+                                    </button>
                                 </div>
-                                <div className="h-10 w-[1px] bg-border mx-4" />
-                                <div className="flex-1 text-right relative z-10 min-w-0">
-                                    <span className="text-[8px] font-black text-muted-foreground tracking-[0.3em] mb-0.5 opacity-60">Next Stop</span>
-                                    <span className="text-xs font-black text-foreground block overflow-hidden text-ellipsis whitespace-nowrap">
-                                        {nextUpcomingStation}
-                                    </span>
-                                </div>
+
+                                {isInside && (
+                                    <button
+                                        onClick={() => setIsRefreshing(true)}
+                                        className="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center hover:bg-secondary/80 transition-all opacity-60 hover:opacity-100"
+                                    >
+                                        <RefreshCw className={`w-5 h-5 text-foreground ${isRefreshing ? 'animate-spin' : ''}`} />
+                                    </button>
+                                )}
                             </div>
 
-                            {/* MOBILE STATUS PILL (Smaller for very small screens) */}
-                            <div className="sm:hidden flex bg-card/95 border border-border rounded-full py-2.5 px-5 items-center gap-3 shadow-lg backdrop-blur-md">
-                                <Clock className="w-3.5 h-3.5 text-primary" />
-                                <span className="text-xs font-black">{eta} MIN</span>
-                            </div>
+                            {/* CENTERED STATUS PILL (Now at the very bottom) */}
+                            <div className="flex flex-col items-center gap-4 w-full">
+                                {/* DESKTOP/TABLET VERSION (Wide) */}
+                                <div className="hidden sm:flex bg-card/90 border border-border rounded-[40px] py-4 px-10 items-center justify-between shadow-elevated backdrop-blur-3xl relative overflow-hidden group w-full max-w-2xl transform hover:scale-[1.01] transition-all">
+                                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="flex flex-col relative z-10 shrink-0">
+                                        <span className="text-[10px] font-black text-muted-foreground tracking-[0.3em] mb-1 opacity-60 uppercase">Live ETA Status</span>
+                                        <span className="text-2xl font-black text-primary flex items-center gap-3">
+                                            {eta} Mins Away <span className="text-muted-foreground/30 text-sm font-black mt-1">from</span>
+                                        </span>
+                                    </div>
+                                    <div className="h-12 w-[1px] bg-border mx-8" />
+                                    <div className="flex-1 text-right relative z-10 min-w-0">
+                                        <span className="text-[10px] font-black text-muted-foreground tracking-[0.3em] mb-1 opacity-60 uppercase">Arrival Point</span>
+                                        <span className="text-lg font-black text-foreground block overflow-hidden text-ellipsis whitespace-nowrap">
+                                            {nextUpcomingStation}
+                                        </span>
+                                    </div>
+                                </div>
 
-                            {/* SOS BUTTON (3s Hold) */}
-                            <div className="relative group self-end">
-                                <svg className="absolute -inset-1 w-[72px] h-[72px] -rotate-90 pointer-events-none group-hover:scale-110 transition-transform">
-                                    <circle cx="36" cy="36" r="32" fill="none" stroke="red" strokeWidth="4" strokeDasharray="201" strokeDashoffset={201 - (201 * sosHoldProgress / 100)} className="transition-all duration-100 ease-linear shadow-lg" />
-                                </svg>
-                                <button
-                                    onMouseDown={() => setIsSosHolding(true)}
-                                    onMouseUp={() => setIsSosHolding(false)}
-                                    onTouchStart={() => setIsSosHolding(true)}
-                                    onTouchEnd={() => setIsSosHolding(false)}
-                                    className="w-16 h-16 bg-red-600 rounded-[28px] flex flex-col items-center justify-center shadow-[0_15px_40px_rgba(220,38,38,0.4)] active:scale-95 transition-all border-4 border-background relative z-10 shrink-0"
-                                >
-                                    <AlertTriangle className="w-6 h-6 text-white" />
-                                </button>
+                                {/* MOBILE VERSION (Compact & Centered) */}
+                                <div className="sm:hidden flex flex-col items-center gap-2">
+                                    <div className="bg-card/95 border border-border rounded-full py-3.5 px-8 flex items-center gap-4 shadow-xl backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-500">
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <Clock className="w-4 h-4 text-primary animate-pulse" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-black text-foreground">{eta} Mins Away</p>
+                                            <p className="text-[9px] font-black text-muted-foreground opacity-60 uppercase tracking-widest leading-none">To {nextUpcomingStation}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

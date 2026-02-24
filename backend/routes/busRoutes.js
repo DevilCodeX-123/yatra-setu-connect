@@ -5,7 +5,7 @@ const Bus = require('../models/Bus');
 const SeatLock = require('../models/SeatLock');
 const Booking = require('../models/Booking');
 
-const { MOCK_BUSES } = require('../data/mockData');
+const { MOCK_BUSES, MOCK_OFFICIAL_BUSES } = require('../data/mockData');
 
 // Get all buses
 router.get('/', async (req, res) => {
@@ -30,6 +30,166 @@ router.get('/cities', async (req, res) => {
         const toCities = await Bus.distinct('route.to');
         const cities = Array.from(new Set([...fromCities, ...toCities])).sort();
         res.json(cities);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/buses/official — search official buses (school/college/office)
+
+// GET /api/buses/official/districts — get districts for a state
+router.get('/official/districts', async (req, res) => {
+    const { state } = req.query;
+    if (!state) return res.status(400).json({ message: "State is required" });
+
+    if (mongoose.connection.readyState !== 1) {
+        const districts = Array.from(new Set(
+            MOCK_OFFICIAL_BUSES
+                .filter(b => b.state.toLowerCase().trim() === state.toLowerCase().trim())
+                .map(b => b.district)
+        )).sort();
+        return res.json(districts);
+    }
+    try {
+        const districts = await Bus.distinct('district', { state: new RegExp(`^${state}$`, 'i') });
+        res.json(districts.filter(Boolean).sort());
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/buses/official/names — get organization names
+router.get('/official/names', async (req, res) => {
+    const { state, district, orgCategory } = req.query;
+    if (mongoose.connection.readyState !== 1) {
+        let result = MOCK_OFFICIAL_BUSES;
+        if (state) result = result.filter(b => b.state.toLowerCase() === state.toLowerCase());
+        if (district) result = result.filter(b => b.district.toLowerCase() === district.toLowerCase());
+        if (orgCategory) result = result.filter(b => b.orgCategory === orgCategory);
+
+        const names = Array.from(new Set(result.map(b => b.orgName))).sort();
+        return res.json(names);
+    }
+    try {
+        const query = {};
+        if (state) query.state = new RegExp(`^${state}$`, 'i');
+        if (district) query.district = new RegExp(`^${district}$`, 'i');
+        if (orgCategory) query.orgCategory = orgCategory;
+
+        const names = await Bus.distinct('orgName', query);
+        res.json(names.filter(Boolean).sort());
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/buses/official/locations — get unique states
+router.get('/official/locations', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        const states = Array.from(new Set(MOCK_OFFICIAL_BUSES.map(b => b.state))).sort();
+        return res.json({ states });
+    }
+    try {
+        const states = await Bus.distinct('state');
+        res.json({ states: states.filter(Boolean).sort() });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Temporary Route to seed RTU Kota Bus - will be deleted after use
+router.get('/official/seed-rtu', async (req, res) => {
+    try {
+        const rtuBus = {
+            busNumber: 'RJ-20-C-7007',
+            name: 'RTU Kota Shuttle',
+            orgCategory: 'College',
+            orgName: 'RTU Kota',
+            state: 'Rajasthan',
+            district: 'Kota',
+            town: 'Kota',
+            pinCode: '324010',
+            activationCode: '123456',
+            status: 'Active',
+            liveLocation: { lat: 25.1311, lng: 75.8034, source: 'gps' },
+            route: { from: 'Nayapura', to: 'RTU Campus' },
+            type: 'Volvo',
+            totalSeats: 40,
+            pricePerKm: 1.5,
+            date: new Date().toISOString().split('T')[0],
+            seats: Array.from({ length: 40 }, (_, i) => ({
+                number: i + 1,
+                status: 'Available',
+                reservedFor: 'general'
+            }))
+        };
+
+        const doc = await Bus.findOneAndUpdate(
+            { busNumber: rtuBus.busNumber },
+            { $set: rtuBus },
+            { upsert: true, new: true }
+        );
+        res.json({ success: true, message: "RTU Kota Bus seeded!", bus: doc });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// Search official buses (school/college/office)
+router.get('/official', async (req, res) => {
+    const { state, district, town, pinCode, orgCategory, orgName } = req.query;
+    if (mongoose.connection.readyState !== 1) {
+        let result = MOCK_OFFICIAL_BUSES;
+        if (state) result = result.filter(b => b.state.toLowerCase().includes(state.toLowerCase()) || state.toLowerCase().includes(b.state.toLowerCase()));
+        if (district) result = result.filter(b => b.district.toLowerCase().includes(district.toLowerCase()) || district.toLowerCase().includes(b.district.toLowerCase()));
+        if (town) result = result.filter(b => b.town.toLowerCase().includes(town.toLowerCase()) || town.toLowerCase().includes(b.town.toLowerCase()));
+        if (orgName) result = result.filter(b => b.orgName.toLowerCase().includes(orgName.toLowerCase()) || orgName.toLowerCase().includes(b.orgName.toLowerCase()));
+
+        // Soft PIN filter: prioritize but don't fail search
+        if (pinCode && pinCode.length === 6) {
+            const pinMatches = result.filter(b => b.pinCode === pinCode);
+            if (pinMatches.length > 0) result = pinMatches;
+        }
+        return res.json(result);
+    }
+    try {
+        const query = {};
+        if (state) query.state = new RegExp(state, 'i');
+        if (district) query.district = new RegExp(district, 'i');
+        if (town) query.town = new RegExp(town, 'i');
+        if (pinCode) query.pinCode = pinCode;
+        if (orgCategory) query.orgCategory = orgCategory;
+        if (orgName) query.orgName = new RegExp(orgName, 'i');
+
+        console.log('🔍 [OFFICIAL SEARCH QUERY]', query);
+        const buses = await Bus.find(query);
+        console.log(`✨ [OFFICIAL SEARCH RESULT] Found ${buses.length} buses`);
+
+        if (buses.length > 0) {
+            res.json(buses);
+        } else {
+            console.log('🔄 [DB EMPTY] Falling back to mock data...');
+            let result = MOCK_OFFICIAL_BUSES;
+            const s = (state || "").toLowerCase().trim();
+            const d = (district || "").toLowerCase().trim();
+            const c = (orgCategory || "").toLowerCase().trim();
+            const n = (orgName || "").toLowerCase().trim();
+            const p = (pinCode || "").trim();
+
+            if (s) result = result.filter(b => b.state.toLowerCase().includes(s));
+            if (d) result = result.filter(b => b.district.toLowerCase().includes(d));
+            if (c) result = result.filter(b => (b.orgCategory || "").toLowerCase().includes(c));
+            if (n) result = result.filter(b => (b.orgName || "").toLowerCase().includes(n));
+
+            // Soft PIN filter: prioritize but don't fail search
+            if (p && p.length === 6) {
+                const pinMatches = result.filter(b => b.pinCode === p);
+                if (pinMatches.length > 0) result = pinMatches;
+            }
+
+            console.log(`✨ [MOCK RESULT] Found ${result.length} buses`);
+            res.json(result);
+        }
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

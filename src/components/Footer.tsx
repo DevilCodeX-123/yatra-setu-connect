@@ -56,14 +56,13 @@ export default function Footer() {
                 { href: "/passenger", label: t('nav.passenger') },
                 { href: "/driver", label: t('nav.driver') },
                 { href: "/owner", label: t('nav.owner') },
-                { href: "/employee", label: t('nav.employee') },
-                { href: "/admin", label: t('nav.admin') },
+              {href: "/admin", label: t('nav.admin') },
               ].map(l => (
-                <li key={l.href}>
-                  <Link to={l.href} className="hover:text-accent transition-colors">
-                    {l.label}
-                  </Link>
-                </li>
+              <li key={l.href}>
+                <Link to={l.href} className="hover:text-accent transition-colors">
+                  {l.label}
+                </Link>
+              </li>
               ))}
             </ul>
           </div>

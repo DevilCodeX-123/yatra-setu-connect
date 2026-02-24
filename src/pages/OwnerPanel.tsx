@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  Bus, DollarSign, BarChart2, Users, Edit, Eye, Plus, Calendar, TrendingUp, Package, MapPin
+  Bus, DollarSign, BarChart2, Users, Edit, Eye, Plus, Calendar, TrendingUp, Package, MapPin, ShieldCheck, UserCheck, Clock, CheckCircle2
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
+import { api } from "@/lib/api";
 
 const sidebarItems = [
   { label: "Fleet Overview", icon: <Bus className="w-4 h-4" />, id: "fleet", url: "/owner" },
   { label: "Booking Records", icon: <Calendar className="w-4 h-4" />, id: "bookings", url: "/owner#bookings" },
   { label: "Earnings", icon: <DollarSign className="w-4 h-4" />, id: "earnings", url: "/owner#earnings" },
   { label: "Rent for Event", icon: <Package className="w-4 h-4" />, id: "rent", url: "/owner#rent" },
+  { label: "Tracking Requests", icon: <ShieldCheck className="w-4 h-4" />, id: "tracking", url: "/owner#tracking" },
 ];
-
-import { api } from "@/lib/api";
 
 export default function OwnerPanel() {
   const navigate = useNavigate();
@@ -24,16 +24,19 @@ export default function OwnerPanel() {
   const [activeRoot, setActiveTab] = useState("fleet");
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
+  const [trackingRequests, setTrackingRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = async () => {
     try {
-      const [data, requests] = await Promise.all([
+      const [data, requests, tRequests] = await Promise.all([
         api.getOwnerDashboard(),
-        api.getOwnerRequests()
+        api.getOwnerRequests(),
+        api.getOwnerTrackingRequests()
       ]);
       setDashboardData(data);
       setRentalRequests(requests);
+      setTrackingRequests(tRequests);
     } catch (err) {
       console.error("Failed to fetch owner data", err);
       toast.error("Failed to load dashboard data");
@@ -93,6 +96,16 @@ export default function OwnerPanel() {
       fetchDashboard();
     } catch (err) {
       toast.error("Failed to update request");
+    }
+  };
+
+  const handleTrackingAction = async (requestId: string, status: 'Accepted' | 'Rejected') => {
+    try {
+      await api.updateTrackingRequestStatus(requestId, status);
+      toast.success(`Tracking ${status.toLowerCase()} successfully`);
+      fetchDashboard();
+    } catch (err) {
+      toast.error("Failed to update tracking request");
     }
   };
 
@@ -379,6 +392,101 @@ export default function OwnerPanel() {
                                 </Button>
                                 <Button size="sm" className="h-8 text-[10px] font-black bg-emerald-600 hover:bg-emerald-700" onClick={() => handleRequestAction(req._id, 'Accepted')}>
                                   Accept
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] font-black text-muted-foreground opacity-40 uppercase">Handled</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeRoot === "tracking" && (
+          <div className="space-y-6">
+            <div className="portal-card p-5 border-l-4 border-primary">
+              <h3 className="font-bold text-sm mb-2 text-primary">
+                <ShieldCheck className="w-4 h-4 inline mr-2 text-primary" />
+                Bus Tracking Permissions
+              </h3>
+              <p className="text-xs mb-3 text-muted-foreground">
+                Approve or reject requests from passengers to track your official buses. Only approved users can see live locations.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
+                  <p className="text-[10px] font-black text-primary uppercase opacity-60">Pending Tracking Requests</p>
+                  <p className="text-xl font-black text-primary">{trackingRequests.filter(r => r.status === 'Pending').length}</p>
+                </div>
+                <div className="p-3 bg-success/5 rounded-xl border border-success/10">
+                  <p className="text-[10px] font-black text-success uppercase opacity-60">Total Active Trackers</p>
+                  <p className="text-xl font-black text-success">{trackingRequests.filter(r => r.status === 'Accepted').length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="portal-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <h3 className="font-bold text-sm text-primary">Incoming Tracking Requests</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="px-4 py-3 text-xs font-black uppercase text-muted-foreground opacity-50">Passenger</th>
+                      <th className="px-4 py-3 text-xs font-black uppercase text-muted-foreground opacity-50">Bus / Organisation</th>
+                      <th className="px-4 py-3 text-xs font-black uppercase text-muted-foreground opacity-50">Sent At</th>
+                      <th className="px-4 py-3 text-xs font-black uppercase text-muted-foreground opacity-50">Status</th>
+                      <th className="px-4 py-3 text-xs font-black uppercase text-muted-foreground opacity-50 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trackingRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground opacity-40 font-black">No tracking requests found</td>
+                      </tr>
+                    ) : (
+                      trackingRequests.map((req: any) => (
+                        <tr key={req._id} className="border-b border-border hover:bg-muted/10 transition-colors">
+                          <td className="px-4 py-4">
+                            <div className="flex flex-col">
+                              <span className="font-black text-primary">{req.user?.name}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground">{req.user?.email}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black">{req.bus?.busNumber}</span>
+                              <span className="text-[10px] font-black text-accent uppercase">{req.bus?.orgName}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-1 text-[10px] font-black text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              {format(new Date(req.requestedAt), 'dd MMM yyyy, hh:mm a')}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${req.status === 'Accepted' ? 'bg-success/10 text-success' :
+                                req.status === 'Rejected' ? 'bg-red-500/10 text-red-600' :
+                                  'bg-amber-500/10 text-amber-600'
+                              }`}>
+                              {req.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            {req.status === 'Pending' ? (
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-black border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleTrackingAction(req._id, 'Rejected')}>
+                                  Reject
+                                </Button>
+                                <Button size="sm" className="h-8 text-[10px] font-black bg-primary hover:bg-primary/90" onClick={() => handleTrackingAction(req._id, 'Accepted')}>
+                                  Approve
                                 </Button>
                               </div>
                             ) : (

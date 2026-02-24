@@ -116,6 +116,7 @@ export default function Profile() {
                         <SectionHeader label="My details" />
                         <MenuItem icon={ClipboardList} label="Bookings" to="/profile/bookings" />
                         <MenuItem icon={History} label="Past Rides" subtitle="Completed journeys & eco impact" to="/profile/past-rides" />
+                        <MenuItem icon={Bus} label="Track Official Bus" subtitle="School / College / Office bus tracker" to="/profile/official-tracker" />
                         <MenuItem icon={User} label="Account & Personal Info" to="/account" />
                         <MenuItem icon={Users} label="Passengers" to="/profile/passengers" />
                         <MenuItem icon={Train} label="IRCTC details" to="/profile/irctc" />

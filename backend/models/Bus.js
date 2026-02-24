@@ -42,6 +42,13 @@ const BusSchema = new mongoose.Schema({
         updatedAt: { type: Date },
     },
     mileage: { type: Number, default: 4.0 }, // km/l
+    // Official Bus Tracking fields
+    orgCategory: { type: String, enum: ['School', 'College', 'Office', 'Other'] },
+    orgName: { type: String },
+    state: { type: String },
+    district: { type: String },
+    town: { type: String },
+    pinCode: { type: String },
     rentalPricePerDay: { type: Number, default: 5000 },
     rentalPricePerHour: { type: Number, default: 500 },
     returnChargePerKm: { type: Number, default: 15 }, // Deprecated or for specific extra costs

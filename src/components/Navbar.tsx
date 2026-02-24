@@ -30,7 +30,6 @@ const navLinks = [
       { href: "/passenger", label: "Passenger Dashboard" },
       { href: "/driver", label: "Driver Panel" },
       { href: "/owner", label: "Bus Owner Panel" },
-      { href: "/employee", label: "Employee Panel" },
       { href: "/admin", label: "Admin Panel" },
     ],
   },
@@ -88,7 +87,7 @@ export default function Navbar({ minimal = false }: { minimal?: boolean }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-primary font-black text-[10px] cursor-pointer border-2 border-white/20">
-                  {user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'YS'}
+                  {user?.name ? (user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()) : 'YS'}
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">

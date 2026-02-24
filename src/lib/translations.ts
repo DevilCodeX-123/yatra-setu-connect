@@ -17,6 +17,8 @@ export const translations = {
             login: "Login",
             logout: "Logout",
             profile: "My Profile",
+            orgTracking: "Organization Tracking",
+            orgTrackingDesc: "Track School, Office & College buses",
             govName: "Government of India — Ministry of Road Transport & Highways",
             helpline: "Helpline: 1800-XXX-XXXX"
         },
@@ -80,6 +82,7 @@ export const translations = {
             routes: "Routes",
             schoolBuses: "School Buses",
             eventBuses: "Event Buses",
+            orgTracking: "Organization Tracking",
             systemOnline: "System Online",
             smartTransport: "Smart Transport",
             nav: "Navigation"
@@ -372,6 +375,8 @@ export const translations = {
             login: "लॉगिन",
             logout: "लॉगआउट",
             profile: "मेरी प्रोफाइल",
+            orgTracking: "संस्था बस ट्रैकिंग",
+            orgTrackingDesc: "स्कूल, ऑफिस और कॉलेज बसों को ट्रैक करें",
             govName: "भारत सरकार — सड़क परिवहन और राजमार्ग मंत्रालय",
             helpline: "हेल्पलाइन: 1800-XXX-XXXX"
         },
@@ -435,6 +440,7 @@ export const translations = {
             routes: "रूट",
             schoolBuses: "स्कूल बसें",
             eventBuses: "इवेंट बसें",
+            orgTracking: "संस्था ट्रैकिंग",
             systemOnline: "सिस्टम ऑनलाइन",
             smartTransport: "स्मार्ट ट्रांसपोर्ट",
             nav: "नेविगेशन"
@@ -725,6 +731,8 @@ export const translations = {
             login: "लॉगिन",
             logout: "लॉगआउट",
             profile: "माझी प्रोफाइल",
+            orgTracking: "संस्था बस ट्रॅकिंग",
+            orgTrackingDesc: "शाळा, ऑफिस आणि कॉलेज बसेस ट्रॅक करा",
             govName: "भारत सरकार — रस्ते वाहतूक आणि महामार्ग मंत्रालय",
             helpline: "हेल्पलाइन: 1800-XXX-XXXX"
         },
@@ -788,6 +796,7 @@ export const translations = {
             routes: "मार्ग",
             schoolBuses: "शाळा बस",
             eventBuses: "इव्हेंट बसेस",
+            orgTracking: "संस्था ट्रॅकिंग",
             systemOnline: "सिस्टम ऑनलाइन",
             smartTransport: "स्मार्ट ट्रान्सपोर्ट",
             nav: "नेव्हिगेशन"

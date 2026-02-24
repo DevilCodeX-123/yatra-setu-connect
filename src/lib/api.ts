@@ -143,6 +143,18 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/bookings/owner/requests`, { headers: getAuthHeaders() });
         return res.json();
     },
+    getOwnerTrackingRequests: async () => {
+        const res = await fetch(`${API_BASE_URL}/tracking/owner/requests`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    updateTrackingRequestStatus: async (requestId: string, status: string) => {
+        const res = await fetch(`${API_BASE_URL}/tracking/owner/requests/${requestId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status })
+        });
+        return res.json();
+    },
     updateRequestStatus: async (requestId: string, status: string) => {
         const res = await fetch(`${API_BASE_URL}/bookings/owner/request/${requestId}`, {
             method: 'PATCH',
@@ -179,6 +191,43 @@ export const api = {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
+        return res.json();
+    },
+    requestTrackingAccess: async (busId: string, activationCode: string, nickname?: string) => {
+        const res = await fetch(`${API_BASE_URL}/tracking/request`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ busId, activationCode, nickname })
+        });
+        return res.json();
+    },
+    getAuthorizedBuses: async () => {
+        const res = await fetch(`${API_BASE_URL}/tracking/authorized`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getMyTrackingRequests: async () => {
+        const res = await fetch(`${API_BASE_URL}/tracking/my-requests`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getOfficialLocations: async () => {
+        const res = await fetch(`${API_BASE_URL}/buses/official/locations`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getOfficialDistricts: async (state: string) => {
+        const res = await fetch(`${API_BASE_URL}/buses/official/districts?state=${encodeURIComponent(state)}`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getOfficialNames: async (state: string, district: string, category: string) => {
+        const params = new URLSearchParams({ state, district, orgCategory: category });
+        const res = await fetch(`${API_BASE_URL}/buses/official/names?${params.toString()}`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    searchOfficialBuses: async (params: { state: string, district: string, pinCode?: string, orgCategory: string, orgName: string }) => {
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+            if (value) searchParams.append(key, value);
+        });
+        const res = await fetch(`${API_BASE_URL}/buses/official?${searchParams.toString()}`, { headers: getAuthHeaders() });
         return res.json();
     }
 };
