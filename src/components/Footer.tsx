@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Bus, Phone, Mail, MapPin, ExternalLink } from "lucide-react";
-import logoImg from "@/assets/logo.png";
+import logoImg from "@/assets/logo_new.png";
 import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function Footer() {
@@ -16,12 +16,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
-            <div className="flex items-center gap-3 mb-4">
-              <img src={logoImg} alt="Yatra Setu" className="h-12 w-12 object-contain rounded-full" />
-              <div>
-                <p className="text-lg font-bold text-white">यात्रा सेतु</p>
-                <p className="text-xs opacity-70">{t('footer.smartBus')}</p>
-              </div>
+            <div className="flex items-center mb-4">
+              <img src={logoImg} alt="Yatra Setu" className="h-16 w-auto object-contain" />
             </div>
             <p className="text-xs leading-relaxed opacity-75">
               {t('footer.digitalIndiaDesc')}
@@ -56,13 +52,13 @@ export default function Footer() {
                 { href: "/passenger", label: t('nav.passenger') },
                 { href: "/driver", label: t('nav.driver') },
                 { href: "/owner", label: t('nav.owner') },
-              {href: "/admin", label: t('nav.admin') },
+                { href: "/admin", label: t('nav.admin') },
               ].map(l => (
-              <li key={l.href}>
-                <Link to={l.href} className="hover:text-accent transition-colors">
-                  {l.label}
-                </Link>
-              </li>
+                <li key={l.href}>
+                  <Link to={l.href} className="hover:text-accent transition-colors">
+                    {l.label}
+                  </Link>
+                </li>
               ))}
             </ul>
           </div>

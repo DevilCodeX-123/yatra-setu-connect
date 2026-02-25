@@ -129,6 +129,69 @@ export const api = {
         });
         return res.json();
     },
+    getBusEmployees: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    addDriver: async (busId: string, driverData: { name: string; email?: string; phone?: string; perDaySalary?: number }) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, {
+            method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(driverData)
+        });
+        return res.json();
+    },
+    removeDriver: async (busId: string, empId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}`, { method: 'DELETE', headers: getAuthHeaders() });
+        return res.json();
+    },
+    updateDriver: async (busId: string, empId: string, data: any) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}`, {
+            method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    getAllEmployees: async () => {
+        const res = await fetch(`${API_BASE_URL}/owner/employees/all`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getEmployeeAttendance: async (empId: string, month?: string) => {
+        const url = `${API_BASE_URL}/owner/employees/${empId}/attendance${month ? `?month=${month}` : ''}`;
+        const res = await fetch(url, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getSalaryReport: async (empId: string, month: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/employees/${empId}/salary-report?month=${month}`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    markAttendance: async (data: { employeeId: string; busId: string; date: string; present?: boolean; notes?: string }) => {
+        const res = await fetch(`${API_BASE_URL}/owner/attendance/mark`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) });
+        return res.json();
+    },
+    // Employee side
+    getEmployeeInvitations: async () => {
+        const res = await fetch(`${API_BASE_URL}/employee/invitations`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    acceptInvitation: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/employee/invitations/${busId}/accept`, { method: 'POST', headers: getAuthHeaders() });
+        return res.json();
+    },
+    rejectInvitation: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/employee/invitations/${busId}/reject`, { method: 'POST', headers: getAuthHeaders() });
+        return res.json();
+    },
+    goOnAir: async (driverCode: string) => {
+        const res = await fetch(`${API_BASE_URL}/employee/go-onair`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ driverCode }) });
+        return res.json();
+    },
+    checkOut: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/employee/check-out`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ busId }) });
+        return res.json();
+    },
+    getMyAttendance: async (month?: string) => {
+        const url = `${API_BASE_URL}/employee/my-attendance${month ? `?month=${month}` : ''}`;
+        const res = await fetch(url, { headers: getAuthHeaders() });
+        return res.json();
+    },
 
     // Rental
     createRentalRequest: async (rentalData: any) => {

@@ -66,7 +66,6 @@ export default function Login() {
         name: "",
         age: "",
         gender: "male",
-        isPhysicallyAbled: false,
     });
 
     const triggerSignup = async (finalRole: string) => {
@@ -159,44 +158,36 @@ export default function Login() {
         <div className="min-h-screen bg-background flex relative">
             <SplashLoader />
 
-            {/* Left branding panel */}
-            <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 flex-col items-center justify-center p-12 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1E3A8A 0%, #2563EB 70%, #3B82F6 100%)" }}>
-                {/* Decorative Grid Pattern */}
-                <div className="absolute inset-0 opacity-10" style={{
-                    backgroundImage: "url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23ffffff%22 fill-opacity=%220.15%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')"
-                }} />
-
-                <div className="relative text-center text-white space-y-10 z-10">
-                    <div className="relative flex flex-col items-center">
-                        <div className="w-32 h-32 bg-white/10 rounded-[40px] flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-2xl relative group translate-y-[-20px]">
-                            <LogoIcon size={80} className="group-hover:scale-110 transition-transform duration-500" />
-                            <div className="absolute -top-3 -right-6 bg-blue-400 text-white text-[10px] font-bold px-4 py-1.5 rounded-full shadow-lg border border-white/20 tracking-widest animate-pulse">SMART</div>
+            {/* Left branding panel - Unified Deep Blue (60% width) */}
+            <div className="hidden lg:flex lg:w-3/5 flex-col items-center justify-center p-6 relative bg-[#1E3A8A]">
+                <div className="relative flex flex-col items-center justify-center h-full w-full">
+                    {/* Centered Logo - Large prominence with transparency fix */}
+                    <div className="flex-1 flex items-center justify-center w-full px-12">
+                        <div className="mix-blend-screen w-full flex justify-center">
+                            <LogoIcon size={650} variant="white" className="w-full max-w-3xl opacity-90" />
                         </div>
-                        <Logo variant="white" className="h-20" />
                     </div>
-                    <div className="grid grid-cols-3 gap-6 pt-8">
-                        {[["500+", "Routes"], ["2M+", "Passengers"], ["100%", "Tracked"]].map(([v, l]) => (
-                            <div key={l} className="bg-white/8 backdrop-blur-md rounded-2xl p-5 border border-white/12 group hover:bg-white/15 transition-colors">
-                                <p className="text-3xl font-bold text-white leading-none group-hover:scale-105 transition-transform">{v}</p>
-                                <p className="text-[10px] text-blue-200/50 font-semibold mt-2">{l}</p>
-                            </div>
-                        ))}
+
+                    {/* Team Attribution at Bottom */}
+                    <div className="pb-12">
+                        <p className="text-white/40 text-sm font-medium tracking-[0.4em] uppercase">
+                            Developed by Team Transify
+                        </p>
                     </div>
                 </div>
             </div>
 
-            {/* Right form panel */}
-            <div className="w-full lg:w-1/2 xl:w-2/5 flex items-center justify-center p-6 sm:p-12 bg-background">
+            {/* Right form panel (40% width) */}
+            <div className="w-full lg:w-2/5 flex items-center justify-center p-6 sm:p-12 bg-background">
                 <div className="w-full max-w-md space-y-0 relative">
                     <Card className="w-full shadow-elevated border border-border animate-in fade-in zoom-in duration-500 overflow-hidden rounded-[32px] bg-card">
                         <CardHeader className="space-y-2 text-center bg-primary text-primary-foreground py-10 lg:hidden relative overflow-hidden">
                             <div className="absolute inset-0 opacity-10" style={{
                                 backgroundImage: "url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23ffffff%22 fill-opacity=%220.4%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')"
                             }} />
-                            <div className="flex justify-center mb-4 relative">
-                                <LogoIcon size={64} className="shadow-2xl border-4 border-white/10 rounded-2xl" />
+                            <div className="flex justify-center mb-0 relative">
+                                <LogoIcon size={120} className="drop-shadow-2xl" />
                             </div>
-                            <CardTitle className="text-3xl font-bold relative">Yatra Setu</CardTitle>
                             <CardDescription className="text-white/70 font-medium text-[10px] relative uppercase tracking-[0.2em]">{isLogin ? "IDENTITY VERIFICATION" : "NEW REGISTRATION"}</CardDescription>
                         </CardHeader>
 
@@ -343,22 +334,6 @@ export default function Login() {
                                     </div>
                                 )}
 
-                                {!isLogin && (
-                                    <div className="flex items-center space-x-4 p-5 bg-secondary/50 rounded-2xl border border-border group hover:bg-secondary transition-colors">
-                                        <Checkbox
-                                            id="abled"
-                                            checked={formData.isPhysicallyAbled}
-                                            onCheckedChange={(checked) => setFormData({ ...formData, isPhysicallyAbled: !!checked })}
-                                            className="data-[state=checked]:bg-primary rounded-lg w-6 h-6 border-2 border-border"
-                                        />
-                                        <div className="grid gap-1.5 leading-none">
-                                            <Label htmlFor="abled" className="text-[10px] font-black tracking-wide leading-none cursor-pointer flex items-center gap-2">
-                                                <PersonStanding className="w-3.5 h-3.5" /> {t('login.physicallyAbled')}
-                                            </Label>
-                                            <p className="text-[8px] text-muted-foreground font-black opacity-40">{t('login.priorityDesc')}</p>
-                                        </div>
-                                    </div>
-                                )}
 
                                 <Button
                                     type="submit"
@@ -424,8 +399,7 @@ export default function Login() {
                         <RadioGroup value={orgRole} onValueChange={setOrgRole} className="grid grid-cols-1 gap-4">
                             {[
                                 { id: "Owner", label: t('login.owner'), desc: t('login.ownerDesc'), icon: <UserCheck className="w-4 h-4" /> },
-                                { id: "Employee", label: t('login.employee'), desc: t('login.employeeDesc'), icon: <Briefcase className="w-4 h-4" /> },
-                                { id: "Owner+Employee", label: t('login.ownerEmployee'), desc: t('login.ownerEmployeeDesc'), icon: <Bus className="w-4 h-4" /> }
+                                { id: "Employee", label: t('login.employee'), desc: t('login.employeeDesc'), icon: <Briefcase className="w-4 h-4" /> }
                             ].map((item) => (
                                 <div key={item.id} className="relative group">
                                     <RadioGroupItem value={item.id} id={item.id} className="peer sr-only" />

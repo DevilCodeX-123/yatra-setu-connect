@@ -85,7 +85,9 @@ export const translations = {
             orgTracking: "Organization Tracking",
             systemOnline: "System Online",
             smartTransport: "Smart Transport",
-            nav: "Navigation"
+            nav: "Navigation",
+            management: "Management Dashboard",
+            passenger: "Passenger"
         },
         search: {
             from: "From",
@@ -443,7 +445,9 @@ export const translations = {
             orgTracking: "संस्था ट्रैकिंग",
             systemOnline: "सिस्टम ऑनलाइन",
             smartTransport: "स्मार्ट ट्रांसपोर्ट",
-            nav: "नेविगेशन"
+            nav: "नेविगेशन",
+            management: "प्रबंधन डैशबोर्ड",
+            passenger: "यात्री"
         },
         search: {
             from: "से",
@@ -799,7 +803,9 @@ export const translations = {
             orgTracking: "संस्था ट्रॅकिंग",
             systemOnline: "सिस्टम ऑनलाइन",
             smartTransport: "स्मार्ट ट्रान्सपोर्ट",
-            nav: "नेव्हिगेशन"
+            nav: "नेव्हिगेशन",
+            management: "व्यवस्थापन डॅशबोर्ड",
+            passenger: "प्रवासी"
         },
         search: {
             from: "पासून",

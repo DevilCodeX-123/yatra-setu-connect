@@ -156,10 +156,7 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col items-center gap-6 mb-8">
-              <div className="p-4 bg-white/10 rounded-[32px] backdrop-blur-xl border border-white/20 shadow-2xl">
-                <LogoIcon size={80} className="shadow-lg" />
-              </div>
-              <Logo variant="white" className="h-16 md:h-24" />
+              <Logo variant="white" className="h-24 md:h-32 drop-shadow-2xl" />
             </div>
 
             <p className="text-base sm:text-lg font-medium max-w-2xl mx-auto text-blue-100/80 mt-4">

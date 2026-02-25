@@ -72,4 +72,131 @@ router.post('/scan-qr', async (req, res) => {
     }
 });
 
+// GET /api/employee/invitations — see pending bus invitations for this employee
+router.get('/invitations', verifyToken, async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json([]);
+    }
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Find all buses that have this employee's email pending or active
+        const buses = await Bus.find({
+            'employees.email': user.email.toLowerCase()
+        }).select('busNumber name orgName state district isPrivate employees employeeCode owner');
+
+        const invitations = buses.map(bus => {
+            const emp = bus.employees.find(e => e.email === user.email.toLowerCase());
+            return {
+                busId: bus._id,
+                busNumber: bus.busNumber,
+                busName: bus.name,
+                orgName: bus.orgName,
+                state: bus.state,
+                district: bus.district,
+                isPrivate: bus.isPrivate,
+                status: emp?.status,
+                employeeCode: emp?.status === 'Active' ? bus.employeeCode : null,
+            };
+        });
+
+        res.json(invitations);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST /api/employee/invitations/:busId/accept
+router.post('/invitations/:busId/accept', verifyToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const bus = await Bus.findById(req.params.busId);
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const emp = bus.employees.find(e => e.email === user.email.toLowerCase());
+        if (!emp) return res.status(404).json({ message: 'No invitation found' });
+
+        emp.status = 'Active';
+        emp.userId = user._id;
+        await bus.save();
+
+        res.json({ success: true, employeeCode: bus.employeeCode, bus });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST /api/employee/invitations/:busId/reject
+router.post('/invitations/:busId/reject', verifyToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const bus = await Bus.findById(req.params.busId);
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const emp = bus.employees.find(e => e.email === user.email.toLowerCase());
+        if (!emp) return res.status(404).json({ message: 'No invitation found' });
+
+        emp.status = 'Rejected';
+        await bus.save();
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// ─── Attendance (employee side) ───────────────────────────────────────────────
+const Attendance = require('../models/Attendance');
+
+// POST /api/employee/go-onair — Driver uses driverCode to go on-air & mark attendance
+router.post('/go-onair', verifyToken, async (req, res) => {
+    const { driverCode } = req.body;
+    if (!driverCode) return res.status(400).json({ message: 'driverCode is required' });
+    try {
+        const bus = await Bus.findOne({ 'employees.driverCode': driverCode });
+        if (!bus) return res.status(404).json({ message: 'Invalid driver code' });
+        const emp = bus.employees.find(e => e.driverCode === driverCode);
+
+        // Auto check-in today
+        const today = new Date().toISOString().split('T')[0];
+        await Attendance.findOneAndUpdate(
+            { employee: emp.userId || req.user.id, bus: bus._id, date: today },
+            { $setOnInsert: { owner: bus.owner, checkIn: new Date(), present: true } },
+            { upsert: true, new: true }
+        );
+
+        res.json({ success: true, bus: { _id: bus._id, busNumber: bus.busNumber, name: bus.name }, employee: emp });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// POST /api/employee/check-out — Driver ends shift
+router.post('/check-out', verifyToken, async (req, res) => {
+    const { busId } = req.body;
+    if (!busId) return res.status(400).json({ message: 'busId is required' });
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const rec = await Attendance.findOne({ employee: req.user.id, bus: busId, date: today });
+        if (!rec) return res.status(404).json({ message: 'No check-in record found for today' });
+        const now = new Date();
+        const hrs = rec.checkIn ? (now - rec.checkIn) / 3600000 : 0;
+        rec.checkOut = now;
+        rec.hoursWorked = Math.round(hrs * 10) / 10;
+        await rec.save();
+        res.json({ success: true, hoursWorked: rec.hoursWorked, record: rec });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/employee/my-attendance?month=YYYY-MM — Employee views own attendance
+router.get('/my-attendance', verifyToken, async (req, res) => {
+    try {
+        const { month } = req.query;
+        const query = { employee: req.user.id };
+        if (month) query.date = { $regex: `^${month}` };
+        const records = await Attendance.find(query).populate('bus', 'busNumber name').sort({ date: -1 });
+        res.json({ attendance: records });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
 module.exports = router;
+

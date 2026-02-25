@@ -21,22 +21,24 @@ interface AuthContextType {
     token: string | null;
     role: string;
     isAuthenticated: boolean;
+    isVerifying: boolean;
     login: (token: string, user: User) => void;
     logout: () => void;
     updateUser: (u: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
-    user: null, token: null, role: "Passenger", isAuthenticated: false,
+    user: null, token: null, role: "Passenger", isAuthenticated: false, isVerifying: false,
     login: () => { }, logout: () => { }, updateUser: () => { }
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [token, setToken] = useState<string | null>(() => localStorage.getItem("ys_token"));
-    const [user, setUser] = useState<User | null>(() => {
+    const [user, setUser] = useState<User | null>((() => {
         const saved = localStorage.getItem("ys_user");
         try { return saved ? JSON.parse(saved) : null; } catch { return null; }
-    });
+    })());
+    const [isVerifying, setIsVerifying] = useState(!!token && !user);
 
     const login = (newToken: string, newUser: User) => {
         localStorage.setItem("ys_token", newToken);
@@ -61,10 +63,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Verify token still valid on mount
     useEffect(() => {
         if (token && !user) {
+            setIsVerifying(true);
             fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
                 .then(r => r.json())
-                .then(u => { if (u._id) setUser(u); else logout(); })
-                .catch(logout);
+                .then(u => {
+                    if (u._id) setUser(u);
+                    else logout();
+                })
+                .catch(logout)
+                .finally(() => setIsVerifying(false));
+        } else {
+            setIsVerifying(false);
         }
     }, []);
 
@@ -72,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <AuthContext.Provider value={{
             user, token, role: user?.role || "Passenger",
             isAuthenticated: !!user && !!token,
+            isVerifying,
             login, logout, updateUser
         }}>
             {children}

@@ -228,6 +228,33 @@ router.get('/search', async (req, res) => {
     }
 });
 
+// Get single bus by ObjectId (used by RouteSelection)
+router.get('/:id/route', async (req, res) => {
+    try {
+        const bus = await Bus.findById(req.params.id).lean();
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+        res.json({ route: bus.route || { stops: [] } });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// PATCH /api/buses/:id/route — Save route stops from RouteSelection
+router.patch('/:id/route', async (req, res) => {
+    const { from, to, stops } = req.body;
+    try {
+        const bus = await Bus.findByIdAndUpdate(
+            req.params.id,
+            { $set: { 'route.from': from, 'route.to': to, 'route.stops': stops || [] } },
+            { new: true }
+        );
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+        res.json({ success: true, bus });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Get single bus by ID
 router.get('/by-id/:id', async (req, res) => {
     if (mongoose.connection.readyState !== 1) {

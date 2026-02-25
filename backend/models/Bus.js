@@ -56,6 +56,20 @@ const BusSchema = new mongoose.Schema({
     rentalCapacity: { type: Number, default: 40 },
     bookedDates: [{ type: String }], // ISO dates string
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // Private Bus Mode
+    isPrivate: { type: Boolean, default: false },
+    accessCode: { type: String }, // For owner & authorized users to track location
+    employeeCode: { type: String }, // Separate code for drivers to activate & push location
+    employees: [{
+        name: { type: String },
+        email: { type: String },
+        phone: { type: String },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        status: { type: String, enum: ['Pending', 'Active', 'Rejected'], default: 'Active' },
+        driverCode: { type: String }, // unique code for driver to go "on-air"
+        perDaySalary: { type: Number, default: 0 },
+        joinedAt: { type: Date, default: Date.now }
+    }],
 }, { timestamps: true });
 
 

@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import {
-  Bus, DollarSign, BarChart2, Users, Edit, Eye, Plus, Calendar, TrendingUp, Package, MapPin, ShieldCheck, UserCheck, Clock, CheckCircle2
+  Bus, DollarSign, BarChart2, Users, Edit, Plus, Calendar, TrendingUp, Package, MapPin, ShieldCheck, Clock, CheckCircle2, Trash2, Copy, Lock, Phone, UserCheck, X, Route, PlayCircle
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
 import { api } from "@/lib/api";
+import { AddBusDialog } from "@/components/AddBusDialog";
 
 const sidebarItems = [
   { label: "Fleet Overview", icon: <Bus className="w-4 h-4" />, id: "fleet", url: "/owner" },
@@ -16,6 +18,7 @@ const sidebarItems = [
   { label: "Earnings", icon: <DollarSign className="w-4 h-4" />, id: "earnings", url: "/owner#earnings" },
   { label: "Rent for Event", icon: <Package className="w-4 h-4" />, id: "rent", url: "/owner#rent" },
   { label: "Tracking Requests", icon: <ShieldCheck className="w-4 h-4" />, id: "tracking", url: "/owner#tracking" },
+  { label: "Employees", icon: <Users className="w-4 h-4" />, id: "employees", url: "/owner#employees" },
 ];
 
 export default function OwnerPanel() {
@@ -26,6 +29,20 @@ export default function OwnerPanel() {
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   const [trackingRequests, setTrackingRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddBus, setShowAddBus] = useState(false);
+
+  // Driver management state
+  const [selectedBusForEmp, setSelectedBusForEmp] = useState<string>("");
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [employeeCode, setEmployeeCode] = useState("");
+  const [driverForm, setDriverForm] = useState({ name: "", phone: "", email: "", perDaySalary: "" });
+  const [addingDriver, setAddingDriver] = useState(false);
+  const [showDriverForm, setShowDriverForm] = useState(false);
+  const [newDriverCode, setNewDriverCode] = useState("");
+
+  // Run on Route modal state
+  const [showRunModal, setShowRunModal] = useState(false);
+  const [selectedBusForRun, setSelectedBusForRun] = useState<any>(null);
 
   const fetchDashboard = async () => {
     try {
@@ -35,8 +52,8 @@ export default function OwnerPanel() {
         api.getOwnerTrackingRequests()
       ]);
       setDashboardData(data);
-      setRentalRequests(requests);
-      setTrackingRequests(tRequests);
+      setRentalRequests(Array.isArray(requests) ? requests : []);
+      setTrackingRequests(Array.isArray(tRequests) ? tRequests : []);
     } catch (err) {
       console.error("Failed to fetch owner data", err);
       toast.error("Failed to load dashboard data");
@@ -109,6 +126,66 @@ export default function OwnerPanel() {
     }
   };
 
+  // ── Driver Management ──────────────────────────────────────────────────────
+  const loadEmployees = async (busId: string) => {
+    try {
+      const data = await api.getBusEmployees(busId);
+      setEmployees(data.employees || []);
+      setEmployeeCode(data.employeeCode || '');
+    } catch {
+      toast.error('Failed to load drivers');
+    }
+  };
+
+  const handleAddDriver = async () => {
+    if (!driverForm.name.trim() || !selectedBusForEmp) return;
+    setAddingDriver(true);
+    try {
+      const res = await api.addDriver(selectedBusForEmp, {
+        name: driverForm.name.trim(),
+        email: driverForm.email.trim() || undefined,
+        phone: driverForm.phone.trim() || undefined,
+        perDaySalary: driverForm.perDaySalary ? Number(driverForm.perDaySalary) : 0,
+      });
+      if (res.success) {
+        setNewDriverCode(res.driverCode || '');
+        toast.success(`Driver "${driverForm.name}" added! Code: ${res.driverCode}`);
+        setDriverForm({ name: "", phone: "", email: "", perDaySalary: "" });
+        setShowDriverForm(false);
+        loadEmployees(selectedBusForEmp);
+      } else {
+        toast.error(res.message || 'Failed to add driver');
+      }
+    } catch {
+      toast.error('Failed to add driver');
+    } finally {
+      setAddingDriver(false);
+    }
+  };
+
+  const handleRemoveDriver = async (empId: string) => {
+    if (!selectedBusForEmp) return;
+    try {
+      await api.removeDriver(selectedBusForEmp, empId);
+      toast.success('Driver removed');
+      loadEmployees(selectedBusForEmp);
+    } catch {
+      toast.error('Failed to remove driver');
+    }
+  };
+
+  // ── Run on Route ────────────────────────────────────────────────────────────
+  const handleRunOnRoute = (bus: any) => {
+    setSelectedBusForRun(bus);
+    setShowRunModal(true);
+  };
+
+  const handleActivateBusOnRoute = () => {
+    if (!selectedBusForRun) return;
+    toast.success(`Bus ${selectedBusForRun.busNumber} is now set to run on: ${selectedBusForRun.route?.from} → ${selectedBusForRun.route?.to}`);
+    setShowRunModal(false);
+  };
+
   const currentSidebarItems = sidebarItems.map(item => ({
     ...item,
     active: activeRoot === item.id,
@@ -156,7 +233,7 @@ export default function OwnerPanel() {
             <div className="portal-card overflow-hidden">
               <div className="px-5 py-4 border-b flex items-center justify-between border-border">
                 <h3 className="font-bold text-sm text-primary">Registered Fleet</h3>
-                <Button size="sm" onClick={() => toast.info("Add Bus Feature Coming Soon!")}>
+                <Button size="sm" onClick={() => setShowAddBus(true)}>
                   <Plus className="w-3.5 h-3.5 mr-1" /> Add Bus
                 </Button>
               </div>
@@ -171,10 +248,16 @@ export default function OwnerPanel() {
                   </thead>
                   <tbody>
                     {buses.map((bus: any) => (
-                      <tr key={bus.id} className="border-b border-border hover:bg-muted/20 transition-colors">
+                      <tr key={bus._id} className="border-b border-border hover:bg-muted/20 transition-colors">
                         <td className="px-4 py-3 font-mono font-semibold text-xs text-primary">{bus.busNumber}</td>
                         <td className="px-4 py-3">{bus.name}</td>
-                        <td className="px-4 py-3 text-xs">{bus.route.from} → {bus.route.to}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {bus.route?.from ? (
+                            <span className="text-foreground">{bus.route.from} → {bus.route.to}</span>
+                          ) : (
+                            <span className="text-muted-foreground italic opacity-50">No Route Set</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">{bus.totalSeats}</td>
                         <td className="px-4 py-3">
                           {editFare === bus._id ? (
@@ -188,8 +271,8 @@ export default function OwnerPanel() {
                             </div>
                           ) : (
                             <div className="flex items-center gap-1">
-                              ₹{bus.fare}
-                              <button onClick={() => { setEditFare(bus._id); setFareVal(String(bus.fare)); }}
+                              ₹{bus.fare || bus.pricePerKm || 0}
+                              <button onClick={() => { setEditFare(bus._id); setFareVal(String(bus.fare || bus.pricePerKm || 0)); }}
                                 className="p-0.5 rounded hover:bg-primary/10 transition-colors">
                                 <Edit className="w-3 h-3 text-primary" />
                               </button>
@@ -242,14 +325,18 @@ export default function OwnerPanel() {
                             {bus.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-primary">
-                          ₹{bus.earnings.toLocaleString()}
-                        </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => navigate(`/owner/route-selection?busNumber=${bus.id}`)}>
+                          <div className="flex gap-1 flex-wrap">
+                            <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => navigate(`/owner/route-selection?busNumber=${bus._id}`)}>
                               <MapPin className="w-3 h-3 mr-1" /> Route
                             </Button>
+                            {/* Run on Saved Route Button - only shown if route is set */}
+                            {bus.route?.from && (
+                              <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-success border-success/40 hover:bg-success/10"
+                                onClick={() => handleRunOnRoute(bus)}>
+                                <PlayCircle className="w-3 h-3 mr-1" /> Run
+                              </Button>
+                            )}
                             <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-accent border-accent" onClick={() => toast.success("Bus marked for Rent!")}>
                               Rent
                             </Button>
@@ -270,7 +357,7 @@ export default function OwnerPanel() {
               <BarChart2 className="w-4 h-4 inline mr-2" />Monthly Earnings Overview
             </h3>
             <div className="flex items-end gap-3 h-32">
-              {earningsData.map(e => (
+              {earningsData.map((e: any) => (
                 <div key={e.month} className="flex-1 flex flex-col items-center gap-1">
                   <p className="text-xs font-semibold text-primary">
                     ₹{(e.amount / 1000).toFixed(1)}k
@@ -308,7 +395,7 @@ export default function OwnerPanel() {
                 </div>
                 <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
                   <p className="text-[10px] font-black text-primary uppercase opacity-60">Total Value</p>
-                  <p className="text-xl font-black text-primary">₹{rentalRequests.reduce((acc, r) => acc + (r.amount || 0), 0).toLocaleString()}</p>
+                  <p className="text-xl font-black text-primary">₹{(rentalRequests.reduce((acc, r) => acc + (r.amount || 0), 0) || 0).toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -370,7 +457,7 @@ export default function OwnerPanel() {
                             <div className="flex flex-col">
                               <span className="font-black text-primary">₹{req.amount}</span>
                               <span className="text-[8px] font-bold text-muted-foreground italic">
-                                ({req.rentalDetails?.hoursRequested || 24}h @ ₹{(req.amount - (req.rentalDetails?.calculatedFuelCost || 0)).toLocaleString()} + Petrol: ₹{(req.rentalDetails?.calculatedFuelCost || 0).toLocaleString()}
+                                ({req.rentalDetails?.hoursRequested || 24}h @ ₹{((req.amount || 0) - (req.rentalDetails?.calculatedFuelCost || 0)).toLocaleString()} + Petrol: ₹{(req.rentalDetails?.calculatedFuelCost || 0).toLocaleString()}
                                 for {req.rentalDetails?.totalFuelKm || (req.rentalDetails?.isRoundTrip ? req.rentalDetails?.estimatedKm * 2 : req.rentalDetails?.estimatedKm * 1.5)} KM total)
                               </span>
                             </div>
@@ -473,8 +560,8 @@ export default function OwnerPanel() {
                           </td>
                           <td className="px-4 py-4">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${req.status === 'Accepted' ? 'bg-success/10 text-success' :
-                                req.status === 'Rejected' ? 'bg-red-500/10 text-red-600' :
-                                  'bg-amber-500/10 text-amber-600'
+                              req.status === 'Rejected' ? 'bg-red-500/10 text-red-600' :
+                                'bg-amber-500/10 text-amber-600'
                               }`}>
                               {req.status}
                             </span>
@@ -515,7 +602,288 @@ export default function OwnerPanel() {
             <Button variant="outline" onClick={() => setActiveTab("fleet")}>Back to Fleet</Button>
           </div>
         )}
+
+        {/* ===== EMPLOYEES / DRIVERS TAB ===== */}
+        {activeRoot === "employees" && (
+          <div className="space-y-5">
+            <div className="portal-card p-5 space-y-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-sm text-primary">Driver Management</h3>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Add and manage drivers for each bus. Each driver gets a unique Driver Code to go on-air.</p>
+
+              {/* Bus Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Select Bus</label>
+                <select
+                  value={selectedBusForEmp}
+                  onChange={e => {
+                    setSelectedBusForEmp(e.target.value);
+                    setShowDriverForm(false);
+                    setNewDriverCode("");
+                    if (e.target.value) loadEmployees(e.target.value);
+                  }}
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">-- Choose a bus --</option>
+                  {buses.map((bus: any) => (
+                    <option key={bus._id} value={bus._id}>{bus.busNumber} {bus.name ? `— ${bus.name}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedBusForEmp && (
+                <>
+                  {/* Employee/Bus Code Display */}
+                  {employeeCode && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" /> Bus Employee Code (for staff activation)
+                        </p>
+                        <code className="text-primary font-mono text-sm tracking-widest font-bold">{employeeCode}</code>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-8 w-8"
+                        onClick={() => { navigator.clipboard.writeText(employeeCode); toast.success('Code copied!'); }}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* New Driver Code Banner */}
+                  {newDriverCode && (
+                    <div className="bg-success/10 border border-success/30 rounded-xl p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-success uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> Driver Code Generated — Share with Driver
+                        </p>
+                        <code className="text-success font-mono text-base tracking-widest font-black">{newDriverCode}</code>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-success"
+                          onClick={() => { navigator.clipboard.writeText(newDriverCode); toast.success('Driver code copied!'); }}>
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground"
+                          onClick={() => setNewDriverCode("")}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add Driver Button / Form */}
+                  {!showDriverForm ? (
+                    <Button onClick={() => setShowDriverForm(true)} size="sm" className="gap-1.5">
+                      <Plus className="w-3.5 h-3.5" /> Add Driver
+                    </Button>
+                  ) : (
+                    <div className="bg-secondary/60 rounded-2xl p-4 border border-border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-primary">New Driver Details</p>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowDriverForm(false)}>
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground">Full Name *</label>
+                          <Input
+                            placeholder="Driver name"
+                            value={driverForm.name}
+                            onChange={e => setDriverForm({ ...driverForm, name: e.target.value })}
+                            className="h-9 text-sm mt-0.5"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground">Phone</label>
+                          <Input
+                            placeholder="+91 98765 43210"
+                            value={driverForm.phone}
+                            onChange={e => setDriverForm({ ...driverForm, phone: e.target.value })}
+                            className="h-9 text-sm mt-0.5"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground">Email (optional)</label>
+                          <Input
+                            type="email"
+                            placeholder="driver@example.com"
+                            value={driverForm.email}
+                            onChange={e => setDriverForm({ ...driverForm, email: e.target.value })}
+                            className="h-9 text-sm mt-0.5"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground">Per Day Salary (₹)</label>
+                          <Input
+                            type="number"
+                            placeholder="600"
+                            value={driverForm.perDaySalary}
+                            onChange={e => setDriverForm({ ...driverForm, perDaySalary: e.target.value })}
+                            className="h-9 text-sm mt-0.5"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleAddDriver}
+                        disabled={addingDriver || !driverForm.name.trim()}
+                        size="sm"
+                        className="gap-1.5"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        {addingDriver ? 'Adding...' : 'Confirm & Generate Code'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Driver List */}
+                  {employees.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      No drivers added yet. Add a driver above.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider opacity-60">{employees.length} Driver{employees.length > 1 ? 's' : ''}</p>
+                      {employees.map((emp: any, idx: number) => (
+                        <div key={emp._id || idx} className="flex items-center justify-between bg-secondary/50 rounded-xl px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                              {(emp.name || emp.email || '?').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold">{emp.name || <span className="opacity-40 italic">No Name</span>}</p>
+                              <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                {emp.phone && (
+                                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                    <Phone className="w-2.5 h-2.5" /> {emp.phone}
+                                  </span>
+                                )}
+                                {emp.email && (
+                                  <span className="text-[10px] text-muted-foreground">{emp.email}</span>
+                                )}
+                                {emp.perDaySalary > 0 && (
+                                  <span className="text-[10px] font-black text-accent">₹{emp.perDaySalary}/day</span>
+                                )}
+                              </div>
+                              {emp.driverCode && (
+                                <div className="flex items-center gap-1 mt-1">
+                                  <span className="text-[9px] text-muted-foreground uppercase tracking-wide">Code:</span>
+                                  <code className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">{emp.driverCode}</code>
+                                  <button onClick={() => { navigator.clipboard.writeText(emp.driverCode); toast.success('Driver code copied!'); }}
+                                    className="p-0.5 rounded hover:bg-primary/10">
+                                    <Copy className="w-2.5 h-2.5 text-primary" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`text-[9px] px-2 py-0.5 ${emp.status === 'Active' ? 'bg-green-500/20 text-green-600 border-green-200' :
+                              emp.status === 'Rejected' ? 'bg-red-500/20 text-red-600 border-red-200' :
+                                'bg-yellow-500/20 text-yellow-600 border-yellow-200'
+                              }`}>
+                              {emp.status}
+                            </Badge>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                              onClick={() => handleRemoveDriver(emp._id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Add Bus Dialog */}
+      <AddBusDialog
+        open={showAddBus}
+        onOpenChange={setShowAddBus}
+        onBusAdded={fetchDashboard}
+      />
+
+      {/* ===== Run on Route Modal ===== */}
+      {showRunModal && selectedBusForRun && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card rounded-2xl shadow-2xl border border-border w-full max-w-md p-6 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-success/10 rounded-xl">
+                  <PlayCircle className="w-5 h-5 text-success" />
+                </div>
+                <h3 className="font-black text-primary text-sm">Run Bus on Route</h3>
+              </div>
+              <button onClick={() => setShowRunModal(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Bus Info */}
+            <div className="bg-secondary/60 rounded-xl p-3 space-y-2">
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Bus Details</p>
+              <p className="font-black text-primary">{selectedBusForRun.busNumber} {selectedBusForRun.name && `— ${selectedBusForRun.name}`}</p>
+              <div className="flex items-center gap-2 text-sm">
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded ${selectedBusForRun.status === 'Active' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                  {selectedBusForRun.status}
+                </span>
+                <span className="text-xs text-muted-foreground">{selectedBusForRun.totalSeats} seats</span>
+              </div>
+            </div>
+
+            {/* Route Info */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Saved Route</p>
+              <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                <Route className="w-4 h-4 text-primary flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-black text-sm text-primary">{selectedBusForRun.route?.from} → {selectedBusForRun.route?.to}</p>
+                  {selectedBusForRun.route?.stops?.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {selectedBusForRun.route.stops.length} stops on route
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Stops list */}
+              {selectedBusForRun.route?.stops?.length > 0 && (
+                <div className="space-y-1 max-h-36 overflow-y-auto">
+                  {selectedBusForRun.route.stops.map((stop: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground px-1">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${i === 0 ? 'bg-success' : i === selectedBusForRun.route.stops.length - 1 ? 'bg-red-500' : 'bg-primary/40'}`}></div>
+                      <span className={`font-semibold ${i === 0 || i === selectedBusForRun.route.stops.length - 1 ? 'text-foreground' : ''}`}>{stop.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowRunModal(false)}>Cancel</Button>
+              <Button
+                className="flex-1 bg-success hover:bg-success/90 text-white gap-1.5"
+                onClick={handleActivateBusOnRoute}
+              >
+                <PlayCircle className="w-4 h-4" />
+                Activate Route
+              </Button>
+            </div>
+            <p className="text-[9px] text-muted-foreground text-center opacity-60">
+              To modify stops, use the Route button instead.
+            </p>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

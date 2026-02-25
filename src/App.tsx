@@ -32,21 +32,24 @@ import Login from "./pages/Login";
 import RouteSelection from "./pages/RouteSelection";
 import NotFound from "./pages/NotFound";
 import OrganizationTracking from "./pages/OrganizationTracking";
+import SplashLoader from "@/components/brand/SplashLoader";
 
 const queryClient = new QueryClient();
 
 // Guard: sirf logged-in users ke liye
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, isVerifying } = useAuth();
   const hasLocalToken = !!localStorage.getItem("ys_token");
 
-  // Agat context authenticated nahi hai, but token exist karta hai, 
-  // toh hum assume kar sakte hain ki loading ya refresh state mein hai.
+  // Agar token verify ho raha hai, toh SplashLoader dikhao
+  if (isVerifying) {
+    return <SplashLoader />;
+  }
+
+  // Agar authenticated nahi hai aur koi token bhi nahi hai
   if (!isAuthenticated && !hasLocalToken) {
     return <Navigate to="/login" replace />;
   }
-
-  // Optional: Add a loading spinner here if !isAuthenticated && hasLocalToken
 
   return <>{children}</>;
 };

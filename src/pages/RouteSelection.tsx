@@ -86,7 +86,7 @@ export default function RouteSelection() {
 
     const fetchBusData = async (bNum: string) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/buses/${bNum}`);
+            const res = await fetch(`${API_BASE_URL}/buses/${bNum}/route`);
             if (res.ok) {
                 const data = await res.json();
                 if (data.route && data.route.stops && data.route.stops.length > 0) {
@@ -98,6 +98,7 @@ export default function RouteSelection() {
                         lng: s.lng
                     }));
                     setStops(formattedStops);
+                    toast.success(`Loaded ${formattedStops.length} saved stops`);
                 }
             } else {
                 toast.error("Bus details not found. Using default stops.");
@@ -280,7 +281,7 @@ export default function RouteSelection() {
                 });
 
                 if (response.ok) {
-                    toast.success("Route path saved to database successfully!");
+                    toast.success("Route saved to database successfully!");
                     localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
                     setTimeout(() => navigate("/owner"), 1000);
                 } else {
@@ -320,7 +321,7 @@ export default function RouteSelection() {
 
                 {/* Interactive Map Hero */}
                 <Card className="border border-border shadow-card rounded-3xl overflow-hidden bg-secondary h-[450px]">
-                    <MapplsMap markers={markers} routePoints={routePoints} className="h-full" />
+                    <MapplsMap markers={markers} className="h-full" />
                 </Card>
 
                 <div className="grid md:grid-cols-5 gap-6">
