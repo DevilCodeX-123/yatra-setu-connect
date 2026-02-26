@@ -84,6 +84,7 @@ export default function Booking() {
   const [loading, setLoading] = useState(false);
   const [bookingResult, setBookingResult] = useState<any>(null);
   const [paymentTimer, setPaymentTimer] = useState(300); // 5 minutes in seconds
+  const [paymentVerified, setPaymentVerified] = useState(false);
 
   useEffect(() => {
     let timer: number;
@@ -98,6 +99,7 @@ export default function Booking() {
   useEffect(() => {
     if (step === "payment") {
       setPaymentTimer(300);
+      setPaymentVerified(false);
     }
   }, [step]);
 
@@ -938,20 +940,39 @@ export default function Booking() {
               </div>
 
               <div className="flex items-center justify-center gap-2 mb-6 text-primary dark:text-blue-400 bg-primary-light/10 py-2 rounded-lg border border-primary/20">
-                <span className="text-[10px] font-black ">{t('payment.expiresIn')}:</span>
+                <span className="text-[10px] font-black ">{paymentTimer > 0 ? t('payment.expiresIn') : "QR Code Expired"}:</span>
                 <span className="text-sm font-mono font-black ">{Math.floor(paymentTimer / 60)}:{(paymentTimer % 60).toString().padStart(2, '0')}</span>
               </div>
 
-              <p className="text-[9px] text-muted-foreground mb-6 opacity-40 font-black ">{t('payment.doNotRefresh')}</p>
+              <p className="text-[9px] text-muted-foreground mb-4 opacity-70 font-black ">{t('payment.doNotRefresh')}</p>
 
-              <Button
-                size="lg"
-                className="w-full h-12 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] font-black "
-                onClick={handleBooking}
-                disabled={loading || paymentTimer <= 0}
-              >
-                {loading ? t('payment.verifying') : t('payment.confirmButton')}
-              </Button>
+              {paymentTimer > 0 ? (
+                <>
+                  {!paymentVerified ? (
+                    <Button
+                      size="lg"
+                      className="w-full h-12 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] font-black bg-amber-500 hover:bg-amber-600 text-white"
+                      onClick={() => setPaymentVerified(true)}
+                    >
+                      Verify Payment Done First
+                    </Button>
+                  ) : (
+                    <Button
+                      size="lg"
+                      className="w-full h-12 shadow-lg shadow-success/20 transition-all hover:scale-[1.02] font-black bg-success hover:bg-success/90"
+                      onClick={handleBooking}
+                      disabled={loading}
+                    >
+                      {loading ? t('payment.verifying') : "Confirm Payment & Book"}
+                      {!loading && <Check className="w-4 h-4 ml-2" />}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button variant="destructive" className="w-full h-12 font-black" onClick={() => { setStep("seats"); setPaymentTimer(300); setPaymentVerified(false); }}>
+                  Timeout. Click to Restart Payment
+                </Button>
+              )}
             </div>
 
             <div className="flex items-center justify-center gap-4">

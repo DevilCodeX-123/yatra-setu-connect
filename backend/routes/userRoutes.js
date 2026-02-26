@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
-const { verifyToken, requireAuth, JWT_SECRET } = require('../middleware/auth');
+const { verifyToken, requireAuth, JWT_SECRET, resolveUserId } = require('../middleware/auth');
 
 // Signup Route
 router.post('/signup', async (req, res) => {
@@ -118,7 +118,8 @@ router.get('/profile', verifyToken, requireAuth, async (req, res) => {
         });
     }
     try {
-        const user = await User.findById(req.user.id).select('-password');
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId).select('-password');
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json(user);
     } catch (err) {
@@ -133,7 +134,8 @@ router.patch('/profile', verifyToken, requireAuth, async (req, res) => {
     }
     try {
         const { name, phone, age, gender, address } = req.body;
-        const user = await User.findById(req.user.id);
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         if (name) user.name = name;
@@ -160,7 +162,8 @@ router.get('/transactions', verifyToken, requireAuth, async (req, res) => {
         ]);
     }
     try {
-        const transactions = await Transaction.find({ user: req.user.id }).sort({ createdAt: -1 });
+        const userId = await resolveUserId(req.user);
+        const transactions = await Transaction.find({ user: userId }).sort({ createdAt: -1 });
         res.json(transactions);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -174,7 +177,8 @@ router.post('/wallet/topup', verifyToken, requireAuth, async (req, res) => {
         return res.json({ user: { walletBalance: 3000 }, transaction: { id: 'demo-t', amount, status: 'Success' } });
     }
     try {
-        const user = await User.findById(req.user.id);
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         user.walletBalance += Number(amount);
@@ -201,7 +205,8 @@ router.post('/passengers', verifyToken, requireAuth, async (req, res) => {
         return res.json({ success: true, passenger: { ...req.body, _id: 'demo-' + Date.now() } });
     }
     try {
-        const user = await User.findById(req.user.id);
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         user.savedPassengers.push(req.body);

@@ -7,18 +7,10 @@ const Booking = require('../models/Booking');
 
 const { MOCK_BUSES, MOCK_OFFICIAL_BUSES } = require('../data/mockData');
 
-// Get all buses
-router.get('/', async (req, res) => {
-    if (mongoose.connection.readyState !== 1) {
-        return res.json(MOCK_BUSES);
-    }
-    try {
-        const buses = await Bus.find();
-        res.json(buses);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
+// Helper to escape regex special characters
+const escapeRegExp = (string) => {
+    return string ? string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+};
 
 // Get unique city names
 router.get('/cities', async (req, res) => {
@@ -35,7 +27,57 @@ router.get('/cities', async (req, res) => {
     }
 });
 
-// GET /api/buses/official — search official buses (school/college/office)
+// Search buses
+router.get('/search', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        const { from, to, date } = req.query;
+        let filtered = MOCK_BUSES;
+        if (from) filtered = filtered.filter(b => b.route.from.toLowerCase().includes(from.toLowerCase()));
+        if (to) filtered = filtered.filter(b => b.route.to.toLowerCase().includes(to.toLowerCase()));
+        if (date) {
+            const datesArray = date.split(',');
+            filtered = filtered.filter(b => datesArray.includes(b.date));
+        }
+        return res.json(filtered);
+    }
+    const { from, to, date } = req.query;
+    try {
+        const query = {};
+        if (from) query['route.from'] = new RegExp(escapeRegExp(from), 'i');
+        if (to) query['route.to'] = new RegExp(escapeRegExp(to), 'i');
+        if (date) {
+            query['date'] = { $in: date.split(',') };
+            query['bookedDates'] = { $nin: date.split(',') };
+        }
+        const buses = await Bus.find(query).populate('owner', 'upiId');
+        const formatted = buses.map(b => {
+            const obj = b.toObject();
+            obj.ownerUPI = obj.owner?.upiId || '8302391227-2@ybl';
+            return obj;
+        });
+        res.json(formatted);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get all buses
+router.get('/', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json(MOCK_BUSES);
+    }
+    try {
+        const buses = await Bus.find().populate('owner', 'upiId');
+        const formatted = buses.map(b => {
+            const obj = b.toObject();
+            obj.ownerUPI = obj.owner?.upiId || '8302391227-2@ybl';
+            return obj;
+        });
+        res.json(formatted);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
 // GET /api/buses/official/districts — get districts for a state
 router.get('/official/districts', async (req, res) => {
@@ -51,7 +93,7 @@ router.get('/official/districts', async (req, res) => {
         return res.json(districts);
     }
     try {
-        const districts = await Bus.distinct('district', { state: new RegExp(`^${state}$`, 'i') });
+        const districts = await Bus.distinct('district', { state: new RegExp(`^${escapeRegExp(state)}$`, 'i') });
         res.json(districts.filter(Boolean).sort());
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -72,8 +114,8 @@ router.get('/official/names', async (req, res) => {
     }
     try {
         const query = {};
-        if (state) query.state = new RegExp(`^${state}$`, 'i');
-        if (district) query.district = new RegExp(`^${district}$`, 'i');
+        if (state) query.state = new RegExp(`^${escapeRegExp(state)}$`, 'i');
+        if (district) query.district = new RegExp(`^${escapeRegExp(district)}$`, 'i');
         if (orgCategory) query.orgCategory = orgCategory;
 
         const names = await Bus.distinct('orgName', query);
@@ -97,44 +139,6 @@ router.get('/official/locations', async (req, res) => {
     }
 });
 
-// Temporary Route to seed RTU Kota Bus - will be deleted after use
-router.get('/official/seed-rtu', async (req, res) => {
-    try {
-        const rtuBus = {
-            busNumber: 'RJ-20-C-7007',
-            name: 'RTU Kota Shuttle',
-            orgCategory: 'College',
-            orgName: 'RTU Kota',
-            state: 'Rajasthan',
-            district: 'Kota',
-            town: 'Kota',
-            pinCode: '324010',
-            activationCode: '123456',
-            status: 'Active',
-            liveLocation: { lat: 25.1311, lng: 75.8034, source: 'gps' },
-            route: { from: 'Nayapura', to: 'RTU Campus' },
-            type: 'Volvo',
-            totalSeats: 40,
-            pricePerKm: 1.5,
-            date: new Date().toISOString().split('T')[0],
-            seats: Array.from({ length: 40 }, (_, i) => ({
-                number: i + 1,
-                status: 'Available',
-                reservedFor: 'general'
-            }))
-        };
-
-        const doc = await Bus.findOneAndUpdate(
-            { busNumber: rtuBus.busNumber },
-            { $set: rtuBus },
-            { upsert: true, new: true }
-        );
-        res.json({ success: true, message: "RTU Kota Bus seeded!", bus: doc });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
 // Search official buses (school/college/office)
 router.get('/official', async (req, res) => {
     const { state, district, town, pinCode, orgCategory, orgName } = req.query;
@@ -145,7 +149,6 @@ router.get('/official', async (req, res) => {
         if (town) result = result.filter(b => b.town.toLowerCase().includes(town.toLowerCase()) || town.toLowerCase().includes(b.town.toLowerCase()));
         if (orgName) result = result.filter(b => b.orgName.toLowerCase().includes(orgName.toLowerCase()) || orgName.toLowerCase().includes(b.orgName.toLowerCase()));
 
-        // Soft PIN filter: prioritize but don't fail search
         if (pinCode && pinCode.length === 6) {
             const pinMatches = result.filter(b => b.pinCode === pinCode);
             if (pinMatches.length > 0) result = pinMatches;
@@ -154,21 +157,17 @@ router.get('/official', async (req, res) => {
     }
     try {
         const query = {};
-        if (state) query.state = new RegExp(state, 'i');
-        if (district) query.district = new RegExp(district, 'i');
-        if (town) query.town = new RegExp(town, 'i');
+        if (state) query.state = new RegExp(escapeRegExp(state), 'i');
+        if (district) query.district = new RegExp(escapeRegExp(district), 'i');
+        if (town) query.town = new RegExp(escapeRegExp(town), 'i');
         if (pinCode) query.pinCode = pinCode;
         if (orgCategory) query.orgCategory = orgCategory;
-        if (orgName) query.orgName = new RegExp(orgName, 'i');
+        if (orgName) query.orgName = new RegExp(escapeRegExp(orgName), 'i');
 
-        console.log('🔍 [OFFICIAL SEARCH QUERY]', query);
         const buses = await Bus.find(query);
-        console.log(`✨ [OFFICIAL SEARCH RESULT] Found ${buses.length} buses`);
-
         if (buses.length > 0) {
             res.json(buses);
         } else {
-            console.log('🔄 [DB EMPTY] Falling back to mock data...');
             let result = MOCK_OFFICIAL_BUSES;
             const s = (state || "").toLowerCase().trim();
             const d = (district || "").toLowerCase().trim();
@@ -181,13 +180,10 @@ router.get('/official', async (req, res) => {
             if (c) result = result.filter(b => (b.orgCategory || "").toLowerCase().includes(c));
             if (n) result = result.filter(b => (b.orgName || "").toLowerCase().includes(n));
 
-            // Soft PIN filter: prioritize but don't fail search
             if (p && p.length === 6) {
                 const pinMatches = result.filter(b => b.pinCode === p);
                 if (pinMatches.length > 0) result = pinMatches;
             }
-
-            console.log(`✨ [MOCK RESULT] Found ${result.length} buses`);
             res.json(result);
         }
     } catch (err) {
@@ -195,40 +191,7 @@ router.get('/official', async (req, res) => {
     }
 });
 
-// Search buses
-router.get('/search', async (req, res) => {
-    if (mongoose.connection.readyState !== 1) {
-        const { from, to, date } = req.query;
-        console.log(`🔍 [DEMO SEARCH] from=${from}, to=${to}, date=${date}`);
-
-        let filtered = MOCK_BUSES;
-        if (from) filtered = filtered.filter(b => b.route.from.toLowerCase().includes(from.toLowerCase()));
-        if (to) filtered = filtered.filter(b => b.route.to.toLowerCase().includes(to.toLowerCase()));
-        if (date) {
-            const datesArray = date.split(',');
-            filtered = filtered.filter(b => datesArray.includes(b.date));
-        }
-
-        console.log(`✨ [DEMO RESULT] Found ${filtered.length} buses`);
-        return res.json(filtered);
-    }
-    const { from, to, date } = req.query;
-    try {
-        const query = {};
-        if (from) query['route.from'] = new RegExp(from, 'i');
-        if (to) query['route.to'] = new RegExp(to, 'i');
-        if (date) {
-            query['date'] = { $in: date.split(',') };
-            query['bookedDates'] = { $nin: date.split(',') };
-        }
-        const buses = await Bus.find(query);
-        res.json(buses);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// Get single bus by ObjectId (used by RouteSelection)
+// Get single bus by ObjectId
 router.get('/:id/route', async (req, res) => {
     try {
         const bus = await Bus.findById(req.params.id).lean();
@@ -239,7 +202,7 @@ router.get('/:id/route', async (req, res) => {
     }
 });
 
-// PATCH /api/buses/:id/route — Save route stops from RouteSelection
+// PATCH /api/buses/:id/route
 router.patch('/:id/route', async (req, res) => {
     const { from, to, stops } = req.body;
     try {
@@ -262,8 +225,22 @@ router.get('/by-id/:id', async (req, res) => {
         return res.json(bus);
     }
     try {
-        const bus = await Bus.findById(req.params.id).lean();
+        const bus = await Bus.findById(req.params.id).populate('owner', 'upiId').lean();
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
+        bus.ownerUPI = bus.owner?.upiId || '8302391227-2@ybl';
+
+        const tripDate = req.query.date ? new Date(req.query.date + 'T00:00:00') : new Date();
+        const hrsDiff = (tripDate.getTime() - Date.now()) / (1000 * 60 * 60);
+
+        if (hrsDiff <= 48 && bus.seats) {
+            bus.seats = bus.seats.map(s => {
+                if (s.reservedFor === 'elderly' || s.reservedFor === 'disabled') {
+                    return { ...s, reservedFor: 'general', originalReservedFor: s.reservedFor };
+                }
+                return s;
+            });
+        }
+
         const locks = await SeatLock.find({ busId: req.params.id });
         bus.activeLocks = locks.map(l => ({ seatNumber: l.seatNumber, lockerId: l.lockerId }));
         const confirmedBookings = await Booking.find({ bus: req.params.id, paymentStatus: 'Completed' });
@@ -281,26 +258,20 @@ router.get('/by-id/:id', async (req, res) => {
 router.post('/:id/lock', async (req, res) => {
     const { seatNumber, lockerId } = req.body;
     if (mongoose.connection.readyState !== 1) {
-        // In demo mode, we'll just simulate a successful lock
-        // unless we want to keep track of it in memory
         const bus = MOCK_BUSES.find(b => b._id === req.params.id);
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
-
         if (!bus.activeLocks) bus.activeLocks = [];
         const existing = bus.activeLocks.find(l => l.seatNumber === seatNumber);
         if (existing && existing.lockerId !== lockerId) {
             return res.json({ message: "Seat already locked" });
         }
-
-        if (!existing) {
-            bus.activeLocks.push({ seatNumber, lockerId });
-        }
+        if (!existing) bus.activeLocks.push({ seatNumber, lockerId });
         return res.json({ message: "Seat locked", lockerId });
     }
     try {
         const lock = await SeatLock.findOneAndUpdate(
             { busId: req.params.id, seatNumber },
-            { lockerId, expiresAt: new Date(Date.now() + 10 * 60 * 1000) }, // 10 mins
+            { lockerId, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
             { upsert: true, new: true }
         );
         res.json({ message: 'Seat locked', lock });
@@ -326,5 +297,10 @@ router.post('/:id/unlock', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
+
+
+
+
 
 module.exports = router;

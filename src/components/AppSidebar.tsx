@@ -26,6 +26,7 @@ import {
   Calendar,
   TrendingUp,
   Shield,
+  Edit,
   School,
   Building2,
   Route,
@@ -36,6 +37,7 @@ import { Link, useLocation } from "react-router-dom";
 import Logo from "./brand/Logo";
 import LogoIcon from "./brand/LogoIcon";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuGroups = {
   consumer: [
@@ -65,6 +67,7 @@ const menuGroups = {
     { title: "sidebar.rent", url: "/owner#rent", icon: Package },
     { title: "Tracking Requests", url: "/owner#tracking", icon: Shield },
     { title: "Employees", url: "/owner#employees", icon: Users },
+    { title: "Feedback", url: "/owner#complaints", icon: Edit },
   ],
   admin: [
     { title: "sidebar.overview", url: "/admin", icon: TrendingUp },
@@ -79,8 +82,13 @@ const menuGroups = {
 export function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
-
+  const { role } = useAuth();
   const getActiveGroup = () => {
+    // If user is Owner, prioritize the owner sidebar group so management links stay visible
+    if (role === 'Owner' || role === 'Owner+Employee') return 'owner';
+    if (role === 'Admin') return 'admin';
+    if (role === 'Driver') return 'driver';
+
     if (location.pathname.startsWith('/passenger')) return 'passenger';
     if (location.pathname.startsWith('/driver')) return 'driver';
     if (location.pathname.startsWith('/owner')) return 'owner';

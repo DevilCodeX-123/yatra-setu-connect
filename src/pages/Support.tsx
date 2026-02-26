@@ -35,20 +35,26 @@ export default function Support() {
         }
     }, [selectedBus]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent, type: 'Complaint' | 'Suggestion' = 'Complaint') => {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.createSupportTicket({
-                subject: `${category} issue on bus ${selectedBus}`,
+            await api.submitComplaint({
+                busNumber: selectedBus,
+                type,
+                category: category || (type === 'Suggestion' ? 'Suggestion' : 'Other'),
                 description,
-                category: category === 'safety' ? 'Bus Issue' : category === 'condition' ? 'Bus Issue' : 'Other',
-                priority: category === 'safety' ? 'High' : 'Medium'
+                userName: "Logged In User", // Ideally from auth profile
+                userPhone: ""
             });
-            toast.success("Thank you for your feedback! Our team will review it.");
+            toast.success(`Thank you for your ${type.toLowerCase()}! Our team will review it.`);
             setDescription("");
+            if (type === 'Complaint') {
+                setSelectedBus("");
+                setCategory("");
+            }
         } catch (err) {
-            toast.error("Failed to submit ticket.");
+            toast.error(`Failed to submit ${type.toLowerCase()}.`);
         } finally {
             setLoading(false);
         }
@@ -115,7 +121,7 @@ export default function Support() {
                                 <CardDescription className="text-[10px] font-bold text-slate-400">File a complaint against a bus or service you've recently used.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <form onSubmit={handleSubmit} className="space-y-5">
+                                <form onSubmit={(e) => handleSubmit(e, 'Complaint')} className="space-y-5">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Select Bus You Traveled In</label>
@@ -205,7 +211,7 @@ export default function Support() {
                                     <CardDescription className="text-[10px] font-bold text-slate-400">We're always looking to improve our network and services.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                    <form onSubmit={(e) => handleSubmit(e, 'Suggestion')} className="space-y-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Your Suggestion Is For</label>
                                             <select className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">

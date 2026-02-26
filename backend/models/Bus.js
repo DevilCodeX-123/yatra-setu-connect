@@ -20,7 +20,11 @@ const BusSchema = new mongoose.Schema({
     name: { type: String },
     operator: { type: String },
     type: { type: String, enum: ['AC', 'Non-AC', 'Express', 'Volvo', 'Ordinary', 'Sleeper'], default: 'Ordinary' },
-    status: { type: String, enum: ['Active', 'Inactive', 'Maintenance'], default: 'Active' },
+
+    // ─── Status ───────────────────────────────────────────────────────────────
+    // Active = Live on road | Temp-Offline = temporarily paused | Inactive = fully off
+    status: { type: String, enum: ['Active', 'Inactive', 'Temp-Offline', 'Maintenance'], default: 'Inactive' },
+
     totalSeats: { type: Number, default: 40 },
     seats: [SeatSchema],
     pricePerKm: { type: Number, default: 1.2 },
@@ -30,49 +34,70 @@ const BusSchema = new mongoose.Schema({
     departureTime: { type: String },
     arrivalTime: { type: String },
     date: { type: String },
+
     route: {
         from: { type: String },
         to: { type: String },
         stops: [StopSchema],
     },
+
     liveLocation: {
         lat: { type: Number },
         lng: { type: Number },
         source: { type: String, enum: ['gps', 'driver', 'conductor', 'manual'] },
         updatedAt: { type: Date },
     },
-    mileage: { type: Number, default: 4.0 }, // km/l
-    // Official Bus Tracking fields
+
+    mileage: { type: Number, default: 4.0 },
+
+    // ─── Rental ───────────────────────────────────────────────────────────────
+    isRentalEnabled: { type: Boolean, default: true },
+    rentalPricePerDay: { type: Number, default: 5000 },
+    rentalPricePerHour: { type: Number, default: 500 },
+    returnChargePerKm: { type: Number, default: 15 },
+    oneWayReturnChargePercentage: { type: Number, default: 50 },
+    rentalCapacity: { type: Number, default: 40 },
+    bookedDates: [{ type: String }],
+
+    // ─── Schedule / Timed Loop Routes ─────────────────────────────────────────
+    // When isScheduleActive=true, bus shows at route.stops[0] until startTime,
+    // then runs the route, loops every loopIntervalMinutes until endTime.
+    schedule: {
+        isScheduleActive: { type: Boolean, default: false },
+        type: { type: String, enum: ['daily', 'days', 'specific'], default: 'daily' },
+        specificDates: { type: [String], default: [] },
+        startTime: { type: String, default: '' },           // "08:00"
+        endTime: { type: String, default: '' },             // "20:00"
+        loopEnabled: { type: Boolean, default: false },
+        loopIntervalMinutes: { type: Number, default: 60 },
+        activeDays: { type: [String], default: [] },        // ['Mon','Tue','Wed',...]
+        notes: { type: String, default: '' },
+    },
+
+    // ─── Official Bus Tracking ─────────────────────────────────────────────────
     orgCategory: { type: String, enum: ['School', 'College', 'Office', 'Other'] },
     orgName: { type: String },
     state: { type: String },
     district: { type: String },
     town: { type: String },
     pinCode: { type: String },
-    rentalPricePerDay: { type: Number, default: 5000 },
-    rentalPricePerHour: { type: Number, default: 500 },
-    returnChargePerKm: { type: Number, default: 15 }, // Deprecated or for specific extra costs
-    oneWayReturnChargePercentage: { type: Number, default: 50 }, // Percentage of distance charged for return on one-way
-    rentalCapacity: { type: Number, default: 40 },
-    bookedDates: [{ type: String }], // ISO dates string
+
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    // Private Bus Mode
+
+    // ─── Private Bus / Employees ───────────────────────────────────────────────
     isPrivate: { type: Boolean, default: false },
-    accessCode: { type: String }, // For owner & authorized users to track location
-    employeeCode: { type: String }, // Separate code for drivers to activate & push location
+    accessCode: { type: String },
+    employeeCode: { type: String },
     employees: [{
         name: { type: String },
         email: { type: String },
         phone: { type: String },
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         status: { type: String, enum: ['Pending', 'Active', 'Rejected'], default: 'Active' },
-        driverCode: { type: String }, // unique code for driver to go "on-air"
+        driverCode: { type: String },
         perDaySalary: { type: Number, default: 0 },
         joinedAt: { type: Date, default: Date.now }
     }],
 }, { timestamps: true });
 
-
 module.exports = mongoose.model('Bus', BusSchema);
-
-

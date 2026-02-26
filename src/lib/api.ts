@@ -117,6 +117,34 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/owner/dashboard`, { headers: getAuthHeaders() });
         return res.json();
     },
+    updateOwnerUPI: async (upiId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/upi`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ upiId })
+        });
+        return res.json();
+    },
+    getOwnerBookings: async () => {
+        const res = await fetch(`${API_BASE_URL}/owner/bookings`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getRoutesHistory: async () => {
+        const res = await fetch(`${API_BASE_URL}/owner/routes-history`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getOwnerExpenses: async () => {
+        const res = await fetch(`${API_BASE_URL}/owner/expenses`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    addOwnerExpense: async (data: any) => {
+        const res = await fetch(`${API_BASE_URL}/owner/expenses`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
     getOwnerRevenue: async () => {
         const res = await fetch(`${API_BASE_URL}/owner/revenue`, { headers: getAuthHeaders() });
         return res.json();
@@ -129,6 +157,58 @@ export const api = {
         });
         return res.json();
     },
+    updateBusInfo: async (busId: string, data: { name?: string; totalSeats?: number; pricePerKm?: number; status?: string; isRentalEnabled?: boolean }) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    updateBusStatus: async (busId: string, status: 'Active' | 'Inactive' | 'Temp-Offline') => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/status`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status })
+        });
+        return res.json();
+    },
+    updateBusSchedule: async (busId: string, schedule: {
+        isScheduleActive?: boolean;
+        type?: 'daily' | 'days' | 'specific';
+        specificDates?: string[];
+        startTime?: string;
+        endTime?: string;
+        loopEnabled?: boolean;
+        loopIntervalMinutes?: number;
+        activeDays?: string[];
+        notes?: string;
+    }) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/schedule`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(schedule)
+        });
+        return res.json();
+    },
+    updateBusRoute: async (busId: string, routeData: { from: string; to: string; stops: any[] }) => {
+        const res = await fetch(`${API_BASE_URL}/buses/${busId}/route`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(routeData)
+        });
+        return res.json();
+    },
+    toggleRental: async (busId: string, isRentalEnabled: boolean) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ isRentalEnabled })
+        });
+        return res.json();
+    },
+
+
     getBusEmployees: async (busId: string) => {
         const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, { headers: getAuthHeaders() });
         return res.json();
@@ -140,7 +220,24 @@ export const api = {
         return res.json();
     },
     removeDriver: async (busId: string, empId: string) => {
-        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}`, { method: 'DELETE', headers: getAuthHeaders() });
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    payDriverSalary: async (busId: string, empId: string, data: { monthYear: string; amount: number; hours: number; description?: string }) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}/pay`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    getSalaryReport: async (empId: string, month: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/employees/${empId}/salary-report?month=${month}`, {
+            headers: getAuthHeaders()
+        });
         return res.json();
     },
     updateDriver: async (busId: string, empId: string, data: any) => {
@@ -156,10 +253,6 @@ export const api = {
     getEmployeeAttendance: async (empId: string, month?: string) => {
         const url = `${API_BASE_URL}/owner/employees/${empId}/attendance${month ? `?month=${month}` : ''}`;
         const res = await fetch(url, { headers: getAuthHeaders() });
-        return res.json();
-    },
-    getSalaryReport: async (empId: string, month: string) => {
-        const res = await fetch(`${API_BASE_URL}/owner/employees/${empId}/salary-report?month=${month}`, { headers: getAuthHeaders() });
         return res.json();
     },
     markAttendance: async (data: { employeeId: string; busId: string; date: string; present?: boolean; notes?: string }) => {
@@ -291,6 +384,27 @@ export const api = {
             if (value) searchParams.append(key, value);
         });
         const res = await fetch(`${API_BASE_URL}/buses/official?${searchParams.toString()}`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    // Complaints
+    getOwnerComplaints: async () => {
+        const res = await fetch(`${API_BASE_URL}/complaints/owner`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    updateComplaintStatus: async (id: string, data: { status: string, response?: string }) => {
+        const res = await fetch(`${API_BASE_URL}/complaints/${id}/status`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    submitComplaint: async (data: any) => {
+        const res = await fetch(`${API_BASE_URL}/complaints`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
         return res.json();
     }
 };

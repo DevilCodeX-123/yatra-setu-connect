@@ -5,12 +5,12 @@ const TrackingRequest = require('../models/TrackingRequest');
 const Bus = require('../models/Bus');
 const User = require('../models/User');
 const { MOCK_OFFICIAL_BUSES } = require('../data/mockData');
-const { verifyToken, requireAuth, requireRole } = require('../middleware/auth');
+const { verifyToken, requireAuth, requireRole, resolveUserId } = require('../middleware/auth');
 
 // POST /api/tracking/request — Submit a tracking request with activation code
 router.post('/request', verifyToken, requireAuth, async (req, res) => {
     const { busId, activationCode, nickname } = req.body;
-    const userId = req.user.id;
+    const userId = await resolveUserId(req.user);
 
     // Handle Demo Mode (DB down)
     if (mongoose.connection.readyState !== 1) {
@@ -67,7 +67,8 @@ router.post('/request', verifyToken, requireAuth, async (req, res) => {
 router.get('/owner/requests', verifyToken, requireAuth, requireRole('Owner'), async (req, res) => {
     try {
         // Find all buses owned by this owner
-        const ownerBuses = await Bus.find({ owner: req.user.id }).select('_id');
+        const userId = await resolveUserId(req.user);
+        const ownerBuses = await Bus.find({ owner: userId }).select('_id');
         const busIds = ownerBuses.map(b => b._id);
 
         const requests = await TrackingRequest.find({ bus: { $in: busIds } })
@@ -93,7 +94,8 @@ router.patch('/owner/requests/:id', verifyToken, requireAuth, requireRole('Owner
         if (!request) return res.status(404).json({ message: 'Request not found' });
 
         // Security check: ensure ownner owns the bus
-        if (request.bus.owner.toString() !== req.user.id) {
+        const userId = await resolveUserId(req.user);
+        if (request.bus.owner.toString() !== userId.toString()) {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
@@ -122,7 +124,8 @@ router.patch('/owner/requests/:id', verifyToken, requireAuth, requireRole('Owner
 // GET /api/tracking/authorized — Get user's authorized buses
 router.get('/authorized', verifyToken, requireAuth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate({
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId).populate({
             path: 'authorizedBuses.bus',
             select: 'busNumber name orgName orgCategory liveLocation status route'
         });
@@ -150,7 +153,8 @@ router.get('/my-requests', verifyToken, requireAuth, async (req, res) => {
     }
 
     try {
-        const requests = await TrackingRequest.find({ user: req.user.id, status: 'Pending' })
+        const userId = await resolveUserId(req.user);
+        const requests = await TrackingRequest.find({ user: userId, status: 'Pending' })
             .populate('bus', 'busNumber name orgName orgCategory');
         res.json(requests);
     } catch (err) {

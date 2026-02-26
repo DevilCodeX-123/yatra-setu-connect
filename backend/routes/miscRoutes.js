@@ -8,7 +8,7 @@ const EmergencyAlert = require('../models/EmergencyAlert');
 const User = require('../models/User');
 
 const { MOCK_BUSES } = require('../data/mockData');
-const { verifyToken, requireAuth } = require('../middleware/auth');
+const { verifyToken, requireAuth, resolveUserId } = require('../middleware/auth');
 
 // Get Real-Time Statistics
 router.get('/stats', async (req, res) => {
@@ -91,7 +91,7 @@ router.post('/support', verifyToken, requireAuth, async (req, res) => {
     }
     try {
         const ticket = new SupportTicket({
-            user: req.user.id,
+            user: await resolveUserId(req.user),
             ...req.body
         });
         await ticket.save();

@@ -35,7 +35,9 @@ const BookingSchema = new mongoose.Schema({
     paymentStatus: { type: String, enum: ['Pending', 'Completed', 'Failed', 'DepositPaid'], default: 'Pending' },
     isDepositPaid: { type: Boolean, default: false },
     amount: { type: Number, required: true },
-    depositAmount: { type: Number }
+    depositAmount: { type: Number },
+    bookingSource: { type: String, enum: ['Online', 'Employee', 'Agent'], default: 'Online' },
+    paymentMethod: { type: String, enum: ['Online', 'Cash', 'UPI'], default: 'Online' }
 }, { timestamps: true });
 
 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const { verifyToken, requireAuth, requireRole } = require('../middleware/auth');
+const { verifyToken, requireRole, resolveUserId } = require('../middleware/auth');
 const User = require('../models/User');
 const Bus = require('../models/Bus');
 const Booking = require('../models/Booking');
@@ -78,7 +78,8 @@ router.get('/invitations', verifyToken, async (req, res) => {
         return res.json([]);
     }
     try {
-        const user = await User.findById(req.user.id);
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         // Find all buses that have this employee's email pending or active
@@ -110,7 +111,8 @@ router.get('/invitations', verifyToken, async (req, res) => {
 // POST /api/employee/invitations/:busId/accept
 router.post('/invitations/:busId/accept', verifyToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
         const bus = await Bus.findById(req.params.busId);
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
 
@@ -130,7 +132,8 @@ router.post('/invitations/:busId/accept', verifyToken, async (req, res) => {
 // POST /api/employee/invitations/:busId/reject
 router.post('/invitations/:busId/reject', verifyToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
         const bus = await Bus.findById(req.params.busId);
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
 
@@ -160,8 +163,9 @@ router.post('/go-onair', verifyToken, async (req, res) => {
 
         // Auto check-in today
         const today = new Date().toISOString().split('T')[0];
+        const userId = await resolveUserId(req.user);
         await Attendance.findOneAndUpdate(
-            { employee: emp.userId || req.user.id, bus: bus._id, date: today },
+            { employee: emp.userId || userId, bus: bus._id, date: today },
             { $setOnInsert: { owner: bus.owner, checkIn: new Date(), present: true } },
             { upsert: true, new: true }
         );
@@ -176,7 +180,8 @@ router.post('/check-out', verifyToken, async (req, res) => {
     if (!busId) return res.status(400).json({ message: 'busId is required' });
     try {
         const today = new Date().toISOString().split('T')[0];
-        const rec = await Attendance.findOne({ employee: req.user.id, bus: busId, date: today });
+        const userId = await resolveUserId(req.user);
+        const rec = await Attendance.findOne({ employee: userId, bus: busId, date: today });
         if (!rec) return res.status(404).json({ message: 'No check-in record found for today' });
         const now = new Date();
         const hrs = rec.checkIn ? (now - rec.checkIn) / 3600000 : 0;
@@ -191,7 +196,8 @@ router.post('/check-out', verifyToken, async (req, res) => {
 router.get('/my-attendance', verifyToken, async (req, res) => {
     try {
         const { month } = req.query;
-        const query = { employee: req.user.id };
+        const userId = await resolveUserId(req.user);
+        const query = { employee: userId };
         if (month) query.date = { $regex: `^${month}` };
         const records = await Attendance.find(query).populate('bus', 'busNumber name').sort({ date: -1 });
         res.json({ attendance: records });
