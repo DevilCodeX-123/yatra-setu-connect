@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://127.0.0.1:5000";
@@ -6,48 +6,65 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://127.0.0.1:5000";
 let globalSocket: Socket | null = null;
 
 export function useSocket(token?: string | null) {
-    const socketRef = useRef<Socket | null>(null);
+    const [socket, setSocket] = useState<Socket | null>(globalSocket);
+    const [isConnected, setIsConnected] = useState(globalSocket?.connected || false);
+    const tokenRef = useRef(token);
+
+    useEffect(() => {
+        tokenRef.current = token;
+    }, [token]);
 
     useEffect(() => {
         if (!globalSocket || !globalSocket.connected) {
             globalSocket = io(SOCKET_URL, {
-                auth: { token: token || "" },
+                auth: { token: tokenRef.current || "" },
                 transports: ["websocket", "polling"],
                 reconnectionDelay: 1000,
                 reconnectionAttempts: 5,
             });
         }
-        socketRef.current = globalSocket;
+
+        const s = globalSocket;
+        setSocket(s);
+        setIsConnected(s.connected);
+
+        const onConnect = () => setIsConnected(true);
+        const onDisconnect = () => setIsConnected(false);
+
+        s.on("connect", onConnect);
+        s.on("disconnect", onDisconnect);
 
         return () => {
-            // Don't disconnect on unmount — keep alive for app lifetime
+            s.off("connect", onConnect);
+            s.off("disconnect", onDisconnect);
         };
-    }, [token]);
+    }, []);
 
     const joinBus = useCallback((busNumber: string) => {
-        socketRef.current?.emit("join:bus", busNumber);
-    }, []);
+        socket?.emit("join:bus", busNumber);
+    }, [socket]);
 
     const joinUser = useCallback((userId: string) => {
-        socketRef.current?.emit("join:user", userId);
-    }, []);
+        socket?.emit("join:user", userId);
+    }, [socket]);
 
     const sendLocation = useCallback((busNumber: string, lat: number, lng: number, source: string) => {
-        socketRef.current?.emit("bus:location", { busNumber, lat, lng, source });
-    }, []);
+        socket?.emit("bus:location", { busNumber, lat, lng, source });
+    }, [socket]);
 
     const sendSOS = useCallback((busNumber: string, lat: number, lng: number, userId?: string) => {
-        socketRef.current?.emit("bus:sos", { busNumber, lat, lng, userId });
-    }, []);
+        socket?.emit("bus:sos", { busNumber, lat, lng, userId });
+    }, [socket]);
 
     const updateSeat = useCallback((busNumber: string, seatNumber: number, status: string) => {
-        socketRef.current?.emit("bus:seat-update", { busNumber, seatNumber, status });
-    }, []);
+        socket?.emit("bus:seat-update", { busNumber, seatNumber, status });
+    }, [socket]);
 
     const on = useCallback((event: string, handler: (...args: any[]) => void) => {
-        socketRef.current?.on(event, handler);
-        return () => { socketRef.current?.off(event, handler); };
-    }, []);
+        if (!socket) return () => { };
+        socket.on(event, handler);
+        return () => { socket.off(event, handler); };
+    }, [socket]);
 
-    return { socket: socketRef.current, joinBus, joinUser, sendLocation, sendSOS, updateSeat, on };
+    return { socket, isConnected, joinBus, joinUser, sendLocation, sendSOS, updateSeat, on };
 }

@@ -12,7 +12,7 @@ interface SidebarItem {
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  title: string;
+  title: ReactNode;
   subtitle: string;
   sidebarItems: SidebarItem[];
   accentColor?: string;

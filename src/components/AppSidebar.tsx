@@ -31,6 +31,12 @@ import {
   Building2,
   Route,
   CreditCard,
+  Ticket,
+  MapPin,
+  Wallet,
+  Clock,
+  BarChart3,
+  LayoutDashboard,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Logo from "./brand/Logo";
@@ -76,6 +82,13 @@ const menuGroups = {
     { title: "sidebar.routes", url: "#routes", icon: Route },
     { title: "sidebar.schoolBuses", url: "#school", icon: School },
     { title: "sidebar.eventBuses", url: "#events", icon: Shield },
+  ],
+  employee: [
+    { title: "sidebar.dashboard", url: "/employee#dashboard", icon: TrendingUp },
+    { title: "sidebar.operations", url: "/employee#operations", icon: Users },
+    { title: "sidebar.safety", url: "/employee#safety", icon: Shield },
+    { title: "sidebar.shiftReports", url: "/employee#shiftReports", icon: BarChart3 },
+    { title: "sidebar.expenses", url: "/employee#expenses", icon: Wallet },
   ]
 };
 
@@ -84,15 +97,18 @@ export function AppSidebar() {
   const location = useLocation();
   const { role } = useAuth();
   const getActiveGroup = () => {
-    // If user is Owner, prioritize the owner sidebar group so management links stay visible
+    // Priority: Specific Panel Paths
+    if (location.pathname.startsWith('/admin')) return 'admin';
+    if (location.pathname.startsWith('/owner')) return 'owner';
+    if (location.pathname.startsWith('/employee')) return 'employee';
+    if (location.pathname.startsWith('/driver')) return 'driver';
+    if (location.pathname.startsWith('/passenger')) return 'passenger';
+
+    // Role-based fallbacks for Home page etc.
     if (role === 'Owner' || role === 'Owner+Employee') return 'owner';
     if (role === 'Admin') return 'admin';
     if (role === 'Driver') return 'driver';
 
-    if (location.pathname.startsWith('/passenger')) return 'passenger';
-    if (location.pathname.startsWith('/driver')) return 'driver';
-    if (location.pathname.startsWith('/owner')) return 'owner';
-    if (location.pathname.startsWith('/admin')) return 'admin';
     return 'consumer';
   };
 
@@ -120,11 +136,44 @@ export function AppSidebar() {
 
       {/* Content */}
       <SidebarContent className="bg-sidebar px-2 pt-4">
-        {/* 1. Management Section (Owner/Admin specific) */}
-        {(group === 'owner' || group === 'admin') && (
+        {/* 1. Consumer Navigation (Available to Everyone) - MOVED TO TOP */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
+            {t('sidebar.consumerNav')}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-0.5">
+              {(group === 'consumer' ? items : menuGroups.consumer).map((item) => {
+                const active = location.pathname === item.url;
+                const translatedTitle = t(item.title);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={translatedTitle}
+                      isActive={active}
+                      className={`h-10 rounded-xl transition-all duration-200 ${active
+                        ? "bg-primary-light text-white shadow-md shadow-blue-600/20"
+                        : "text-blue-200/70 hover:text-white hover:bg-white/8"
+                        }`}
+                    >
+                      <Link to={item.url} className="px-3 flex items-center gap-3">
+                        <item.icon className="size-4 shrink-0" />
+                        <span className="text-xs font-medium">{translatedTitle}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* 2. Management Section (Owner/Admin/Employee) */}
+        {(group === 'owner' || group === 'admin' || group === 'employee') && (
           <SidebarGroup className="mb-4">
             <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
-              {t('sidebar.management')}
+              {group === 'employee' ? t('sidebar.driverPanel') : t('sidebar.management')}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-0.5">
@@ -155,41 +204,8 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* 2. Consumer Navigation (Available to Everyone) */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
-            {t('sidebar.consumerNav') || 'Consumer Navigation'}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-0.5">
-              {(group === 'consumer' ? items : menuGroups.consumer).map((item) => {
-                const active = location.pathname === item.url;
-                const translatedTitle = t(item.title);
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      tooltip={translatedTitle}
-                      isActive={active}
-                      className={`h-10 rounded-xl transition-all duration-200 ${active
-                        ? "bg-primary-light text-white shadow-md shadow-blue-600/20"
-                        : "text-blue-200/70 hover:text-white hover:bg-white/8"
-                        }`}
-                    >
-                      <Link to={item.url} className="px-3 flex items-center gap-3">
-                        <item.icon className="size-4 shrink-0" />
-                        <span className="text-xs font-medium">{translatedTitle}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Employee Panel Link - Only for Employee role */}
-        {role === 'Employee' && (
+        {/* Employee Panel Link - Only for Employee role and not on employee page */}
+        {role === 'Employee' && location.pathname !== '/employee' && (
           <SidebarGroup className="mt-4 border-t border-white/5 pt-4">
             <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
               Driver / Conductor

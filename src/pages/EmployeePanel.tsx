@@ -4,16 +4,21 @@ import {
     Clock, Users, LogOut, Wifi, WifiOff,
     XCircle, RefreshCw, Shield, Banknote, BarChart3, FileText,
     Ticket, UserCheck, ArrowRight,
-    PlusCircle, Smartphone, TrendingUp, MapPinOff
+    PlusCircle, Smartphone, TrendingUp, MapPinOff, Wallet,
+    ShieldAlert, AlertCircle, ChevronLeft, Calendar as CalendarIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import SeatMap, { generateSeats, Seat } from "@/components/SeatMap";
 import SOSButton from "@/components/SOSButton";
+import { Badge } from "@/components/ui/badge";
 import { useSocket } from "@/hooks/useSocket";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { useNavigate, useLocation } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from "@/contexts/AuthContext";
+import MapplsMap from "@/components/MapplsMap";
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 const API_BASE = "/api/employee";
@@ -30,15 +35,27 @@ const apiGet = (path: string) =>
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Step = "BUS_SELECT" | "DUTY_START" | "ACTIVE";
-type Tab = "dashboard" | "passengers" | "tickets" | "expenses" | "attendance" | "reports" | "location";
+type Tab = "dashboard" | "operations" | "safety" | "shiftReports" | "expenses";
 type Role = "Driver" | "Conductor";
 interface Passenger { pnr: string; name: string; seat: string; status: string; paymentMethod: string; amount: number; boarded: boolean; }
-interface AttendanceRecord { date: string; checkIn: string; checkOut: string; hoursWorked: number; bus: { busNumber: string }; }
+interface AttendanceRecord {
+    date: string;
+    checkIn: string;
+    checkOut: string;
+    hoursWorked: number;
+    bus: { busNumber: string };
+    overtimeHours?: number;
+    salaryEarned?: number;
+    isOffDay?: boolean;
+}
 interface ExpenseItem { category: string; amount: number; description: string; date: string; }
 interface DailyReport { totalTickets: number; cashTickets: number; onlineTickets: number; cashAmount: number; onlineAmount: number; totalRevenue: number; }
+interface MonthlySummary { TotalSalary: number; TotalOvertime: number; TotalOffs: number; }
 
-// ─── STEP 1: Bus Selection ────────────────────────────────────────────────────
-function BusSelectionScreen({ onActivate }: { onActivate: (bus: string, busId: string | null, code: string, role: Role) => void }) {
+// ─── Helper Components ────────────────────────────────────────────────────────
+
+// Handle Bus Selection
+function BusSelectionScreen({ onActivate }: { onActivate: (bus: string, busId: string | null, code: string, role: Role, driverCode?: string) => void }) {
     const [busNumber, setBusNumber] = useState("");
     const [activationCode, setActivationCode] = useState("");
     const [role, setRole] = useState<Role>("Driver");
@@ -51,7 +68,7 @@ function BusSelectionScreen({ onActivate }: { onActivate: (bus: string, busId: s
             const data = await apiPost("/activate", { busNumber: busNumber.toUpperCase(), activationCode });
             if (data.success) {
                 toast.success(`Bus ${busNumber.toUpperCase()} selected! Enter Duty Start Code to begin.`);
-                onActivate(busNumber.toUpperCase(), data.bus?._id || null, activationCode, role);
+                onActivate(busNumber.toUpperCase(), data.bus?._id || null, activationCode, role, data.driverCode);
             } else {
                 toast.error(data.message || "Invalid activation code");
             }
@@ -104,9 +121,8 @@ function BusSelectionScreen({ onActivate }: { onActivate: (bus: string, busId: s
     );
 }
 
-// ─── STEP 2: Duty Start Screen ────────────────────────────────────────────────
-function DutyStartScreen({ busNumber, role, onDutyStart }: { busNumber: string; role: Role; onDutyStart: (busData: any, checkIn: Date) => void }) {
-    const [driverCode, setDriverCode] = useState("");
+function DutyStartScreen({ busNumber, role, defaultDriverCode, onDutyStart }: { busNumber: string; role: Role; defaultDriverCode?: string; onDutyStart: (busData: any, checkIn: Date) => void }) {
+    const [driverCode, setDriverCode] = useState(defaultDriverCode || "");
     const [loading, setLoading] = useState(false);
 
     const handleStart = async () => {
@@ -159,34 +175,114 @@ function DutyStartScreen({ busNumber, role, onDutyStart }: { busNumber: string; 
     );
 }
 
-// ─── Active Panel Tabs ────────────────────────────────────────────────────────
+function OffDutyPlaceholder({ title, description, icon: Icon, onAction }: { title: string; description: string; icon: any; onAction: () => void }) {
+    return (
+        <div className="text-center py-20 bg-card/40 border border-border rounded-3xl space-y-4">
+            <Icon className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
+            <div className="space-y-1">
+                <p className="font-black uppercase text-sm">{title}</p>
+                <p className="text-[10px] text-muted-foreground">{description}</p>
+            </div>
+            <Button size="sm" onClick={onAction} className="font-black uppercase tracking-wider text-[10px]">Start Duty Now</Button>
+        </div>
+    );
+}
+
 const TABS = [
-    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "passengers", label: "Passengers", icon: Users },
-    { id: "tickets", label: "Tickets", icon: Ticket },
-    { id: "location", label: "Location", icon: MapPin },
-    { id: "expenses", label: "Expenses", icon: Banknote },
-    { id: "attendance", label: "Attendance", icon: Clock },
-    { id: "reports", label: "Reports", icon: FileText },
+    { id: "dashboard", label: "Dashboard", icon: TrendingUp },
+    { id: "operations", label: "Operations", icon: Users },
+    { id: "safety", label: "Safety & SOS", icon: Shield },
+    { id: "shiftReports", label: "Shift & Reports", icon: BarChart3 },
+    { id: "expenses", label: "Expenses", icon: Wallet },
 ] as const;
 
-// ─── MAIN EMPLOYEE PANEL ───────────────────────────────────────────────────────
 export default function EmployeePanel() {
-    const { user } = useAuth();
+    const { token, user, isVerifying } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
     const [step, setStep] = useState<Step>("BUS_SELECT");
     const [role, setRole] = useState<Role>("Driver");
     const [busNumber, setBusNumber] = useState("");
     const [busId, setBusId] = useState<string | null>(null);
+    const [activationCode, setActivationCode] = useState("");
+    const [autoDriverCode, setAutoDriverCode] = useState("");
     const [busData, setBusData] = useState<any>(null);
     const [checkInTime, setCheckInTime] = useState<Date | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+
+    const sidebarItems = TABS.map(tab => ({
+        href: `/employee#${tab.id}`,
+        label: tab.label,
+        icon: <tab.icon className="size-4" />
+    }));
+
+    // Sync tab with URL hash
+    useEffect(() => {
+        const hash = window.location.hash.replace("#", "") as Tab;
+        if (hash && TABS.some(t => t.id === hash)) {
+            setActiveTab(hash);
+        }
+    }, [location.hash]);
+
+    // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!isVerifying && !token) {
+            toast.error("Please login to access Employee Panel");
+            navigate("/login?redirect=/employee");
+        }
+    }, [token, isVerifying, navigate]);
+
+    if (isVerifying) return <div className="h-screen flex items-center justify-center"><RefreshCw className="animate-spin" /></div>;
+    if (!token) return null;
 
     // Live
     const [seats, setSeats] = useState<Seat[]>(generateSeats(40));
     const [gpsSending, setGpsSending] = useState(false);
     const [connected, setConnected] = useState(false);
     const [locationSource, setLocationSource] = useState<"mobile" | "vehicle">("mobile");
+    const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
     const gpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Persistence & State Restoration
+    useEffect(() => {
+        const savedBus = localStorage.getItem("ys_active_bus");
+        const savedDuty = localStorage.getItem("ys_on_duty");
+
+        if (savedBus) {
+            try {
+                const { number, id, role: r, code, driverCode } = JSON.parse(savedBus);
+                setBusNumber(number);
+                setBusId(id);
+                setRole(r);
+                setActivationCode(code);
+                if (driverCode) setAutoDriverCode(driverCode);
+
+                if (savedDuty) {
+                    const dutyInfo = JSON.parse(savedDuty);
+                    setCheckInTime(new Date(dutyInfo.checkInTime));
+                    setBusData(dutyInfo.busData);
+                    setStep("ACTIVE");
+                } else {
+                    setStep("DUTY_START");
+                }
+            } catch (e) {
+                console.error("Persistence Restore Error:", e);
+                localStorage.removeItem("ys_active_bus");
+                localStorage.removeItem("ys_on_duty");
+            }
+        }
+    }, []);
+
+    // Initial Position Check
+    useEffect(() => {
+        if (checkInTime && !currentPosition) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                setCurrentPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            }, (err) => {
+                console.warn("Initial position error:", err);
+            });
+        }
+    }, [checkInTime]);
 
     // Passengers
     const [passengers, setPassengers] = useState<Passenger[]>([]);
@@ -217,16 +313,31 @@ export default function EmployeePanel() {
     const [showShiftEnd, setShowShiftEnd] = useState(false);
     const [shiftSummary, setShiftSummary] = useState<any>(null);
 
-    const { sendLocation, joinBus, on } = useSocket();
+    const { socket, isConnected, sendLocation, joinBus, on } = useSocket();
 
     // Handle Bus Selection
-    const onBusActivated = (bn: string, bid: string | null, code: string, r: Role) => {
-        setBusNumber(bn); setBusId(bid); setRole(r); setStep("DUTY_START");
+    const onBusActivated = (bn: string, bid: string | null, code: string, r: Role, driverCodeRes?: string) => {
+        setBusNumber(bn); setBusId(bid); setRole(r); setActivationCode(code);
+        if (driverCodeRes) setAutoDriverCode(driverCodeRes);
+        setStep("DUTY_START");
+        localStorage.setItem("ys_active_bus", JSON.stringify({ number: bn, id: bid, role: r, code, driverCode: driverCodeRes }));
+
+        // Notify owner immediately that someone is verifying
+        socket?.emit("bus:verifying", { busNumber: bn, role: r });
     };
 
     // Handle Duty Start
     const onDutyStarted = (bus: any, checkIn: Date) => {
-        setBusData(bus); setCheckInTime(checkIn); setStep("ACTIVE");
+        setBusData(bus); setCheckInTime(checkIn);
+        setStep("ACTIVE");
+        localStorage.setItem("ys_on_duty", JSON.stringify({ checkInTime: checkIn.toISOString(), busData: bus }));
+
+        // Notify owner that duty has officially started
+        socket?.emit("bus:duty-started", {
+            busNumber: bus.busNumber,
+            busData: bus,
+            checkInTime: checkIn.toISOString()
+        });
     };
 
     // Join socket when active
@@ -275,12 +386,13 @@ export default function EmployeePanel() {
     }, [busNumber]);
 
     useEffect(() => {
-        if (step !== "ACTIVE") return;
-        if (activeTab === "passengers") loadPassengers();
-        if (activeTab === "attendance") loadAttendance();
+        if (activeTab === "operations") loadPassengers();
+        if (activeTab === "shiftReports") {
+            loadAttendance();
+            loadReport();
+        }
         if (activeTab === "expenses") loadExpenses();
-        if (activeTab === "reports") loadReport();
-    }, [activeTab, step]);
+    }, [activeTab, step, attendanceMonth]);
 
     // GPS
     const startGPS = () => {
@@ -288,8 +400,11 @@ export default function EmployeePanel() {
         setGpsSending(true);
         gpsIntervalRef.current = setInterval(() => {
             navigator.geolocation.getCurrentPosition(pos => {
-                sendLocation(busNumber, pos.coords.latitude, pos.coords.longitude, locationSource === "mobile" ? "driver" : "gps");
-                apiPost("/location", { busNumber, lat: pos.coords.latitude, lng: pos.coords.longitude, source: locationSource });
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                setCurrentPosition({ lat, lng });
+                sendLocation(busNumber, lat, lng, locationSource === "mobile" ? "driver" : "gps");
+                apiPost("/location", { busNumber, lat, lng, source: locationSource });
             });
         }, 5000);
         toast.success("GPS sharing started — every 5s");
@@ -396,7 +511,16 @@ export default function EmployeePanel() {
                             </div>
                         ))}
                     </div>
-                    <Button className="w-full" onClick={() => { setShowShiftEnd(false); setStep("BUS_SELECT"); setBusNumber(""); setBusId(null); setCheckInTime(null); stopGPS(); }}>
+                    <Button className="w-full" onClick={() => {
+                        setShowShiftEnd(false);
+                        setStep("BUS_SELECT");
+                        setBusNumber("");
+                        setBusId(null);
+                        setCheckInTime(null);
+                        stopGPS();
+                        localStorage.removeItem("ys_active_bus");
+                        localStorage.removeItem("ys_on_duty");
+                    }}>
                         Start New Shift
                     </Button>
                 </div>
@@ -405,327 +529,407 @@ export default function EmployeePanel() {
     }
 
     return (
-        <DashboardLayout title={step === "ACTIVE" ? `${busNumber} · ${role}` : "Employee Portal"} subtitle={step === "ACTIVE" ? `On Duty · ${dutyHours}h` : "Driver / Conductor"} sidebarItems={[]}>
-            {step === "BUS_SELECT" && <BusSelectionScreen onActivate={onBusActivated} />}
-            {step === "DUTY_START" && <DutyStartScreen busNumber={busNumber} role={role} onDutyStart={onDutyStarted} />}
-
-            {step === "ACTIVE" && (
-                <div className="space-y-0">
-                    {/* Active Header Bar */}
+        <DashboardLayout
+            title={
+                <div className="flex items-center gap-2">
+                    {busNumber ? `${busNumber} · ${role}` : "Employee Portal"}
+                    <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border-none ${isConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                        <span className={`w-1 h-1 rounded-full mr-1.5 ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+                        {isConnected ? 'System Online' : 'System Offline'}
+                    </Badge>
+                </div>
+            }
+            subtitle={checkInTime ? `On Duty · ${dutyHours}h` : busNumber ? "Offline · Click Sidebar for Services" : "Driver / Conductor"}
+            sidebarItems={sidebarItems}
+        >
+            <div className="space-y-0">
+                {/* Active Header Bar - Only show if bus is selected */}
+                {busNumber && (
                     <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                         <div className="flex items-center gap-3">
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase ${connected ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-slate-200 text-slate-400"}`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-                                {connected ? "Live" : "Offline"}
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase ${checkInTime && isConnected ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-red-50 text-red-600 border border-red-100"}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${checkInTime && isConnected ? "bg-emerald-500 animate-pulse" : "bg-red-600"}`} />
+                                {checkInTime && isConnected ? "Live" : "No Connection"}
                             </div>
                             <div>
                                 <p className="font-black text-base leading-none">{busNumber}</p>
-                                <p className="text-[10px] text-muted-foreground">{role} · {dutyHours}h on duty</p>
+                                <p className="text-[10px] text-muted-foreground">{role} · {checkInTime ? `${dutyHours}h on duty` : "Currently Off Duty"}</p>
                             </div>
                         </div>
-                        <Button variant="destructive" size="sm" className="gap-1.5 text-xs font-black" onClick={endDuty}>
-                            <LogOut className="w-3.5 h-3.5" /> End Duty
-                        </Button>
+                        {checkInTime && (
+                            <Button variant="destructive" size="sm" className="gap-1.5 text-xs font-black" onClick={endDuty}>
+                                <LogOut className="w-3.5 h-3.5" /> End Duty
+                            </Button>
+                        )}
                     </div>
+                )}
 
-                    {/* Tab Navigation */}
-                    <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
-                        {TABS.map(tab => (
-                            <button key={tab.id} onClick={() => setActiveTab(tab.id as Tab)}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 ${activeTab === tab.id ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
-                                <tab.icon className="w-3 h-3" />
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* ── DASHBOARD TAB ──────────────────────────────────────────── */}
-                    {activeTab === "dashboard" && (
-                        <div className="space-y-4 pt-4">
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { label: "Available", value: seats.filter(s => s.status === "Available").length, color: "text-green-500" },
-                                    { label: "Occupied", value: seats.filter(s => s.status !== "Available").length, color: "text-red-400" },
-                                    { label: "Total", value: seats.length, color: "text-primary" },
-                                ].map((s, i) => (
-                                    <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
-                                        <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-                                        <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.label}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => setShowCashModal(true)} className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-primary/20 transition-colors">
-                                    <UserPlus className="w-7 h-7 text-primary" />
-                                    <p className="text-xs font-black text-primary">Cash Ticket</p>
-                                </button>
-                                <button onClick={() => setShowScanner(!showScanner)} className={`border rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors ${showScanner ? "bg-red-500/20 border-red-500/30" : "bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20"}`}>
-                                    {showScanner ? <XCircle className="w-7 h-7 text-red-400" /> : <QrCode className="w-7 h-7 text-blue-500" />}
-                                    <p className={`text-xs font-black ${showScanner ? "text-red-400" : "text-blue-500"}`}>{showScanner ? "Close Scanner" : "Scan QR"}</p>
-                                </button>
-                            </div>
-
-                            {showScanner && <div className="bg-background border border-border rounded-2xl p-4 overflow-hidden"><div id="emp-reader" className="w-full" /></div>}
-
-                            {/* Route Info */}
-                            {busData?.route && (
-                                <div className="bg-card border border-border rounded-2xl p-4">
-                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">Route</p>
-                                    <div className="flex items-center gap-2 text-sm font-bold">
-                                        <span>{busData.route.from}</span>
-                                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                                        <span>{busData.route.to}</span>
-                                    </div>
-                                    {busData.route.stops?.length > 0 && (
-                                        <div className="mt-2 flex flex-wrap gap-1">
-                                            {busData.route.stops.map((s: any, i: number) => (
-                                                <span key={i} className="bg-secondary text-[10px] font-bold px-2 py-0.5 rounded-full">{s.name}</span>
-                                            ))}
+                {/* ── DASHBOARD TAB ──────────────────────────────────────────── */}
+                {activeTab === "dashboard" && (
+                    <div className="space-y-4 pt-4">
+                        {step === "BUS_SELECT" ? (
+                            <BusSelectionScreen onActivate={onBusActivated} />
+                        ) : !checkInTime ? (
+                            <DutyStartScreen busNumber={busNumber} role={role} defaultDriverCode={autoDriverCode} onDutyStart={onDutyStarted} />
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[
+                                        { label: "Available", value: seats.filter(s => s.status === "Available").length, color: "text-green-500" },
+                                        { label: "Occupied", value: seats.filter(s => s.status !== "Available").length, color: "text-red-400" },
+                                        { label: "Total", value: seats.length, color: "text-primary" },
+                                    ].map((s, i) => (
+                                        <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
+                                            <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.label}</p>
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
-                            )}
 
-                            <div className="bg-card border border-border rounded-2xl p-4">
-                                <p className="text-[10px] font-black text-muted-foreground mb-2 uppercase tracking-wider">Live Seat Map</p>
-                                <div className="scale-90 origin-top"><SeatMap seats={seats} readOnly /></div>
-                            </div>
-
-                            <div className="bg-red-950/30 border border-red-900/30 rounded-2xl p-5">
-                                <p className="text-[10px] font-black text-red-400 mb-4 text-center">Emergency Controls</p>
-                                <div className="flex justify-center"><SOSButton busNumber={busNumber} /></div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── PASSENGERS TAB ─────────────────────────────────────────── */}
-                    {activeTab === "passengers" && (
-                        <div className="space-y-4 pt-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-black uppercase text-sm tracking-tight">Passengers Today</h3>
-                                <Button variant="outline" size="sm" onClick={loadPassengers} disabled={loadingPassengers} className="gap-1">
-                                    <RefreshCw className={`w-3 h-3 ${loadingPassengers ? "animate-spin" : ""}`} /> Refresh
-                                </Button>
-                            </div>
-                            {passengers.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground">
-                                    <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                                    <p className="text-sm">No passengers yet for today</p>
-                                </div>
-                            ) : passengers.map(p => (
-                                <div key={p.pnr} className="bg-card border border-border rounded-2xl p-4">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className="font-black text-sm">{p.name}</p>
-                                            <p className="text-[10px] text-muted-foreground">Seat {p.seat} · {p.paymentMethod} · ₹{p.amount}</p>
-                                            <p className="text-[10px] text-muted-foreground font-mono">{p.pnr}</p>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 items-end">
-                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${p.status === "Boarded" ? "bg-emerald-500/10 text-emerald-500" : p.status === "Completed" ? "bg-slate-200 text-slate-500" : "bg-blue-500/10 text-blue-500"}`}>{p.status}</span>
-                                            {p.status !== "Boarded" && p.status !== "Completed" && (
-                                                <Button size="sm" className="h-6 text-[10px] px-2 gap-0.5" onClick={() => handleBoard(p.pnr)}>
-                                                    <UserCheck className="w-2.5 h-2.5" /> Board
-                                                </Button>
-                                            )}
-                                            {p.status === "Boarded" && (
-                                                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 gap-0.5" onClick={() => handleDrop(p.pnr)}>
-                                                    <MapPinOff className="w-2.5 h-2.5" /> Drop
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* ── TICKETS TAB ────────────────────────────────────────────── */}
-                    {activeTab === "tickets" && (
-                        <div className="space-y-4 pt-4">
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => { setCashForm(f => ({ ...f, paymentMethod: "Cash" })); setShowCashModal(true); }}
-                                    className="bg-green-500/10 border border-green-500/20 rounded-2xl p-5 flex flex-col items-center gap-2 hover:bg-green-500/20 transition-colors">
-                                    <Banknote className="w-8 h-8 text-green-500" />
-                                    <p className="text-xs font-black text-green-600 dark:text-green-400">Cash Ticket</p>
-                                </button>
-                                <button onClick={() => { setCashForm(f => ({ ...f, paymentMethod: "UPI" })); setShowCashModal(true); }}
-                                    className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5 flex flex-col items-center gap-2 hover:bg-purple-500/20 transition-colors">
-                                    <Smartphone className="w-8 h-8 text-purple-500" />
-                                    <p className="text-xs font-black text-purple-600 dark:text-purple-400">UPI Ticket</p>
-                                </button>
-                            </div>
-                            <button onClick={() => setShowScanner(true)} className="w-full bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex items-center gap-3 hover:bg-blue-500/20 transition-colors">
-                                <QrCode className="w-6 h-6 text-blue-500" />
-                                <div className="text-left">
-                                    <p className="font-black text-sm text-blue-600 dark:text-blue-400">Scan QR / PNR</p>
-                                    <p className="text-[10px] text-muted-foreground">Verify passenger ticket</p>
-                                </div>
-                            </button>
-                            {showScanner && <div className="bg-background border border-border rounded-2xl p-4 overflow-hidden"><div id="emp-reader" className="w-full" /></div>}
-                        </div>
-                    )}
-
-                    {/* ── LOCATION TAB ───────────────────────────────────────────── */}
-                    {activeTab === "location" && (
-                        <div className="space-y-4 pt-4">
-                            <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="font-black text-sm">Live Location Sharing</p>
-                                        <p className="text-[10px] text-muted-foreground">Visible to passengers on map</p>
-                                    </div>
-                                    <button onClick={gpsSending ? stopGPS : startGPS}
-                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all ${gpsSending ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground hover:bg-emerald-500/10"}`}>
-                                        {gpsSending ? <><Wifi className="w-4 h-4" /> Stop</> : <><WifiOff className="w-4 h-4" /> Start</>}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={() => setShowCashModal(true)} className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-primary/20 transition-colors">
+                                        <UserPlus className="w-7 h-7 text-primary" />
+                                        <p className="text-xs font-black text-primary">Cash Ticket</p>
+                                    </button>
+                                    <button onClick={() => setShowScanner(!showScanner)} className={`border rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors ${showScanner ? "bg-red-500/20 border-red-500/30" : "bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20"}`}>
+                                        {showScanner ? <XCircle className="w-7 h-7 text-red-400" /> : <QrCode className="w-7 h-7 text-blue-500" />}
+                                        <p className={`text-xs font-black ${showScanner ? "text-red-400" : "text-blue-500"}`}>{showScanner ? "Close Scanner" : "Scan QR"}</p>
                                     </button>
                                 </div>
 
-                                <div>
-                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">Location Source</p>
-                                    <div className="flex bg-secondary rounded-xl p-1 gap-1">
-                                        {[{ id: "mobile", label: "📱 Driver Mobile" }, { id: "vehicle", label: "🚌 Vehicle GPS" }].map(s => (
-                                            <button key={s.id} onClick={() => setLocationSource(s.id as any)}
-                                                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${locationSource === s.id ? "bg-background shadow text-primary" : "text-muted-foreground"}`}>
-                                                {s.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                                {showScanner && <div className="bg-background border border-border rounded-2xl p-4 overflow-hidden"><div id="emp-reader" className="w-full" /></div>}
 
-                                {gpsSending && (
-                                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Broadcasting location every 5 seconds</p>
+                                {/* Route Info */}
+                                {busData?.route && (
+                                    <div className="bg-card border border-border rounded-2xl p-4">
+                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">Route</p>
+                                        <div className="flex items-center gap-2 text-sm font-bold">
+                                            <span>{busData.route.from}</span>
+                                            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                                            <span>{busData.route.to}</span>
+                                        </div>
+                                        {busData.route.stops?.length > 0 && (
+                                            <div className="mt-2 flex flex-wrap gap-1">
+                                                {busData.route.stops.map((s: any, i: number) => (
+                                                    <span key={i} className="bg-secondary text-[10px] font-bold px-2 py-0.5 rounded-full">{s.name}</span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
-                            </div>
 
-                            {/* Route Stops Preview */}
-                            {busData?.route?.stops?.length > 0 && (
                                 <div className="bg-card border border-border rounded-2xl p-4">
-                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-3">Upcoming Stops</p>
-                                    <div className="space-y-2">
-                                        {busData.route.stops.map((stop: any, i: number) => (
-                                            <div key={i} className="flex items-center gap-3">
-                                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary">{i + 1}</div>
+                                    <p className="text-[10px] font-black text-muted-foreground mb-2 uppercase tracking-wider">Live Seat Map</p>
+                                    <div className="scale-90 origin-top"><SeatMap seats={seats} readOnly /></div>
+                                </div>
+
+                                <div className="bg-red-950/30 border border-red-900/30 rounded-2xl p-5">
+                                    <p className="text-[10px] font-black text-red-400 mb-4 text-center">Emergency Controls</p>
+                                    <div className="flex justify-center"><SOSButton busNumber={busNumber} /></div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* ── OPERATIONS TAB (PASSENGERS + TICKETING) ──────────────────── */}
+                {activeTab === "operations" && (
+                    <div className="space-y-6 pt-4">
+                        {!checkInTime ? (
+                            <OffDutyPlaceholder title="Operations Locked" description="You must be on duty to manage passengers and tickets." icon={Users} onAction={() => setActiveTab("dashboard")} />
+                        ) : (
+                            <>
+                                {/* Ticketing Quick Actions */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={() => { setCashForm(f => ({ ...f, paymentMethod: "Cash" })); setShowCashModal(true); }}
+                                        className="bg-green-500/10 border border-green-500/20 rounded-2xl p-5 flex flex-col items-center gap-2 hover:bg-green-500/20 transition-colors">
+                                        <Banknote className="w-8 h-8 text-green-500" />
+                                        <p className="text-xs font-black text-green-600 dark:text-green-400">Cash Ticket</p>
+                                    </button>
+                                    <button onClick={() => { setCashForm(f => ({ ...f, paymentMethod: "UPI" })); setShowCashModal(true); }}
+                                        className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5 flex flex-col items-center gap-2 hover:bg-purple-500/20 transition-colors">
+                                        <Smartphone className="w-8 h-8 text-purple-500" />
+                                        <p className="text-xs font-black text-purple-600 dark:text-purple-400">UPI Ticket</p>
+                                    </button>
+                                </div>
+                                <button onClick={() => setShowScanner(!showScanner)} className={`w-full rounded-2xl p-4 flex items-center gap-3 transition-colors ${showScanner ? "bg-red-500/10 border-red-500/20 text-red-600" : "bg-blue-500/10 border-blue-500/20 text-blue-600 hover:bg-blue-500/20"}`}>
+                                    <div className={`p-2 rounded-lg ${showScanner ? "bg-red-500 text-white" : "bg-blue-600 text-white"}`}>{showScanner ? <XCircle className="w-5 h-5" /> : <QrCode className="w-5 h-5" />}</div>
+                                    <div className="text-left">
+                                        <p className="font-black text-sm">{showScanner ? "Stop Scanner" : "Scan QR / Verify PNR"}</p>
+                                        <p className="text-[10px] text-muted-foreground opacity-80">Verify tickets or boarding status</p>
+                                    </div>
+                                </button>
+                                {showScanner && <div className="bg-background border border-border rounded-2xl p-4 overflow-hidden"><div id="emp-reader" className="w-full" /></div>}
+
+                                <div className="h-px bg-border my-2" />
+
+                                {/* Passenger List Summary */}
+                                <div className="flex items-center justify-between px-1">
+                                    <h3 className="font-black uppercase text-sm tracking-tight text-primary">Passengers Today</h3>
+                                    <Button variant="outline" size="sm" onClick={loadPassengers} disabled={loadingPassengers} className="h-7 text-[10px] gap-1">
+                                        <RefreshCw className={`w-3 h-3 ${loadingPassengers ? "animate-spin" : ""}`} /> Sync
+                                    </Button>
+                                </div>
+                                <div className="space-y-3 pb-4">
+                                    {passengers.length === 0 ? (
+                                        <div className="text-center py-12 text-muted-foreground border border-dashed rounded-3xl">
+                                            <Users className="w-10 h-10 mx-auto mb-2 opacity-10" />
+                                            <p className="text-xs font-bold uppercase tracking-widest opacity-30">No bookings yet</p>
+                                        </div>
+                                    ) : passengers.map(p => (
+                                        <div key={p.pnr} className="bg-card border border-border rounded-2xl p-4 hover:border-primary/30 transition-all">
+                                            <div className="flex items-start justify-between gap-3">
                                                 <div>
-                                                    <p className="text-sm font-bold">{stop.name}</p>
-                                                    {stop.price > 0 && <p className="text-[10px] text-muted-foreground">₹{stop.price}</p>}
+                                                    <p className="font-black text-sm">{p.name}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Seat {p.seat} · {p.paymentMethod} · ₹{p.amount}</p>
+                                                    <p className="text-[10px] text-muted-foreground font-mono">{p.pnr}</p>
+                                                </div>
+                                                <div className="flex flex-col gap-1.5 items-end">
+                                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${p.status === "Boarded" ? "bg-emerald-500/10 text-emerald-500" : p.status === "Completed" ? "bg-slate-200 text-slate-500" : "bg-blue-500/10 text-blue-500"}`}>{p.status}</span>
+                                                    {p.status !== "Boarded" && p.status !== "Completed" && (
+                                                        <Button size="sm" className="h-7 text-[10px] px-3 gap-1 shadow-lg shadow-primary/20" onClick={() => handleBoard(p.pnr)}>
+                                                            <UserCheck className="w-3 h-3" /> Board
+                                                        </Button>
+                                                    )}
+                                                    {p.status === "Boarded" && (
+                                                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-3 gap-1" onClick={() => handleDrop(p.pnr)}>
+                                                            <MapPinOff className="w-3 h-3" /> Drop
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
-                                        ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* ── SAFETY & SOS TAB (TRACKING + SOS) ────────────────────────── */}
+                {activeTab === "safety" && (
+                    <div className="space-y-4 pt-4 pb-20 -mx-6 px-6 h-[calc(100vh-140px)] flex flex-col">
+                        {!checkInTime ? (
+                            <OffDutyPlaceholder title="Safety Locked" description="Start duty to access tracking and SOS features." icon={Shield} onAction={() => setActiveTab("dashboard")} />
+                        ) : (
+                            <>
+                                <div className="bg-card border border-border rounded-2xl p-4 space-y-4 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-black text-sm">Live Location Sharing</p>
+                                            <p className="text-[10px] text-muted-foreground">Broadcasting to passengers & owner</p>
+                                        </div>
+                                        <button onClick={gpsSending ? stopGPS : startGPS}
+                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all ${gpsSending ? "bg-emerald-500 text-white shadow-lg" : "bg-secondary text-muted-foreground hover:bg-emerald-500/10"}`}>
+                                            {gpsSending ? <><Wifi className="w-4 h-4" /> Sharing</> : <><WifiOff className="w-4 h-4" /> Start</>}
+                                        </button>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    )}
 
-                    {/* ── EXPENSES TAB ───────────────────────────────────────────── */}
-                    {activeTab === "expenses" && (
-                        <div className="space-y-4 pt-4">
-                            <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                                <p className="font-black text-sm uppercase tracking-tight">Add Expense</p>
-                                <select value={expenseForm.category} onChange={e => setExpenseForm(f => ({ ...f, category: e.target.value }))}
-                                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2.5 text-sm">
-                                    {["Fuel", "Toll", "Maintenance", "Other"].map(c => <option key={c}>{c}</option>)}
-                                </select>
-                                <Input placeholder="Amount (₹)" type="number" value={expenseForm.amount} onChange={e => setExpenseForm(f => ({ ...f, amount: e.target.value }))} className="h-10" />
-                                <Input placeholder="Reason / Description" value={expenseForm.description} onChange={e => setExpenseForm(f => ({ ...f, description: e.target.value }))} className="h-10" />
-                                <Button onClick={addExpense} disabled={addingExpense} className="w-full gap-2">
-                                    {addingExpense ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />} Add Expense
-                                </Button>
-                                <p className="text-[10px] text-muted-foreground text-center">⚠️ Expenses cannot be edited or deleted. Owner will be notified.</p>
-                            </div>
+                                {/* Live Map View */}
+                                <div className="flex-1 bg-card border border-border rounded-3xl overflow-hidden relative shadow-inner">
+                                    <MapplsMap
+                                        busLocation={currentPosition || undefined}
+                                        userLocation={currentPosition}
+                                        className="w-full h-full"
+                                    />
 
-                            <div className="space-y-2">
-                                {expenses.map((e, i) => (
-                                    <div key={i} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
-                                        <div>
-                                            <p className="font-bold text-sm">{e.category}</p>
-                                            <p className="text-[10px] text-muted-foreground">{e.description || "No reason"}</p>
-                                            <p className="text-[10px] text-muted-foreground">{new Date(e.date).toLocaleDateString()}</p>
+                                    <div className="absolute bottom-4 left-4 z-10 p-3 bg-background/90 backdrop-blur-md rounded-2xl border border-border shadow-2xl">
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Status</p>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+                                            <p className="text-[10px] font-black">{connected ? "LIVE GPS" : "OFFLINE"}</p>
                                         </div>
-                                        <p className="font-black text-red-500">-₹{e.amount}</p>
                                     </div>
-                                ))}
-                                {expenses.length === 0 && <p className="text-center text-muted-foreground text-sm py-6">No expenses recorded</p>}
-                            </div>
-                        </div>
-                    )}
 
-                    {/* ── ATTENDANCE TAB ─────────────────────────────────────────── */}
-                    {activeTab === "attendance" && (
-                        <div className="space-y-4 pt-4">
-                            <div className="flex items-center gap-2">
-                                <Input type="month" value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} className="h-10 flex-1" />
-                                <Button variant="outline" size="sm" onClick={loadAttendance}><RefreshCw className="w-4 h-4" /></Button>
-                            </div>
-                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-400 font-bold">
-                                ⚠️ Attendance is automatically recorded. You cannot manually edit or change it.
-                            </div>
-                            {attendance.length === 0 ? (
-                                <div className="text-center py-10"><Clock className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm text-muted-foreground">No attendance records for this month</p></div>
-                            ) : attendance.map((r, i) => (
-                                <div key={i} className="bg-card border border-border rounded-2xl p-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <p className="font-black text-sm">{r.date}</p>
-                                        <span className="bg-emerald-500/10 text-emerald-500 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Present</span>
+                                    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                                        <button onClick={() => setLocationSource("mobile")} className={`p-2 rounded-xl border shadow-lg transition-all ${locationSource === "mobile" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-foreground border-border"}`}>
+                                            <Smartphone className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={() => setLocationSource("vehicle")} className={`p-2 rounded-xl border shadow-lg transition-all ${locationSource === "vehicle" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-foreground border-border"}`}>
+                                            <Bus className="w-4 h-4" />
+                                        </button>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-center">
-                                        <div><p className="text-xs font-black">{r.checkIn ? new Date(r.checkIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"}</p><p className="text-[9px] text-muted-foreground">Check In</p></div>
-                                        <div><p className="text-xs font-black">{r.checkOut ? new Date(r.checkOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"}</p><p className="text-[9px] text-muted-foreground">Check Out</p></div>
-                                        <div><p className="text-xs font-black text-primary">{r.hoursWorked}h</p><p className="text-[9px] text-muted-foreground">Hours</p></div>
+                                </div>
+
+                                {/* Emergency SOS Section */}
+                                <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-4 flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center">
+                                            <ShieldAlert className="w-5 h-5 text-red-500" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] font-black text-red-600 dark:text-red-400 uppercase">Emergency SOS</p>
+                                            <p className="text-[9px] text-muted-foreground">Alert Owner & Authorities</p>
+                                        </div>
                                     </div>
-                                    {r.bus && <p className="text-[10px] text-muted-foreground mt-2">Bus: {r.bus.busNumber}</p>}
+                                    <SOSButton busNumber={busNumber} />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* ── SHIFT & REPORTS TAB (ATTENDANCE + REVENUE) ────────────────── */}
+                {activeTab === "shiftReports" && (
+                    <div className="space-y-6 pt-4 pb-20">
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { label: "Est. Salary", value: `₹${(attendance.reduce((acc, r) => acc + (r.salaryEarned || 0), 0)).toLocaleString()}`, icon: Wallet, color: "text-emerald-500" },
+                                { label: "Overtime", value: `${attendance.reduce((acc, r) => acc + (r.overtimeHours || 0), 0)}h`, icon: Clock, color: "text-blue-500" },
+                                { label: "Days Off", value: attendance.filter(r => r.isOffDay).length, icon: CalendarIcon, color: "text-amber-500" },
+                            ].map((s, i) => (
+                                <div key={i} className="bg-card border border-border rounded-2xl p-3 flex flex-col items-center text-center shadow-sm">
+                                    <s.icon className={`w-4 h-4 mb-1.5 ${s.color}`} />
+                                    <p className="text-sm font-black tracking-tight">{s.value}</p>
+                                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">{s.label}</p>
                                 </div>
                             ))}
                         </div>
-                    )}
 
-                    {/* ── REPORTS TAB ────────────────────────────────────────────── */}
-                    {activeTab === "reports" && (
-                        <div className="space-y-4 pt-4">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h3 className="font-black uppercase text-sm">Daily Report</h3>
-                                    <p className="text-[10px] text-muted-foreground">{new Date().toLocaleDateString()}</p>
+                        {/* Duty History / Attendance - ALWAYS VISIBLE */}
+                        <div className="bg-card border border-border rounded-3xl p-5 space-y-4 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-black uppercase text-xs tracking-widest text-primary">Duty History</h3>
+                                <div className="flex items-center gap-2">
+                                    <Input type="month" value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} className="h-8 w-32 text-[10px] font-bold" />
+                                    <Button variant="outline" size="sm" onClick={loadAttendance} className="h-8 w-8 p-0"><RefreshCw className="w-3 h-3" /></Button>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={loadReport}><RefreshCw className="w-3 h-3" /></Button>
                             </div>
-                            {report && (
-                                <>
+
+                            <div className="space-y-3">
+                                {attendance.length === 0 ? (
+                                    <div className="text-center py-10 opacity-30"><Clock className="w-8 h-8 mx-auto mb-2" /><p className="text-[10px] font-bold">No records found</p></div>
+                                ) : attendance.map((r, i) => (
+                                    <div key={i} className={`bg-secondary/20 rounded-2xl p-4 border border-border/50 transition-all hover:border-primary/20 ${r.isOffDay ? "bg-amber-500/5 animate-pulse" : ""}`}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${r.isOffDay ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
+                                                    {new Date(r.date).getDate()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-xs uppercase">{new Date(r.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short' })}</p>
+                                                    <p className="text-[8px] font-black text-muted-foreground uppercase">{r.bus?.busNumber || "OFF DAY"}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={`text-xs font-black ${r.isOffDay ? "text-amber-500" : "text-emerald-500"}`}>{r.isOffDay ? "SICK/OFF" : "PRESENT"}</p>
+                                                {r.salaryEarned && <p className="text-[10px] font-black text-primary">₹{r.salaryEarned}</p>}
+                                            </div>
+                                        </div>
+                                        {!r.isOffDay && (
+                                            <div className="grid grid-cols-3 gap-2 border-t border-border/10 pt-3 mt-1">
+                                                <div>
+                                                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-0.5">Shift</p>
+                                                    <p className="text-[10px] font-black">{r.checkIn ? new Date(r.checkIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"} - {r.checkOut ? new Date(r.checkOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"}</p>
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-0.5">Hours</p>
+                                                    <p className="text-[10px] font-black text-primary">{r.hoursWorked}h</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-0.5">Overtime</p>
+                                                    <p className="text-[10px] font-black text-blue-500">{r.overtimeHours || 0}h</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-[9px] text-muted-foreground italic text-center pt-2">Values are estimates computed from your shift logs.</p>
+                        </div>
+
+                        {/* Daily Revenue Breakdown - Only on Duty */}
+                        {checkInTime && (
+                            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-black uppercase text-xs tracking-wider">Daily Revenue</h3>
+                                    <Button variant="outline" size="sm" onClick={loadReport} className="h-8 w-8 p-0"><RefreshCw className="w-3 h-3" /></Button>
+                                </div>
+                                {report ? (
                                     <div className="grid grid-cols-2 gap-3">
                                         {[
-                                            { label: "Total Tickets", value: report.totalTickets, color: "text-primary" },
-                                            { label: "Total Revenue", value: `₹${report.totalRevenue}`, color: "text-emerald-500" },
-                                            { label: "Cash Tickets", value: report.cashTickets, color: "text-green-500" },
+                                            { label: "Total Revenue", value: `₹${report.totalRevenue}`, color: "text-primary" },
                                             { label: "Cash Amount", value: `₹${report.cashAmount}`, color: "text-green-500" },
-                                            { label: "Online Tickets", value: report.onlineTickets, color: "text-blue-500" },
                                             { label: "Online Amount", value: `₹${report.onlineAmount}`, color: "text-blue-500" },
+                                            { label: "Total Tickets", value: report.totalTickets, color: "text-slate-500" },
                                         ].map((s, i) => (
-                                            <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
-                                                <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
-                                                <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.label}</p>
+                                            <div key={i} className="bg-secondary/30 border border-border/50 rounded-xl p-3 text-center">
+                                                <p className={`text-lg font-black ${s.color}`}>{s.value}</p>
+                                                <p className="text-[8px] font-bold text-muted-foreground uppercase">{s.label}</p>
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="bg-card border border-border rounded-2xl p-4">
-                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-3">Revenue Breakdown</p>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Cash</span><span className="font-bold text-green-500">₹{report.cashAmount}</span></div>
-                                            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Online / UPI</span><span className="font-bold text-blue-500">₹{report.onlineAmount}</span></div>
-                                            <div className="border-t border-border pt-2 flex justify-between text-sm"><span className="font-black">Total</span><span className="font-black text-primary">₹{report.totalRevenue}</span></div>
+                                ) : (
+                                    <div className="text-center py-10 opacity-30"><TrendingUp className="w-8 h-8 mx-auto mb-2" /><p className="text-[10px] font-bold">Syncing reports...</p></div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── EXPENSES TAB ───────────────────────────────────────────── */}
+                {activeTab === "expenses" && (
+                    <div className="space-y-6 pt-4 pb-20">
+                        {!busNumber ? (
+                            <div className="text-center py-20 bg-card/40 border border-border rounded-3xl space-y-4">
+                                <Wallet className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
+                                <div className="space-y-1">
+                                    <p className="font-black uppercase text-sm">Select Bus First</p>
+                                    <p className="text-[10px] text-muted-foreground">Select a bus on Dashboard to record expenses.</p>
+                                </div>
+                                <Button size="sm" onClick={() => setActiveTab("dashboard")} className="font-black uppercase tracking-wider text-[10px]">Go to Dashboard</Button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Add New Expense</p>
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[9px] font-black text-muted-foreground uppercase">Category</label>
+                                                <select value={expenseForm.category} onChange={e => setExpenseForm(f => ({ ...f, category: e.target.value }))}
+                                                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[11px] font-bold">
+                                                    {["Fuel", "Toll", "Maintenance", "Police/Challan", "Refreshment", "Other"].map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-black text-muted-foreground uppercase">Amount (₹)</label>
+                                                <Input type="number" value={expenseForm.amount} onChange={e => setExpenseForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className="h-10 text-[11px]" />
+                                            </div>
                                         </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-muted-foreground uppercase">Description</label>
+                                            <Input value={expenseForm.description} onChange={e => setExpenseForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional details..." className="h-10 text-[11px]" />
+                                        </div>
+                                        <Button onClick={addExpense} disabled={addingExpense} className="w-full h-11 gap-2 font-black uppercase text-[10px]">
+                                            {addingExpense ? <RefreshCw className="animate-spin w-3 h-3" /> : <PlusCircle className="w-3 h-3" />} Record Expense
+                                        </Button>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground text-center">Revenue is automatically synced with the owner's panel</p>
-                                </>
-                            )}
-                            {!report && <div className="text-center py-10"><TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm text-muted-foreground">Loading report…</p></div>}
-                        </div>
-                    )}
-                </div>
-            )}
+                                </div>
+
+                                <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-black uppercase text-xs tracking-wider">Expense History</h3>
+                                        <Button variant="outline" size="sm" onClick={loadExpenses} className="h-8 w-8 p-0"><RefreshCw className="w-3 h-3" /></Button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {expenses.length === 0 ? (
+                                            <div className="text-center py-10 opacity-30"><FileText className="w-8 h-8 mx-auto mb-2" /><p className="text-[10px] font-bold">No expenses today</p></div>
+                                        ) : expenses.map((e, i) => (
+                                            <div key={i} className="bg-secondary/30 rounded-xl p-3 flex items-center justify-between border border-border/50">
+                                                <div><p className="font-black text-xs">{e.category}</p><p className="text-[9px] text-muted-foreground">{e.description || "No description"}</p></div>
+                                                <div className="text-right"><p className="text-xs font-black text-red-500">₹{e.amount}</p><p className="text-[8px] text-muted-foreground uppercase font-black">{new Date(e.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Cash / UPI Booking Modal */}
             {showCashModal && (

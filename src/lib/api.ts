@@ -359,11 +359,11 @@ export const api = {
         });
         return res.json();
     },
-    updateRequestStatus: async (requestId: string, status: string) => {
+    updateRequestStatus: async (requestId: string, status: string, data: any = {}) => {
         const res = await fetch(`${API_BASE_URL}/bookings/owner/request/${requestId}`, {
             method: 'PATCH',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ status, ...data })
         });
         return res.json();
     },

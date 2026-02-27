@@ -4,7 +4,7 @@ import {
   MapPin, ShieldCheck, Clock, CheckCircle2, Trash2, Copy, Lock, Phone, UserCheck,
   X, Route, PlayCircle, Power, WifiOff, Wifi, ToggleLeft, ToggleRight, Timer, RefreshCw, Repeat
 } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
 import { api } from "@/lib/api";
 import { AddBusDialog } from "@/components/AddBusDialog";
+import { useSocket } from "@/hooks/useSocket";
 
 const sidebarItems = [
   { label: "Fleet Overview", icon: <Bus className="w-4 h-4" />, id: "fleet", url: "/owner" },
@@ -49,6 +50,8 @@ export default function OwnerPanel() {
   const [newDriverCode, setNewDriverCode] = useState("");
   const [activationCode, setActivationCode] = useState("");
   const [updatingCode, setUpdatingCode] = useState(false);
+  const [showCodeConfirm, setShowCodeConfirm] = useState(false);
+  const [liveSync, setLiveSync] = useState<Record<string, { status: 'verifying' | 'duty-started', role?: string, busData?: any, timestamp: number }>>({});
 
   // Run on Route modal state
   const [showRunModal, setShowRunModal] = useState(false);
@@ -236,6 +239,40 @@ export default function OwnerPanel() {
     fetchDashboard();
   }, []);
 
+  const { isConnected, joinBus, on } = useSocket();
+
+  // Handle Real-time Synchronization
+  useEffect(() => {
+    if (!dashboardData?.buses || !isConnected) return;
+
+    // Join all bus rooms to listen for activity
+    dashboardData.buses.forEach((bus: any) => joinBus(bus.busNumber));
+
+    const unsubVerifying = on("bus:verifying", ({ busNumber, role }: any) => {
+      setLiveSync(prev => ({
+        ...prev,
+        [busNumber]: { status: 'verifying', role, timestamp: Date.now() }
+      }));
+      toast.info(`Driver verifying access for Bus ${busNumber}`);
+      document.dispatchEvent(new CustomEvent('bus:employee-refresh', { detail: { busNumber } }));
+    });
+
+    const unsubDuty = on("bus:duty-started", ({ busNumber, busData }: any) => {
+      setLiveSync(prev => ({
+        ...prev,
+        [busNumber]: { status: 'duty-started', busData, timestamp: Date.now() }
+      }));
+      toast.success(`Duty started for Bus ${busNumber}!`);
+      fetchDashboard(); // Refresh to get official status
+      document.dispatchEvent(new CustomEvent('bus:employee-refresh', { detail: { busNumber } }));
+    });
+
+    return () => {
+      if (typeof unsubVerifying === 'function') unsubVerifying();
+      if (typeof unsubDuty === 'function') unsubDuty();
+    };
+  }, [dashboardData?.buses, joinBus, on, isConnected]);
+
   useEffect(() => {
     const hash = location.hash.replace('#', '');
     if (hash && sidebarItems.some(i => i.id === hash)) {
@@ -372,6 +409,17 @@ export default function OwnerPanel() {
     }
   };
 
+  useEffect(() => {
+    const handleEmpRefresh = (e: any) => {
+      const targetBus = dashboardData?.buses?.find((b: any) => b.busNumber === e.detail.busNumber);
+      if (targetBus && targetBus._id === selectedBusForEmp) {
+        loadEmployees(selectedBusForEmp);
+      }
+    };
+    document.addEventListener('bus:employee-refresh', handleEmpRefresh);
+    return () => document.removeEventListener('bus:employee-refresh', handleEmpRefresh);
+  }, [selectedBusForEmp, dashboardData?.buses]);
+
   const handleUpdateActivationCode = async () => {
     if (!selectedBusForEmp || !activationCode.trim()) return;
     setUpdatingCode(true);
@@ -459,7 +507,15 @@ export default function OwnerPanel() {
 
   return (
     <DashboardLayout
-      title="Bus Owner Panel"
+      title={
+        <div className="flex items-center gap-2">
+          Bus Owner Panel
+          <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border-none ${isConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+            <span className={`w-1 h-1 rounded-full mr-1.5 ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+            {isConnected ? 'Live' : 'Offline'}
+          </Badge>
+        </div>
+      }
       subtitle="Manage your fleet, fares and earnings"
       sidebarItems={currentSidebarItems}
     >
@@ -493,6 +549,51 @@ export default function OwnerPanel() {
               <div className="portal-card p-5 border-l-4 border-warning text-warning text-sm flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 flex-shrink-0" />
                 Database not connected — only live data is shown. Please ensure the backend server is running.
+              </div>
+            )}
+
+            {/* ── Live Activity Feed ────────────────────────────────────────── */}
+            {(dashboardData?.activeBuses > 0 || buses.some(b => b.status === 'Active')) && (
+              <div className="portal-card p-5 border-l-4 border-emerald-500 bg-emerald-50/30">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Wifi className="w-5 h-5 text-emerald-600" />
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div>
+                    </div>
+                    <h3 className="font-bold text-sm text-emerald-800 uppercase tracking-wider">Live Bus Activity</h3>
+                  </div>
+                  <Badge className="bg-emerald-500 text-white border-none text-[10px] px-2 py-0.5 animate-pulse">
+                    {dashboardData?.activeBuses || buses.filter(b => b.status === 'Active').length} ON AIR
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {buses.filter(b => b.status === 'Active').map((bus: any) => (
+                    <div key={bus._id} className="bg-white/80 border border-emerald-100 rounded-xl p-3 shadow-sm flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
+                          <Bus className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-primary uppercase">{bus.busNumber}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground">{bus.route?.from || 'Start'} → {bus.route?.to || 'End'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-emerald-600 flex items-center justify-end gap-1">
+                          <Clock className="w-2.5 h-2.5" /> LIVE
+                        </p>
+                        <button
+                          onClick={() => { setSelectedBusForEmp(bus._id); setActiveTab("employees"); navigate("/owner#employees"); }}
+                          className="text-[9px] font-bold text-primary hover:underline mt-1"
+                        >
+                          View Session
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1729,6 +1830,44 @@ export default function OwnerPanel() {
 
               {selectedBusForEmp && (
                 <>
+                  {/* Active Session Info - Shows even if employee list is empty */}
+                  {(buses.find(b => b._id === selectedBusForEmp)?.status === 'Active' || liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]) && (
+                    <div className={`${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'} border rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300`}>
+                      <div className="flex items-center justify-between">
+                        <div className={`flex items-center gap-2 ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'text-amber-700' : 'text-emerald-700'}`}>
+                          <Wifi className="w-4 h-4 animate-pulse" />
+                          <p className="text-[11px] font-black uppercase tracking-widest leading-none">
+                            {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'Driver Connecting...' : 'Live Active Session'}
+                          </p>
+                        </div>
+                        <Badge className={`${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'bg-amber-500' : 'bg-emerald-500'} text-white border-none text-[9px] px-2 py-0.5`}>
+                          {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'VERIFYING' : 'CONNECTED'}
+                        </Badge>
+                      </div>
+
+                      <div className={`flex items-center gap-4 ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'bg-white/40 border-amber-100' : 'bg-white/60 border-emerald-100'} p-3 rounded-xl border`}>
+                        <div className={`w-12 h-12 rounded-2xl ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} flex items-center justify-center shadow-inner`}>
+                          {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? <Lock className="w-6 h-6 animate-bounce" /> : <UserCheck className="w-6 h-6" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className={`text-sm font-black ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'text-amber-900' : 'text-emerald-900'}`}>
+                              {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'Entering Code...' : 'Current Driver Session'}
+                            </h4>
+                            <p className={`text-[10px] font-bold ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'text-amber-600 bg-amber-100/50' : 'text-emerald-600 bg-emerald-100/50'} px-2 py-0.5 rounded-full flex items-center gap-1`}>
+                              <Timer className="w-2.5 h-2.5" /> {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'Pending' : 'Active Now'}
+                            </p>
+                          </div>
+                          <p className={`text-[10px] ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'text-amber-700/70' : 'text-emerald-700/70'} font-bold mt-0.5`}>
+                            {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying'
+                              ? `A person has verified Bus ${buses.find(b => b._id === selectedBusForEmp)?.busNumber} and is currently entering the Duty Code.`
+                              : 'The bus is currently active and broadcasting live location.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Bus Activation Code Management */}
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-1.5">
@@ -1742,13 +1881,35 @@ export default function OwnerPanel() {
                         className="bg-white border-primary/20 font-mono tracking-widest uppercase font-black"
                       />
                       <Button
-                        onClick={handleUpdateActivationCode}
+                        onClick={() => {
+                          if (activationCode && employees.length > 0) setShowCodeConfirm(true);
+                          else handleUpdateActivationCode();
+                        }}
                         disabled={updatingCode || !activationCode.trim()}
                         className="font-black uppercase text-[10px] tracking-widest px-6"
                       >
-                        {updatingCode ? <RefreshCw className="w-4 h-4 animate-spin text-white" /> : "Set Code"}
+                        {updatingCode ? <RefreshCw className="w-4 h-4 animate-spin text-white" /> : "Change Code"}
                       </Button>
                     </div>
+
+                    {/* Code Change Confirmation Modal */}
+                    {showCodeConfirm && (
+                      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="bg-card rounded-2xl shadow-2xl border border-border w-full max-w-sm p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                          <div className="text-center space-y-2">
+                            <div className="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-amber-500">
+                              <ShieldCheck className="w-6 h-6" />
+                            </div>
+                            <h3 className="font-black text-sm uppercase">Confirm Code Change?</h3>
+                            <p className="text-[10px] text-muted-foreground">Changing the activation code will require currently duty-bound drivers to re-verify their access. Existing active sessions may be interrupted.</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" className="flex-1 h-10 text-[10px] font-black uppercase" onClick={() => setShowCodeConfirm(false)}>Cancel</Button>
+                            <Button className="flex-1 h-10 text-[10px] font-black uppercase bg-primary" onClick={() => { setShowCodeConfirm(false); handleUpdateActivationCode(); }}>Confirm & Set</Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <p className="text-[9px] text-muted-foreground leading-relaxed">
                       This code is required for the driver to activate the panel for <strong className="text-foreground">Bus {buses.find(b => b._id === selectedBusForEmp)?.busNumber}</strong>.
                     </p>
@@ -1866,7 +2027,18 @@ export default function OwnerPanel() {
                               {(emp.name || emp.email || '?').charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <p className="text-sm font-bold">{emp.name || <span className="opacity-40 italic">No Name</span>}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold">{emp.name || <span className="opacity-40 italic">No Name</span>}</p>
+                                {emp.driverCode && (
+                                  <div className="flex items-center gap-1">
+                                    <code className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">{emp.driverCode}</code>
+                                    <button onClick={() => { navigator.clipboard.writeText(emp.driverCode); toast.success('Driver code copied!'); }}
+                                      className="p-0.5 rounded hover:bg-primary/20 transition-colors">
+                                      <Copy className="w-2.5 h-2.5 text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2 flex-wrap mt-0.5">
                                 {emp.phone && (
                                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
@@ -1880,24 +2052,15 @@ export default function OwnerPanel() {
                                   <span className="text-[10px] font-black text-accent">₹{emp.perDaySalary}/day</span>
                                 )}
                               </div>
-                              {emp.driverCode && (
-                                <div className="flex items-center gap-1 mt-1">
-                                  <span className="text-[9px] text-muted-foreground uppercase tracking-wide">Code:</span>
-                                  <code className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">{emp.driverCode}</code>
-                                  <button onClick={() => { navigator.clipboard.writeText(emp.driverCode); toast.success('Driver code copied!'); }}
-                                    className="p-0.5 rounded hover:bg-primary/10">
-                                    <Copy className="w-2.5 h-2.5 text-primary" />
-                                  </button>
-                                </div>
-                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge className={`text-[9px] px-2 py-0.5 ${emp.status === 'Active' ? 'bg-green-500/20 text-green-600 border-green-200' :
+                            <Badge className={`text-[9px] px-2 py-0.5 ${emp.status === 'Active' ? 'bg-emerald-500 text-white border-emerald-400 shadow-md shadow-emerald-500/20' :
                               emp.status === 'Rejected' ? 'bg-red-500/20 text-red-600 border-red-200' :
                                 'bg-yellow-500/20 text-yellow-600 border-yellow-200'
                               }`}>
-                              {emp.status}
+                              {emp.status === 'Active' && <Wifi className="w-2.5 h-2.5 mr-1 animate-pulse" />}
+                              {emp.status === 'Active' ? 'LIVE ON DUTY' : emp.status}
                             </Badge>
                             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10"
                               onClick={() => handleRemoveDriver(emp._id)}>

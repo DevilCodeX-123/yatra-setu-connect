@@ -72,7 +72,10 @@ export default function NotificationPanel() {
             }, ...prev]);
         });
 
-        return () => { unsub(); unsubSOS(); };
+        return () => {
+            if (typeof unsub === 'function') unsub();
+            if (typeof unsubSOS === 'function') unsubSOS();
+        };
     }, [on]);
 
     const unread = notifs.filter(n => !n.read).length;

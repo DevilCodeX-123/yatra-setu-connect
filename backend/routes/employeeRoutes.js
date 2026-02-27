@@ -12,7 +12,7 @@ const Notification = require('../models/Notification');
 const generatePNR = () => 'YSPNR' + Math.floor(100000 + Math.random() * 900000);
 
 // ═══ 1. BUS ACTIVATION (Bus Number + Owner Activation Code) ═══════════════════
-router.post('/activate', async (req, res) => {
+router.post('/activate', verifyToken, async (req, res) => {
     const { busNumber, activationCode } = req.body;
     if (!busNumber || !activationCode)
         return res.status(400).json({ message: 'Bus number and activation code required' });
@@ -25,7 +25,44 @@ router.post('/activate', async (req, res) => {
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
         if (bus.activationCode !== activationCode)
             return res.status(400).json({ message: 'Invalid activation code' });
-        res.json({ success: true, bus });
+
+        // Auto-add employee if not present
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
+
+        if (!bus.employees) bus.employees = [];
+        let emp = bus.employees.find(e => (e.userId && e.userId.toString() === userId.toString()) || (user.email && e.email === user.email.toLowerCase()));
+
+        if (!emp) {
+            const driverCode = `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
+            bus.employees.push({
+                name: user.name,
+                email: user.email ? user.email.toLowerCase() : undefined,
+                phone: user.phone,
+                userId: user._id,
+                status: 'Active',
+                driverCode,
+                perDaySalary: 0,
+                joinedAt: new Date(),
+            });
+            await bus.save();
+            emp = bus.employees[bus.employees.length - 1];
+
+            // Notify owner
+            if (bus.owner) {
+                await Notification.create({
+                    userId: bus.owner,
+                    type: 'info',
+                    title: 'New Driver Joined',
+                    message: `${user.name} has joined bus ${bus.busNumber} as a driver.`
+                });
+            }
+        } else if (emp.status !== 'Active') {
+            emp.status = 'Active';
+            await bus.save();
+        }
+
+        res.json({ success: true, bus, driverCode: emp.driverCode });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
