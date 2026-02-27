@@ -414,6 +414,12 @@ router.patch('/buses/:busId/activation-code', async (req, res) => {
             { new: true }
         );
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(bus.busNumber).emit('bus:code-changed', { busNumber: bus.busNumber });
+        }
+
         res.json({ success: true, activationCode: bus.activationCode, bus });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });

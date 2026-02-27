@@ -66,5 +66,19 @@ export function useSocket(token?: string | null) {
         return () => { socket.off(event, handler); };
     }, [socket]);
 
-    return { socket, isConnected, joinBus, joinUser, sendLocation, sendSOS, updateSeat, on };
+    const reconnect = useCallback(() => {
+        if (socket && !socket.connected) {
+            socket.connect();
+        } else if (!socket) {
+            globalSocket = io(SOCKET_URL, {
+                auth: { token: tokenRef.current || '' },
+                transports: ['websocket', 'polling'],
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5,
+            });
+            setSocket(globalSocket);
+        }
+    }, [socket]);
+
+    return { socket, isConnected, joinBus, joinUser, sendLocation, sendSOS, updateSeat, on, reconnect };
 }

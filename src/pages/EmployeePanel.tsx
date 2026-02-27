@@ -121,7 +121,7 @@ function BusSelectionScreen({ onActivate }: { onActivate: (bus: string, busId: s
     );
 }
 
-function DutyStartScreen({ busNumber, role, defaultDriverCode, onDutyStart }: { busNumber: string; role: Role; defaultDriverCode?: string; onDutyStart: (busData: any, checkIn: Date) => void }) {
+function DutyStartScreen({ busNumber, role, defaultDriverCode, onDutyStart, onChangeBus }: { busNumber: string; role: Role; defaultDriverCode?: string; onDutyStart: (busData: any, checkIn: Date) => void; onChangeBus?: () => void }) {
     const [driverCode, setDriverCode] = useState(defaultDriverCode || "");
     const [loading, setLoading] = useState(false);
 
@@ -170,6 +170,12 @@ function DutyStartScreen({ busNumber, role, defaultDriverCode, onDutyStart }: { 
                 <Button onClick={handleStart} disabled={loading || !driverCode} className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 font-black uppercase tracking-widest gap-2">
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Shield className="w-4 h-4" /> Start Duty Now</>}
                 </Button>
+
+                {onChangeBus && (
+                    <Button variant="ghost" className="w-full h-10 text-[10px] font-black tracking-widest uppercase text-muted-foreground hover:text-foreground" onClick={onChangeBus}>
+                        Change Bus / Re-verify
+                    </Button>
+                )}
             </div>
         </div>
     );
@@ -200,6 +206,7 @@ export default function EmployeePanel() {
     const { token, user, isVerifying } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const { socket, isConnected, joinBus, on, sendLocation, reconnect } = useSocket();
     const [step, setStep] = useState<Step>("BUS_SELECT");
     const [role, setRole] = useState<Role>("Driver");
     const [busNumber, setBusNumber] = useState("");
@@ -231,9 +238,6 @@ export default function EmployeePanel() {
             navigate("/login?redirect=/employee");
         }
     }, [token, isVerifying, navigate]);
-
-    if (isVerifying) return <div className="h-screen flex items-center justify-center"><RefreshCw className="animate-spin" /></div>;
-    if (!token) return null;
 
     // Live
     const [seats, setSeats] = useState<Seat[]>(generateSeats(40));
@@ -272,6 +276,32 @@ export default function EmployeePanel() {
             }
         }
     }, []);
+
+    // Listen to Owner Code Changes
+    useEffect(() => {
+        if (!busNumber || !isConnected) return;
+        joinBus(busNumber);
+
+        const unsub = on("bus:code-changed", (data: any) => {
+            if (data.busNumber === busNumber) {
+                toast.error("Owner changed the Bus Code. You have been logged out.", { duration: 5000 });
+                setStep("BUS_SELECT");
+                setBusNumber("");
+                setBusId(null);
+                setAutoDriverCode("");
+                setCheckInTime(null);
+                localStorage.removeItem("ys_active_bus");
+                localStorage.removeItem("ys_on_duty");
+                if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current);
+                setGpsSending(false);
+                setConnected(false);
+            }
+        });
+
+        return () => {
+            if (typeof unsub === "function") unsub();
+        };
+    }, [busNumber, isConnected, joinBus, on]);
 
     // Initial Position Check
     useEffect(() => {
@@ -312,8 +342,6 @@ export default function EmployeePanel() {
     // Shift end
     const [showShiftEnd, setShowShiftEnd] = useState(false);
     const [shiftSummary, setShiftSummary] = useState<any>(null);
-
-    const { socket, isConnected, sendLocation, joinBus, on } = useSocket();
 
     // Handle Bus Selection
     const onBusActivated = (bn: string, bid: string | null, code: string, r: Role, driverCodeRes?: string) => {
@@ -486,6 +514,10 @@ export default function EmployeePanel() {
 
     // ─── RENDER ───────────────────────────────────────────────────────────────
 
+    // Early Returns (must be AFTER all hooks)
+    if (isVerifying) return <div className="h-screen flex items-center justify-center"><RefreshCw className="animate-spin" /></div>;
+    if (!token) return null;
+
     // Shift End Summary Modal
     if (showShiftEnd && shiftSummary) {
         return (
@@ -551,6 +583,15 @@ export default function EmployeePanel() {
                                 <div className={`w-1.5 h-1.5 rounded-full ${checkInTime && isConnected ? "bg-emerald-500 animate-pulse" : "bg-red-600"}`} />
                                 {checkInTime && isConnected ? "Live" : "No Connection"}
                             </div>
+                            {!isConnected && (
+                                <button
+                                    onClick={reconnect}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
+                                >
+                                    <RefreshCw className="w-3 h-3" />
+                                    Reconnect
+                                </button>
+                            )}
                             <div>
                                 <p className="font-black text-base leading-none">{busNumber}</p>
                                 <p className="text-[10px] text-muted-foreground">{role} · {checkInTime ? `${dutyHours}h on duty` : "Currently Off Duty"}</p>
@@ -570,7 +611,19 @@ export default function EmployeePanel() {
                         {step === "BUS_SELECT" ? (
                             <BusSelectionScreen onActivate={onBusActivated} />
                         ) : !checkInTime ? (
-                            <DutyStartScreen busNumber={busNumber} role={role} defaultDriverCode={autoDriverCode} onDutyStart={onDutyStarted} />
+                            <DutyStartScreen
+                                busNumber={busNumber}
+                                role={role}
+                                defaultDriverCode={autoDriverCode}
+                                onDutyStart={onDutyStarted}
+                                onChangeBus={() => {
+                                    setStep("BUS_SELECT");
+                                    setBusNumber("");
+                                    setBusId(null);
+                                    setAutoDriverCode("");
+                                    localStorage.removeItem("ys_active_bus");
+                                }}
+                            />
                         ) : (
                             <>
                                 <div className="grid grid-cols-3 gap-3">
@@ -708,47 +761,93 @@ export default function EmployeePanel() {
 
                 {/* ── SAFETY & SOS TAB (TRACKING + SOS) ────────────────────────── */}
                 {activeTab === "safety" && (
-                    <div className="space-y-4 pt-4 pb-20 -mx-6 px-6 h-[calc(100vh-140px)] flex flex-col">
+                    <div className="pt-4 pb-20 -mx-6 px-6 space-y-4">
                         {!checkInTime ? (
                             <OffDutyPlaceholder title="Safety Locked" description="Start duty to access tracking and SOS features." icon={Shield} onAction={() => setActiveTab("dashboard")} />
                         ) : (
                             <>
-                                <div className="bg-card border border-border rounded-2xl p-4 space-y-4 shadow-sm">
-                                    <div className="flex items-center justify-between">
+                                {/* GPS Control Bar */}
+                                <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-inner transition-all ${gpsSending ? 'bg-emerald-500 text-white shadow-emerald-500/30 shadow-lg' : 'bg-secondary text-muted-foreground opacity-50'}`}>
+                                            <Wifi className="w-5 h-5" />
+                                        </div>
                                         <div>
                                             <p className="font-black text-sm">Live Location Sharing</p>
-                                            <p className="text-[10px] text-muted-foreground">Broadcasting to passengers & owner</p>
+                                            <p className="text-[10px] text-muted-foreground">{gpsSending ? "Broadcasting to passengers & owner" : "Not sharing — tap Start to go live"}</p>
                                         </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setLocationSource("mobile")} className={`p-2 rounded-xl border shadow-sm transition-all ${locationSource === "mobile" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-foreground border-border"}`}><Smartphone className="w-4 h-4" /></button>
+                                        <button onClick={() => setLocationSource("vehicle")} className={`p-2 rounded-xl border shadow-sm transition-all ${locationSource === "vehicle" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-foreground border-border"}`}><Bus className="w-4 h-4" /></button>
                                         <button onClick={gpsSending ? stopGPS : startGPS}
-                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all ${gpsSending ? "bg-emerald-500 text-white shadow-lg" : "bg-secondary text-muted-foreground hover:bg-emerald-500/10"}`}>
+                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all ${gpsSending ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : "bg-secondary text-muted-foreground hover:bg-emerald-500/10"}`}>
                                             {gpsSending ? <><Wifi className="w-4 h-4" /> Sharing</> : <><WifiOff className="w-4 h-4" /> Start</>}
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Live Map View */}
-                                <div className="flex-1 bg-card border border-border rounded-3xl overflow-hidden relative shadow-inner">
-                                    <MapplsMap
-                                        busLocation={currentPosition || undefined}
-                                        userLocation={currentPosition}
-                                        className="w-full h-full"
-                                    />
+                                {/* Stats Row */}
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { label: "Signal", value: gpsSending ? "High" : "Off", icon: Wifi, color: gpsSending ? "text-emerald-500" : "text-muted-foreground" },
+                                        { label: "Source", value: locationSource === "mobile" ? "Mobile" : "Vehicle", icon: Smartphone, color: "text-blue-500" },
+                                        { label: "Status", value: connected ? "Live" : "Offline", icon: MapPin, color: connected ? "text-emerald-500" : "text-muted-foreground" },
+                                    ].map((s, i) => {
+                                        const Icon = s.icon;
+                                        return (
+                                            <div key={i} className="bg-card border border-border rounded-2xl p-3 flex flex-col items-center text-center shadow-sm">
+                                                <Icon className={`w-4 h-4 mb-1 ${s.color}`} />
+                                                <p className={`text-sm font-black ${s.color}`}>{s.value}</p>
+                                                <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">{s.label}</p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
 
-                                    <div className="absolute bottom-4 left-4 z-10 p-3 bg-background/90 backdrop-blur-md rounded-2xl border border-border shadow-2xl">
-                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Status</p>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
-                                            <p className="text-[10px] font-black">{connected ? "LIVE GPS" : "OFFLINE"}</p>
+
+                                {/* Full BusTracking-style Map */}
+                                <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-card">
+                                    <div className="relative w-full h-72 border-b border-border overflow-hidden">
+                                        <MapplsMap
+                                            markers={busData?.stops
+                                                ? busData.stops.map((s: any) => ({ lat: s.lat, lon: s.lon ?? s.lng, label: s.name })).filter((m: any) => m.lat && m.lon)
+                                                : currentPosition
+                                                    ? [{ lat: currentPosition.lat, lon: currentPosition.lng, label: busNumber }]
+                                                    : []}
+                                            routePoints={busData?.routePoints || undefined}
+                                            busLocation={currentPosition || undefined}
+                                            userLocation={currentPosition}
+                                            className="absolute inset-0"
+                                        />
+
+                                        {/* Live Pulse Indicator */}
+                                        <div className="absolute top-4 left-4 z-10">
+                                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase backdrop-blur-md border shadow-sm ${gpsSending && connected ? "bg-emerald-500/90 text-white border-emerald-400" : "bg-card/90 text-muted-foreground border-border"}`}>
+                                                <div className={`w-1.5 h-1.5 rounded-full ${gpsSending && connected ? "bg-white animate-pulse" : "bg-slate-400"}`} />
+                                                {gpsSending && connected ? "LIVE GPS" : "OFFLINE"}
+                                            </div>
+                                        </div>
+
+                                        {/* Bus Number Tag bottom right */}
+                                        <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2 text-[10px] font-black text-primary bg-card/90 px-3 py-1.5 rounded-full backdrop-blur-sm shadow-sm border border-border">
+                                            <MapPin className="w-3.5 h-3.5" />
+                                            {busNumber} · {role}
                                         </div>
                                     </div>
 
-                                    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-                                        <button onClick={() => setLocationSource("mobile")} className={`p-2 rounded-xl border shadow-lg transition-all ${locationSource === "mobile" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-foreground border-border"}`}>
-                                            <Smartphone className="w-4 h-4" />
-                                        </button>
-                                        <button onClick={() => setLocationSource("vehicle")} className={`p-2 rounded-xl border shadow-lg transition-all ${locationSource === "vehicle" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-foreground border-border"}`}>
-                                            <Bus className="w-4 h-4" />
-                                        </button>
+                                    {/* Bottom Controls */}
+                                    <div className="p-5 flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm font-black">{busNumber}</p>
+                                            <p className="text-[10px] text-muted-foreground">{role} · {checkInTime ? `${dutyHours}h on duty` : "Off Duty"}</p>
+                                        </div>
+                                        {currentPosition && (
+                                            <div className="text-right">
+                                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Location</p>
+                                                <p className="text-[11px] font-black font-mono">{currentPosition.lat.toFixed(4)}, {currentPosition.lng.toFixed(4)}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -769,6 +868,7 @@ export default function EmployeePanel() {
                         )}
                     </div>
                 )}
+
 
                 {/* ── SHIFT & REPORTS TAB (ATTENDANCE + REVENUE) ────────────────── */}
                 {activeTab === "shiftReports" && (

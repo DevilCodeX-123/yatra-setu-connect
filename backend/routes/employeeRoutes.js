@@ -52,14 +52,26 @@ router.post('/activate', verifyToken, async (req, res) => {
             if (bus.owner) {
                 await Notification.create({
                     userId: bus.owner,
-                    type: 'info',
+                    type: 'general',
                     title: 'New Driver Joined',
                     message: `${user.name} has joined bus ${bus.busNumber} as a driver.`
                 });
             }
-        } else if (emp.status !== 'Active') {
-            emp.status = 'Active';
-            await bus.save();
+        } else {
+            let updated = false;
+            if (emp.status !== 'Active') {
+                emp.status = 'Active';
+                updated = true;
+            }
+            if (!emp.driverCode) {
+                emp.driverCode = `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
+                updated = true;
+            }
+            if (!emp.userId && user._id) {
+                emp.userId = user._id;
+                updated = true;
+            }
+            if (updated) await bus.save();
         }
 
         res.json({ success: true, bus, driverCode: emp.driverCode });
