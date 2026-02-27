@@ -6,6 +6,7 @@ import { AppSidebar } from "./AppSidebar";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { Link } from "react-router-dom";
 import LogoIcon from "./brand/LogoIcon";
+import { InvitationPoll } from "./InvitationPoll";
 
 interface LayoutProps {
   children: ReactNode;
@@ -34,6 +35,7 @@ export default function Layout({ children, noFooter }: LayoutProps) {
       </header>
       <main className="flex-1 p-4 md:p-8 bg-slate-50/50 dark:bg-[#020617]">{children}</main>
       {!noFooter && <Footer />}
+      <InvitationPoll />
     </div>
   );
 }

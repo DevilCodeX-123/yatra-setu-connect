@@ -21,8 +21,19 @@ const featureItems = [
   { icon: Leaf, titleKey: "home.why.f4_title", descKey: "home.why.f4_desc" },
 ];
 
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+
 export default function Home() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { role } = useAuth();
+
+  useEffect(() => {
+    if (role === 'Employee' || role === 'Driver' || role === 'Conductor') {
+      navigate('/employee', { replace: true });
+    }
+  }, [role, navigate]);
   const [liveBuses, setLiveBuses] = useState<any[]>([]);
   const [dynamicStats, setDynamicStats] = useState({
     busesRunningToday: 0,

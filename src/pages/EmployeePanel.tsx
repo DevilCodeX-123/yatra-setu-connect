@@ -32,16 +32,8 @@ function StaffDashboard({ onStartDuty, onEnterKey, isRegistered }: { onStartDuty
                 </div>
 
                 <div className="relative space-y-4">
-                    <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-[24px] border border-white/20 flex items-center justify-center mx-auto mb-2">
-                        {isRegistered ? <CheckCircle className="w-8 h-8 text-emerald-400" /> : <UserPlus className="w-8 h-8 text-blue-400" />}
-                    </div>
                     <div>
                         <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Staff Portal</h1>
-                        <div className="flex items-center justify-center gap-2 mt-2">
-                            <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${isRegistered ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-amber-500/20 border-amber-500/50 text-amber-400"}`}>
-                                {isRegistered ? "ID Registered" : "Registration Required"}
-                            </span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -78,20 +70,17 @@ function StaffDashboard({ onStartDuty, onEnterKey, isRegistered }: { onStartDuty
 
                 {/* Management Tools Grid */}
                 <div className="grid grid-cols-1 gap-3">
-                    {/* Primary Management Entry: Activate Duty */}
                     <button
-                        onClick={isRegistered ? onStartDuty : () => toast.error("Please enter Activation Key in Management first")}
-                        className={`p-6 rounded-[32px] flex items-center gap-5 transition-all text-left shadow-lg group border ${isRegistered
-                            ? "bg-white dark:bg-slate-900/50 border-blue-100 dark:border-blue-500/20 hover:border-blue-200 dark:hover:border-blue-500/40 shadow-blue-500/5"
-                            : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/5 opacity-60 grayscale cursor-not-allowed"}`}
+                        onClick={onStartDuty}
+                        className="p-6 rounded-[32px] flex items-center gap-5 transition-all text-left shadow-lg group border bg-white dark:bg-slate-900/50 border-blue-100 dark:border-blue-500/20 hover:border-blue-200 dark:hover:border-blue-500/40 shadow-blue-500/5"
                     >
-                        <div className={`p-4 rounded-2xl transition-transform shadow-lg ${isRegistered ? "bg-blue-600 text-white group-hover:scale-105 shadow-blue-500/20" : "bg-slate-300 dark:bg-slate-700 text-slate-500"}`}>
+                        <div className="p-4 rounded-2xl transition-transform shadow-lg bg-blue-600 text-white group-hover:scale-105 shadow-blue-500/20">
                             <Navigation className="w-7 h-7" />
                         </div>
                         <div>
                             <h4 className="text-base font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors uppercase tracking-tight">Activate Driver Panel</h4>
                             <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1">
-                                {isRegistered ? "Duty Access: Live" : "Locked: Register Staff ID"}
+                                Duty Access: Live
                             </p>
                         </div>
                         <ChevronRight className="w-6 h-6 ml-auto text-blue-300 dark:text-blue-500/50" />
@@ -100,7 +89,6 @@ function StaffDashboard({ onStartDuty, onEnterKey, isRegistered }: { onStartDuty
                     {[
                         { icon: QrCode, label: "Lookup Ticket", desc: "Verify passenger reservations", color: "text-blue-500", bg: "bg-blue-50", onClick: () => toast.info("Ticket Lookup System Active") },
                         { icon: MapPin, label: "Fleet Map", desc: "Real-time bus tracking system", color: "text-indigo-500", bg: "bg-indigo-50", onClick: () => toast.info("Fleet Map System Active") },
-                        { icon: Shield, label: "Staff Identity Activation", desc: isRegistered ? "ID: YS-STAFF-2026 (Verified)" : "Enter Driver Panel Activation Key", color: isRegistered ? "text-emerald-500" : "text-slate-500", bg: isRegistered ? "bg-emerald-50" : "bg-slate-50", onClick: onEnterKey },
                     ].map((tool, i) => (
                         <button key={i} onClick={tool.onClick} className="bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10 p-5 rounded-[28px] flex items-center gap-5 transition-all text-left shadow-sm group">
                             <div className={`p-3 rounded-2xl ${tool.bg} ${tool.color} group-hover:scale-105 transition-transform`}>
@@ -115,12 +103,7 @@ function StaffDashboard({ onStartDuty, onEnterKey, isRegistered }: { onStartDuty
                     ))}
                 </div>
 
-                {/* Footer Actions */}
                 <div className="pt-8 flex flex-col gap-4">
-                    <Link to="/" className="w-full h-14 border border-slate-200 hover:bg-slate-50 rounded-2xl flex items-center justify-center gap-2 text-xs font-black text-slate-600 transition-all uppercase tracking-widest">
-                        <User className="w-4 h-4" />
-                        Go to Passenger Mode
-                    </Link>
                 </div>
             </div>
         </div>
@@ -169,7 +152,6 @@ function ManagementKeyScreen({ onNext }: { onNext: () => void }) {
                 </div>
 
                 <div className="mt-8 text-center pt-8 border-t border-slate-800">
-                    <Link to="/" className="text-[10px] font-black text-slate-500 hover:text-blue-400 uppercase tracking-widest transition-colors">Return to Passenger Mode</Link>
                 </div>
             </div>
         </div>
@@ -262,7 +244,6 @@ function ActivationScreen({ onActivate }: { onActivate: (bus: string, role: stri
                 </div>
 
                 <div className="mt-8 text-center pt-8 border-t border-slate-100">
-                    <button onClick={() => window.location.reload()} className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors">Return to Dashboard</button>
                 </div>
             </div>
         </div>
@@ -400,7 +381,7 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 
 // ─── Main Employee Panel ───────────────────────────────────────────────────────
 export default function EmployeePanel() {
-    const [step, setStep] = useState<ActivationStep>("DASHBOARD");
+    const [step, setStep] = useState<ActivationStep>("ACTIVATION_FORM");
     const [busNumber, setBusNumber] = useState("");
     const [employeeRole, setEmployeeRole] = useState("Driver");
     const [seats, setSeats] = useState<Seat[]>(generateSeats(40));
@@ -411,7 +392,7 @@ export default function EmployeePanel() {
     const [connected, setConnected] = useState(false);
     const [departureAlert, setDepartureAlert] = useState(false);
     const [tripEnded, setTripEnded] = useState(false);
-    const [isRegistered, setIsRegistered] = useState(false);
+    const [isRegistered, setIsRegistered] = useState(true);
     const { sendLocation, joinBus, on } = useSocket();
 
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
@@ -543,9 +524,6 @@ export default function EmployeePanel() {
                             <p className="text-[9px] font-bold text-slate-400 ">Boarded</p>
                         </div>
                         <div className="flex items-center gap-1.5 ml-2 border-l border-white/10 pl-3">
-                            <Link to="/" className="w-9 h-9 bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl flex items-center justify-center transition-colors" title="Passenger Mode">
-                                <User className="w-4 h-4 text-blue-400" />
-                            </Link>
                             <button onClick={() => setStep("DASHBOARD")} className="w-9 h-9 bg-slate-800 hover:bg-slate-700 rounded-2xl flex items-center justify-center transition-colors" title="End Duty">
                                 <LogOut className="w-4 h-4 text-slate-400" />
                             </button>

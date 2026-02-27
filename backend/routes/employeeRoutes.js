@@ -85,7 +85,9 @@ router.get('/invitations', verifyToken, async (req, res) => {
         // Find all buses that have this employee's email pending or active
         const buses = await Bus.find({
             'employees.email': user.email.toLowerCase()
-        }).select('busNumber name orgName state district isPrivate employees employeeCode owner');
+        })
+            .select('busNumber name orgName state district isPrivate employees employeeCode owner')
+            .populate('owner', 'name email');
 
         const invitations = buses.map(bus => {
             const emp = bus.employees.find(e => e.email === user.email.toLowerCase());
@@ -99,6 +101,8 @@ router.get('/invitations', verifyToken, async (req, res) => {
                 isPrivate: bus.isPrivate,
                 status: emp?.status,
                 employeeCode: emp?.status === 'Active' ? bus.employeeCode : null,
+                ownerName: bus.owner?.name,
+                ownerEmail: bus.owner?.email,
             };
         });
 
@@ -121,6 +125,23 @@ router.post('/invitations/:busId/accept', verifyToken, async (req, res) => {
 
         emp.status = 'Active';
         emp.userId = user._id;
+
+        // Automatically change role from Passenger to Employee
+        if (user.role === 'Passenger') {
+            user.role = 'Employee';
+            user.assignedBus = bus._id;
+            await user.save();
+
+            // Notify Owner of acceptance
+            const ownerNotif = new Notification({
+                userId: bus.owner,
+                type: 'success',
+                title: 'Offer Accepted',
+                message: `${user.name} has accepted your offer to drive bus ${bus.busNumber}.`
+            });
+            await ownerNotif.save();
+        }
+
         await bus.save();
 
         res.json({ success: true, employeeCode: bus.employeeCode, bus });
@@ -142,6 +163,15 @@ router.post('/invitations/:busId/reject', verifyToken, async (req, res) => {
 
         emp.status = 'Rejected';
         await bus.save();
+
+        // Notify Owner of rejection
+        const ownerNotif = new Notification({
+            userId: bus.owner,
+            type: 'warning',
+            title: 'Offer Rejected',
+            message: `${user.name} (${user.email}) has rejected your offer of driving the bus ${bus.busNumber}.`
+        });
+        await ownerNotif.save();
 
         res.json({ success: true });
     } catch (err) {

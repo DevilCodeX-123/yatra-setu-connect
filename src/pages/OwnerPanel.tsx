@@ -1725,21 +1725,21 @@ export default function OwnerPanel() {
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground">Phone</label>
-                          <Input
-                            placeholder="+91 98765 43210"
-                            value={driverForm.phone}
-                            onChange={e => setDriverForm({ ...driverForm, phone: e.target.value })}
-                            className="h-9 text-sm mt-0.5"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground">Email (optional)</label>
+                          <label className="text-[10px] font-semibold text-muted-foreground">Email *</label>
                           <Input
                             type="email"
                             placeholder="driver@example.com"
                             value={driverForm.email}
                             onChange={e => setDriverForm({ ...driverForm, email: e.target.value })}
+                            className="h-9 text-sm mt-0.5"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground">Phone (optional)</label>
+                          <Input
+                            placeholder="+91 98765 43210"
+                            value={driverForm.phone}
+                            onChange={e => setDriverForm({ ...driverForm, phone: e.target.value })}
                             className="h-9 text-sm mt-0.5"
                           />
                         </div>
@@ -1756,7 +1756,7 @@ export default function OwnerPanel() {
                       </div>
                       <Button
                         onClick={handleAddDriver}
-                        disabled={addingDriver || !driverForm.name.trim()}
+                        disabled={addingDriver || !driverForm.name.trim() || !driverForm.email.trim() || !driverForm.email.includes('@')}
                         size="sm"
                         className="gap-1.5"
                       >

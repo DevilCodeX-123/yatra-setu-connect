@@ -413,19 +413,30 @@ router.post('/buses/:busId/employees', async (req, res) => {
             if (alreadyAdded) return res.status(409).json({ message: 'Driver already added' });
         }
 
-        const driverCode = genCode('DRV'); // unique driver on-air code
+        const isLinkedToUser = !!user;
+        const initialStatus = isLinkedToUser ? 'Pending' : 'Active';
 
         bus.employees.push({
             name: name.trim(),
             email: email ? email.toLowerCase().trim() : undefined,
             phone: phone || undefined,
             userId: user?._id || null,
-            status: 'Active',
+            status: initialStatus,
             driverCode,
             perDaySalary: Number(perDaySalary) || 0,
             joinedAt: new Date(),
         });
         await bus.save();
+
+        if (isLinkedToUser && user.role === 'Passenger') {
+            const notif = new Notification({
+                userId: user._id,
+                type: 'info',
+                title: 'Driving Offer Received',
+                message: `${req.user.name || 'An owner'} has invited you to drive bus ${bus.busNumber}. Check your dashboard to accept.`
+            });
+            await notif.save();
+        }
 
         const added = bus.employees[bus.employees.length - 1];
         res.status(201).json({ success: true, employee: added, driverCode, employees: bus.employees });

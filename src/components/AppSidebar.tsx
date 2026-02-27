@@ -156,49 +156,6 @@ export function AppSidebar() {
       <SidebarContent className="bg-sidebar px-2 pt-4">
         {group === 'owner' ? (
           <>
-            {/* Passenger Section for Owner */}
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-[9px] font-semibold text-blue-300/60 mb-1 px-3 uppercase">
-                {t('sidebar.passenger')} {t('sidebar.nav')}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-0.5">
-                  {[
-                    { title: "sidebar.home", url: "/", icon: Home },
-                    { title: "sidebar.transaction", url: "/transactions", icon: History },
-                    { title: "sidebar.bookTicket", url: "/booking", icon: Bus },
-                    { title: "sidebar.buses", url: "/buses", icon: Navigation },
-                    { title: "sidebar.myTickets", url: "/verify", icon: CreditCard },
-                    { title: "sidebar.pastRides", url: "/profile/past-rides", icon: Route },
-                    { title: "sidebar.profile", url: "/account", icon: UserCircle },
-                    { title: "sidebar.orgTracking", url: "/official-tracking", icon: Building2 },
-                    { title: "sidebar.support", url: "/support", icon: HelpCircle },
-                  ].map((item) => {
-                    const active = location.pathname === item.url;
-                    const translatedTitle = t(item.title);
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                          asChild
-                          tooltip={translatedTitle}
-                          isActive={active}
-                          className={`h-10 rounded-xl transition-all duration-200 ${active
-                            ? "bg-primary-light text-white shadow-md shadow-blue-600/20"
-                            : "text-blue-200/70 hover:text-white hover:bg-white/8"
-                            }`}
-                        >
-                          <Link to={item.url} className="px-3 flex items-center gap-3">
-                            <item.icon className="size-4 shrink-0" />
-                            <span className="text-xs font-medium">{translatedTitle}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
             {/* Management Section for Owner */}
             <SidebarGroup className="mt-4">
               <SidebarGroupLabel className="text-[9px] font-semibold text-blue-300/60 mb-1 px-3 uppercase">
@@ -266,8 +223,8 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Global Management Section for Staff */}
-        {(role === 'Employee' || role === 'Driver' || role === 'Conductor' || true) && (
+        {/* Global Management Section for Staff - ONLY for Employee/Driver/Conductor roles */}
+        {(role === 'Employee' || role === 'Driver' || role === 'Conductor') && (
           <SidebarGroup className="mt-4 border-t border-white/5 pt-4">
             <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
               Management

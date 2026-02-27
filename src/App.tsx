@@ -58,7 +58,7 @@ const AppShell = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
-  const noSidebarRoutes = ["/login", "/404", "/employee"];
+  const noSidebarRoutes = ["/login", "/404"];
   const showSidebar = isAuthenticated && !noSidebarRoutes.includes(location.pathname);
 
   return (
