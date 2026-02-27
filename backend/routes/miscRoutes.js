@@ -8,7 +8,7 @@ const EmergencyAlert = require('../models/EmergencyAlert');
 const User = require('../models/User');
 
 const { MOCK_BUSES } = require('../data/mockData');
-const { verifyToken, requireAuth, resolveUserId } = require('../middleware/auth');
+const { verifyToken, requireAuth, requireRole, resolveUserId } = require('../middleware/auth');
 
 // Get Real-Time Statistics
 router.get('/stats', async (req, res) => {
@@ -116,6 +116,37 @@ router.post('/emergency', verifyToken, requireAuth, async (req, res) => {
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
+});
+
+// ─── Admin Stats (Admin only) ──────────────────────────────────────────────────
+router.get('/admin/stats', verifyToken, requireAuth, requireRole('Admin'), async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ totalBuses: 0, totalUsers: 0, totalEmployees: 0, totalBookings: 0, totalAlerts: 0, activeRoutes: 0, totalRevenue: 0, allBuses: [] });
+    }
+    try {
+        const [totalBuses, totalUsers, totalEmployees, totalBookings, totalAlerts, allBuses, revenueAgg] = await Promise.all([
+            Bus.countDocuments(),
+            User.countDocuments(),
+            User.countDocuments({ role: 'Employee' }),
+            require('../models/Booking').countDocuments(),
+            EmergencyAlert.countDocuments(),
+            Bus.find().select('busNumber status route liveLocation owner employees').populate('owner', 'name email').limit(50),
+            require('../models/Booking').aggregate([{ $group: { _id: null, total: { $sum: '$amount' } } }])
+        ]);
+        const activeRoutes = new Set(allBuses.filter(b => b.status === 'Active').map(b => `${b.route?.from}-${b.route?.to}`)).size;
+        res.json({
+            totalBuses, totalUsers, totalEmployees, totalBookings, totalAlerts,
+            activeRoutes,
+            totalRevenue: revenueAgg[0]?.total || 0,
+            allBuses: allBuses.map(b => ({
+                _id: b._id, busNumber: b.busNumber, status: b.status,
+                from: b.route?.from, to: b.route?.to,
+                ownerName: b.owner?.name, ownerEmail: b.owner?.email,
+                lat: b.liveLocation?.lat, lng: b.liveLocation?.lng,
+                employeeCount: b.employees?.length || 0
+            }))
+        });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 module.exports = router;

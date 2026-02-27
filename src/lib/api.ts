@@ -209,11 +209,19 @@ export const api = {
     },
 
 
+    updateBusActivationCode: async (busId: string, activationCode: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/activation-code`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ activationCode })
+        });
+        return res.json();
+    },
     getBusEmployees: async (busId: string) => {
         const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, { headers: getAuthHeaders() });
         return res.json();
     },
-    addDriver: async (busId: string, driverData: { name: string; email?: string; phone?: string; perDaySalary?: number }) => {
+    addDriver: async (busId: string, driverData: { name: string; email?: string; phone?: string; perDaySalary?: number; driverCode?: string }) => {
         const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, {
             method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(driverData)
         });

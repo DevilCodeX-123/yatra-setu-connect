@@ -95,6 +95,11 @@ const MOCK_OFFICIAL_BUSES = [
         _id: 'off007', busNumber: 'RJ-20-C-7007', orgCategory: 'College', orgName: 'RTU Kota',
         state: 'Rajasthan', district: 'Kota', town: 'Kota', pinCode: '324010', activationCode: '123456',
         status: 'Active', liveLocation: { lat: 25.1311, lng: 75.8034 }, route: { from: 'Nayapura', to: 'RTU Campus' }
+    },
+    {
+        _id: 'off-test-001', busNumber: 'YS-101', orgCategory: 'Other', orgName: 'Yatra Setu Test Org',
+        state: 'Rajasthan', district: 'Jaipur', town: 'Jaipur', pinCode: '302001', activationCode: '123456',
+        status: 'Active', liveLocation: { lat: 26.9124, lng: 75.7873 }, route: { from: 'Jaipur Junction', to: 'Kota Terminal' }
     }
 ];
 

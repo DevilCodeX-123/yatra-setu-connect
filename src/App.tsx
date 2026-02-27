@@ -33,24 +33,26 @@ import RouteSelection from "./pages/RouteSelection";
 import NotFound from "./pages/NotFound";
 import OrganizationTracking from "./pages/OrganizationTracking";
 import SplashLoader from "@/components/brand/SplashLoader";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
-// Guard: sirf logged-in users ke liye
+// ─── Protected Route: Auth required ──────────────────────────────────────────
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isVerifying } = useAuth();
   const hasLocalToken = !!localStorage.getItem("ys_token");
+  if (isVerifying) return <SplashLoader />;
+  if (!isAuthenticated && !hasLocalToken) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
 
-  // Agar token verify ho raha hai, toh SplashLoader dikhao
-  if (isVerifying) {
-    return <SplashLoader />;
-  }
-
-  // Agar authenticated nahi hai aur koi token bhi nahi hai
-  if (!isAuthenticated && !hasLocalToken) {
-    return <Navigate to="/login" replace />;
-  }
-
+// ─── Role Guard: Require specific role(s) ────────────────────────────────────
+const RoleRoute = ({ children, roles }: { children: React.ReactNode; roles: string[] }) => {
+  const { isAuthenticated, isVerifying, role } = useAuth();
+  const hasLocalToken = !!localStorage.getItem("ys_token");
+  if (isVerifying) return <SplashLoader />;
+  if (!isAuthenticated && !hasLocalToken) return <Navigate to="/login" replace />;
+  if (!roles.includes(role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
@@ -66,16 +68,23 @@ const AppShell = () => {
       {showSidebar && <AppSidebar />}
       <div className="flex-1 flex flex-col min-w-0 overflow-auto">
         <Routes>
-          {/* Public route */}
+          {/* Public */}
           <Route path="/login" element={<Login />} />
 
-          {/* Protected routes */}
+          {/* Any authenticated user */}
           <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
           <Route path="/verify" element={<ProtectedRoute><VerifyTicket /></ProtectedRoute>} />
           <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-          <Route path="/account" element={<ProtectedRoute><ProfileInfo /></ProtectedRoute>} />
           <Route path="/buses" element={<ProtectedRoute><Buses /></ProtectedRoute>} />
+          <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+          <Route path="/emergency" element={<ProtectedRoute><Emergency /></ProtectedRoute>} />
+          <Route path="/school-bus" element={<ProtectedRoute><SchoolBus /></ProtectedRoute>} />
+          <Route path="/tracking/:id" element={<ProtectedRoute><BusTracking /></ProtectedRoute>} />
+          <Route path="/official-tracking" element={<ProtectedRoute><OrganizationTracking /></ProtectedRoute>} />
+
+          {/* Profile routes – any authenticated user */}
+          <Route path="/account" element={<ProtectedRoute><ProfileInfo /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/profile/bookings" element={<ProtectedRoute><ProfileBookings /></ProtectedRoute>} />
           <Route path="/profile/past-rides" element={<ProtectedRoute><ProfilePastRides /></ProtectedRoute>} />
@@ -88,25 +97,27 @@ const AppShell = () => {
           <Route path="/profile/referrals" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.referrals')} /></ProtectedRoute>} />
           <Route path="/profile/about" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.about')} /></ProtectedRoute>} />
           <Route path="/profile/rate" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.rate')} /></ProtectedRoute>} />
-          <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
-          <Route path="/tracking/:id" element={<ProtectedRoute><BusTracking /></ProtectedRoute>} />
-          <Route path="/passenger" element={<ProtectedRoute><PassengerDashboard /></ProtectedRoute>} />
-          <Route path="/driver" element={<ProtectedRoute><DriverPanel /></ProtectedRoute>} />
-          <Route path="/owner" element={<ProtectedRoute><OwnerPanel /></ProtectedRoute>} />
-          <Route path="/owner/route-selection" element={<ProtectedRoute><RouteSelection /></ProtectedRoute>} />
-          <Route path="/employee" element={<ProtectedRoute><EmployeePanel /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-          <Route path="/school-bus" element={<ProtectedRoute><SchoolBus /></ProtectedRoute>} />
-          <Route path="/emergency" element={<ProtectedRoute><Emergency /></ProtectedRoute>} />
-          <Route path="/official-tracking" element={<ProtectedRoute><OrganizationTracking /></ProtectedRoute>} />
+
+          {/* Passenger-specific */}
+          <Route path="/passenger" element={<RoleRoute roles={["Passenger", "Employee", "Owner", "Admin"]}><PassengerDashboard /></RoleRoute>} />
+
+          {/* Employee / Driver panel – Employee role only */}
+          <Route path="/employee" element={<RoleRoute roles={["Employee"]}><EmployeePanel /></RoleRoute>} />
+          <Route path="/driver" element={<RoleRoute roles={["Employee"]}><DriverPanel /></RoleRoute>} />
+
+          {/* Owner panel – Owner role only */}
+          <Route path="/owner" element={<RoleRoute roles={["Owner"]}><OwnerPanel /></RoleRoute>} />
+          <Route path="/owner/route-selection" element={<RoleRoute roles={["Owner"]}><RouteSelection /></RoleRoute>} />
+
+          {/* Admin panel – Admin role only */}
+          <Route path="/admin" element={<RoleRoute roles={["Admin"]}><AdminPanel /></RoleRoute>} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
     </div>
   );
 };
-
-import ErrorBoundary from "./components/ErrorBoundary";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

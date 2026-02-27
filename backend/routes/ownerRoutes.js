@@ -394,13 +394,33 @@ router.get('/buses/:busId/employees', async (req, res) => {
         const ownerId = await resolveUserId(req.user);
         const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
-        res.json({ employees: bus.employees || [], employeeCode: bus.employeeCode });
+        res.json({
+            employees: bus.employees || [],
+            employeeCode: bus.employeeCode,
+            activationCode: bus.activationCode
+        });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── PATCH /api/owner/buses/:busId/activation-code ── Manual code update ──────
+router.patch('/buses/:busId/activation-code', async (req, res) => {
+    const { activationCode } = req.body;
+    if (!activationCode) return res.status(400).json({ message: 'Activation code is required' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOneAndUpdate(
+            { _id: req.params.busId, owner: ownerId },
+            { $set: { activationCode } },
+            { new: true }
+        );
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+        res.json({ success: true, activationCode: bus.activationCode, bus });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // ─── POST /api/owner/buses/:busId/employees ── Add a new driver ───────────────
 router.post('/buses/:busId/employees', async (req, res) => {
-    const { name, email, phone, perDaySalary } = req.body;
+    const { name, email, phone, perDaySalary, driverCode: providedDriverCode } = req.body;
     if (!name) return res.status(400).json({ message: 'Driver name is required' });
     try {
         const ownerId = await resolveUserId(req.user);
@@ -415,6 +435,9 @@ router.post('/buses/:busId/employees', async (req, res) => {
 
         const isLinkedToUser = !!user;
         const initialStatus = isLinkedToUser ? 'Pending' : 'Active';
+
+        // Use provided code or default to a generated one
+        const driverCode = providedDriverCode?.trim() || `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
 
         bus.employees.push({
             name: name.trim(),
@@ -443,7 +466,7 @@ router.post('/buses/:busId/employees', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── PATCH /api/owner/buses/:busId/employees/:empId ── Update per-day salary ──
+// ─── PATCH /api/owner/buses/:busId/employees/:empId ── Update driver ──────────
 router.patch('/buses/:busId/employees/:empId', async (req, res) => {
     try {
         const ownerId = await resolveUserId(req.user);
@@ -451,9 +474,12 @@ router.patch('/buses/:busId/employees/:empId', async (req, res) => {
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
         const emp = bus.employees.id(req.params.empId);
         if (!emp) return res.status(404).json({ message: 'Employee not found' });
+
         if (req.body.perDaySalary !== undefined) emp.perDaySalary = Number(req.body.perDaySalary);
-        if (req.body.name) emp.name = req.body.name;
-        if (req.body.phone) emp.phone = req.body.phone;
+        if (req.body.name !== undefined) emp.name = req.body.name.trim();
+        if (req.body.phone !== undefined) emp.phone = req.body.phone.trim();
+        if (req.body.driverCode !== undefined) emp.driverCode = req.body.driverCode.trim();
+
         await bus.save();
         res.json({ success: true, employee: emp });
     } catch (err) { res.status(500).json({ message: err.message }); }

@@ -31,28 +31,12 @@ import {
   Building2,
   Route,
   CreditCard,
-  Wifi,
-  Lock,
-  KeyRound
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Logo from "./brand/Logo";
 import LogoIcon from "./brand/LogoIcon";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
-import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const menuGroups = {
@@ -99,24 +83,6 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
   const { role } = useAuth();
-  const [isStaffRegistered, setIsStaffRegistered] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [activationData, setActivationData] = useState({
-    busNumber: "",
-    driverCode: ""
-  });
-
-  const handleActivation = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (activationData.busNumber.toUpperCase() === "YS-101" && activationData.driverCode === "2026") {
-      setIsStaffRegistered(true);
-      setIsDialogOpen(false);
-      toast.success("Duty Activated! Driver Panel is now live.");
-    } else {
-      toast.error("Invalid Bus Number or Driver Code.");
-    }
-  };
-
   const getActiveGroup = () => {
     // If user is Owner, prioritize the owner sidebar group so management links stay visible
     if (role === 'Owner' || role === 'Owner+Employee') return 'owner';
@@ -154,50 +120,16 @@ export function AppSidebar() {
 
       {/* Content */}
       <SidebarContent className="bg-sidebar px-2 pt-4">
-        {group === 'owner' ? (
-          <>
-            {/* Management Section for Owner */}
-            <SidebarGroup className="mt-4">
-              <SidebarGroupLabel className="text-[9px] font-semibold text-blue-300/60 mb-1 px-3 uppercase">
-                {t('sidebar.management')}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-0.5">
-                  {items.map((item) => {
-                    const active = location.pathname === item.url || (item.url.startsWith('#') && location.hash === item.url);
-                    const translatedTitle = t(item.title);
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                          asChild
-                          tooltip={translatedTitle}
-                          isActive={active}
-                          className={`h-10 rounded-xl transition-all duration-200 ${active
-                            ? "bg-primary-light text-white shadow-md shadow-blue-600/20"
-                            : "text-blue-200/70 hover:text-white hover:bg-white/8"
-                            }`}
-                        >
-                          <Link to={item.url} className="px-3 flex items-center gap-3">
-                            <item.icon className="size-4 shrink-0" />
-                            <span className="text-xs font-medium">{translatedTitle}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        ) : (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-[9px] font-semibold text-blue-300/60 mb-1 px-3 uppercase">
-              {group} {t('sidebar.nav')}
+        {/* 1. Management Section (Owner/Admin specific) */}
+        {(group === 'owner' || group === 'admin') && (
+          <SidebarGroup className="mb-4">
+            <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
+              {t('sidebar.management')}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-0.5">
                 {items.map((item) => {
-                  const active = location.pathname === item.url;
+                  const active = location.pathname === item.url || (item.url.startsWith('#') && location.hash === item.url);
                   const translatedTitle = t(item.title);
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -223,102 +155,66 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Global Management Section for Staff - ONLY for Employee/Driver/Conductor roles */}
-        {(role === 'Employee' || role === 'Driver' || role === 'Conductor') && (
-          <SidebarGroup className="mt-4 border-t border-white/5 pt-4">
-            <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
-              Management
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {!isStaffRegistered ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setIsDialogOpen(true)}
-                      className="h-11 rounded-xl text-blue-200/70 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/5 mx-1"
-                    >
-                      <div className="px-2 flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500">
-                          <Shield className="size-4" />
-                        </div>
-                        <span className="text-[11px] font-black uppercase tracking-tight">Start Job (Activation)</span>
-                      </div>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : (
-                  <SidebarMenuItem>
+        {/* 2. Consumer Navigation (Available to Everyone) */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
+            {t('sidebar.consumerNav') || 'Consumer Navigation'}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-0.5">
+              {(group === 'consumer' ? items : menuGroups.consumer).map((item) => {
+                const active = location.pathname === item.url;
+                const translatedTitle = t(item.title);
+                return (
+                  <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      className="h-11 rounded-xl text-white bg-blue-600/20 hover:bg-blue-600/30 transition-all border border-blue-500/20 mx-1"
+                      tooltip={translatedTitle}
+                      isActive={active}
+                      className={`h-10 rounded-xl transition-all duration-200 ${active
+                        ? "bg-primary-light text-white shadow-md shadow-blue-600/20"
+                        : "text-blue-200/70 hover:text-white hover:bg-white/8"
+                        }`}
                     >
-                      <Link to="/employee" className="px-2 flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-600/20">
-                          <Navigation className="size-4" />
-                        </div>
-                        <span className="text-[11px] font-black uppercase tracking-tight">Driver Panel</span>
+                      <Link to={item.url} className="px-3 flex items-center gap-3">
+                        <item.icon className="size-4 shrink-0" />
+                        <span className="text-xs font-medium">{translatedTitle}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )}
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Employee Panel Link - Only for Employee role */}
+        {role === 'Employee' && (
+          <SidebarGroup className="mt-4 border-t border-white/5 pt-4">
+            <SidebarGroupLabel className="text-[9px] font-black text-blue-300/40 mb-2 px-3 uppercase tracking-[0.2em]">
+              Driver / Conductor
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className="h-11 rounded-xl text-white bg-blue-600/20 hover:bg-blue-600/30 transition-all border border-blue-500/20 mx-1"
+                  >
+                    <Link to="/employee" className="px-2 flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                        <Navigation className="size-4" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-tight">Employee Panel</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
       </SidebarContent>
 
-      {/* Staff Activation Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-slate-900 border-white/10 text-white rounded-[32px] overflow-hidden">
-          <DialogHeader className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20 mb-2">
-              <Bus className="w-6 h-6 text-white" />
-            </div>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">Job Activation</DialogTitle>
-            <DialogDescription className="text-xs font-bold text-slate-400">
-              Enter your assigned bus number and driver code to start your duty.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleActivation} className="space-y-6 py-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="bus-number" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Assigned Bus Number</Label>
-                <div className="relative">
-                  <Bus className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                  <Input
-                    id="bus-number"
-                    placeholder="e.g. YS-101"
-                    value={activationData.busNumber}
-                    onChange={(e) => setActivationData({ ...activationData, busNumber: e.target.value })}
-                    className="h-12 bg-white/5 border-white/10 text-white pl-11 rounded-xl focus:ring-blue-600/50"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="driver-code" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Driver Activation Code</Label>
-                <div className="relative">
-                  <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                  <Input
-                    id="driver-code"
-                    type="password"
-                    placeholder="••••••"
-                    value={activationData.driverCode}
-                    onChange={(e) => setActivationData({ ...activationData, driverCode: e.target.value })}
-                    className="h-12 bg-white/5 border-white/10 text-white pl-11 rounded-xl focus:ring-blue-600/50"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter className="sm:justify-start pt-2">
-              <Button
-                type="submit"
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-xl shadow-xl shadow-blue-600/20 active:scale-95 transition-all"
-              >
-                START JOB NOW
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Footer */}
       <SidebarFooter className="bg-sidebar border-t border-white/5 p-4">

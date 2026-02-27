@@ -43,10 +43,12 @@ export default function OwnerPanel() {
   const [selectedBusForEmp, setSelectedBusForEmp] = useState<string>("");
   const [employees, setEmployees] = useState<any[]>([]);
   const [employeeCode, setEmployeeCode] = useState("");
-  const [driverForm, setDriverForm] = useState({ name: "", phone: "", email: "", perDaySalary: "" });
+  const [driverForm, setDriverForm] = useState({ name: "", phone: "", email: "", perDaySalary: "", driverCode: "" });
   const [addingDriver, setAddingDriver] = useState(false);
   const [showDriverForm, setShowDriverForm] = useState(false);
   const [newDriverCode, setNewDriverCode] = useState("");
+  const [activationCode, setActivationCode] = useState("");
+  const [updatingCode, setUpdatingCode] = useState(false);
 
   // Run on Route modal state
   const [showRunModal, setShowRunModal] = useState(false);
@@ -357,8 +359,28 @@ export default function OwnerPanel() {
       const data = await api.getBusEmployees(busId);
       setEmployees(data.employees || []);
       setEmployeeCode(data.employeeCode || '');
+      setActivationCode(data.activationCode || '');
     } catch {
       toast.error('Failed to load drivers');
+    }
+  };
+
+  const handleUpdateActivationCode = async () => {
+    if (!selectedBusForEmp || !activationCode.trim()) return;
+    setUpdatingCode(true);
+    try {
+      const res = await api.updateBusActivationCode(selectedBusForEmp, activationCode.trim().toUpperCase());
+      if (res.success) {
+        toast.success("Activation code updated successfully!");
+        setActivationCode(res.activationCode);
+      } else {
+        toast.error(res.message || "Failed to update code");
+      }
+    } catch {
+      toast.error("Failed to update activation code");
+    } finally {
+      setUpdatingCode(true);
+      setUpdatingCode(false);
     }
   };
 
@@ -371,11 +393,12 @@ export default function OwnerPanel() {
         email: driverForm.email.trim() || undefined,
         phone: driverForm.phone.trim() || undefined,
         perDaySalary: driverForm.perDaySalary ? Number(driverForm.perDaySalary) : 0,
+        driverCode: driverForm.driverCode.trim() || undefined,
       });
       if (res.success) {
         setNewDriverCode(res.driverCode || '');
         toast.success(`Driver "${driverForm.name}" added! Code: ${res.driverCode}`);
-        setDriverForm({ name: "", phone: "", email: "", perDaySalary: "" });
+        setDriverForm({ name: "", phone: "", email: "", perDaySalary: "", driverCode: "" });
         setShowDriverForm(false);
         loadEmployees(selectedBusForEmp);
       } else {
@@ -1663,21 +1686,30 @@ export default function OwnerPanel() {
 
               {selectedBusForEmp && (
                 <>
-                  {/* Employee/Bus Code Display */}
-                  {employeeCode && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5" /> Bus Employee Code (for staff activation)
-                        </p>
-                        <code className="text-primary font-mono text-sm tracking-widest font-bold">{employeeCode}</code>
-                      </div>
-                      <Button size="icon" variant="ghost" className="h-8 w-8"
-                        onClick={() => { navigator.clipboard.writeText(employeeCode); toast.success('Code copied!'); }}>
-                        <Copy className="w-3.5 h-3.5" />
+                  {/* Bus Activation Code Management */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" /> Staff Activation Code
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={activationCode}
+                        onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. YS-DRIVER-101"
+                        className="bg-white border-primary/20 font-mono tracking-widest uppercase font-black"
+                      />
+                      <Button
+                        onClick={handleUpdateActivationCode}
+                        disabled={updatingCode || !activationCode.trim()}
+                        className="font-black uppercase text-[10px] tracking-widest px-6"
+                      >
+                        {updatingCode ? <RefreshCw className="w-4 h-4 animate-spin text-white" /> : "Set Code"}
                       </Button>
                     </div>
-                  )}
+                    <p className="text-[9px] text-muted-foreground leading-relaxed">
+                      This code is required for the driver to activate the panel for <strong className="text-foreground">Bus {buses.find(b => b._id === selectedBusForEmp)?.busNumber}</strong>.
+                    </p>
+                  </div>
 
                   {/* New Driver Code Banner */}
                   {newDriverCode && (
@@ -1753,6 +1785,15 @@ export default function OwnerPanel() {
                             className="h-9 text-sm mt-0.5"
                           />
                         </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground">Driver Code (Optional)</label>
+                          <Input
+                            placeholder="e.g. YS-DRV-A01"
+                            value={driverForm.driverCode}
+                            onChange={e => setDriverForm({ ...driverForm, driverCode: e.target.value.toUpperCase() })}
+                            className="h-9 text-sm mt-0.5 uppercase font-mono tracking-widest"
+                          />
+                        </div>
                       </div>
                       <Button
                         onClick={handleAddDriver}
@@ -1761,7 +1802,7 @@ export default function OwnerPanel() {
                         className="gap-1.5"
                       >
                         <UserCheck className="w-3.5 h-3.5" />
-                        {addingDriver ? 'Adding...' : 'Confirm & Generate Code'}
+                        {addingDriver ? 'Adding...' : 'Confirm & Set Driver'}
                       </Button>
                     </div>
                   )}
