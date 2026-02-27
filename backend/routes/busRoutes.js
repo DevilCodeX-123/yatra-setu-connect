@@ -42,21 +42,93 @@ router.get('/search', async (req, res) => {
     }
     const { from, to, date } = req.query;
     try {
-        const query = {};
-        if (from) query['route.from'] = new RegExp(escapeRegExp(from), 'i');
-        if (to) query['route.to'] = new RegExp(escapeRegExp(to), 'i');
-        if (date) {
-            query['date'] = { $in: date.split(',') };
-            query['bookedDates'] = { $nin: date.split(',') };
+        const query = { status: 'Active' };
+
+        if (from) {
+            query['$or'] = [
+                { 'route.from': new RegExp(escapeRegExp(from), 'i') },
+                { 'route.stops.name': new RegExp(escapeRegExp(from), 'i') }
+            ];
         }
+        if (to) {
+            const destQuery = {
+                '$or': [
+                    { 'route.to': new RegExp(escapeRegExp(to), 'i') },
+                    { 'route.stops.name': new RegExp(escapeRegExp(to), 'i') }
+                ]
+            };
+            if (query['$or']) {
+                query['$and'] = [{ '$or': query['$or'] }, destQuery];
+                delete query['$or'];
+            } else {
+                query['$or'] = destQuery['$or'];
+            }
+        }
+
+        const datesArray = date ? date.split(',') : [];
+        const targetDate = datesArray[0];
+
+        // Advanced Search: Include scheduled buses
+        const scheduledQuery = {
+            $or: [
+                { date: { $in: datesArray } }, // Exact date match
+                {
+                    'schedule.isScheduleActive': true,
+                    'schedule.type': 'daily'
+                }
+            ]
+        };
+
+        if (targetDate) {
+            const dayName = new Date(targetDate).toLocaleDateString('en-US', { weekday: 'short' }); // e.g., 'Mon'
+            scheduledQuery.$or.push({
+                'schedule.isScheduleActive': true,
+                'schedule.type': 'days',
+                'schedule.activeDays': dayName
+            });
+            scheduledQuery.$or.push({
+                'schedule.isScheduleActive': true,
+                'schedule.type': 'specific',
+                'schedule.specificDates': targetDate
+            });
+        }
+
+        if (query['$and']) {
+            query['$and'].push(scheduledQuery);
+        } else if (query['$or']) {
+            query['$and'] = [{ '$or': query['$or'] }, scheduledQuery];
+            delete query['$or'];
+        } else {
+            Object.assign(query, scheduledQuery);
+        }
+
         const buses = await Bus.find(query).populate('owner', 'upiId');
-        const formatted = buses.map(b => {
+
+        const formatted = await Promise.all(buses.map(async (b) => {
             const obj = b.toObject();
             obj.ownerUPI = obj.owner?.upiId || '8302391227-2@ybl';
+
+            // Calculate available seats for the target date
+            let bookedCount = 0;
+            if (targetDate) {
+                bookedCount = await Booking.countDocuments({
+                    bus: b._id,
+                    date: targetDate,
+                    status: { $ne: 'Cancelled' }
+                });
+            } else {
+                // Fallback for overview
+                bookedCount = obj.seats?.filter(s => s.status === 'Booked' || s.status === 'Cash').length || 0;
+            }
+
+            obj.availableSeats = Math.max((obj.totalSeats || 40) - bookedCount, 0);
+
             return obj;
-        });
+        }));
+
         res.json(formatted);
     } catch (err) {
+        console.error("Search error:", err);
         res.status(500).json({ message: err.message });
     }
 });
@@ -248,7 +320,37 @@ router.get('/by-id/:id', async (req, res) => {
             return [...acc, ...b.passengers.map(p => parseInt(p.seatNumber))];
         }, []);
         bus.bookedSeats = Array.from(new Set(bookedSeatsArray));
+        bus.availableSeats = (bus.totalSeats || 40) - bus.bookedSeats.length;
         res.json(bus);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST /api/buses/:id/repeat - Clone/Repeat a past route
+router.post('/:id/repeat', async (req, res) => {
+    try {
+        const originalBus = await Bus.findById(req.params.id);
+        if (!originalBus) return res.status(404).json({ message: 'Original bus not found' });
+
+        const { newDate, newStartTime } = req.body;
+
+        const newBusData = originalBus.toObject();
+        delete newBusData._id;
+        delete newBusData.createdAt;
+        delete newBusData.updatedAt;
+
+        // Reset dynamic fields
+        newBusData.date = newDate || new Date().toISOString().split('T')[0];
+        if (newStartTime) newBusData.departureTime = newStartTime;
+        newBusData.status = 'Active';
+        newBusData.bookedDates = [];
+        newBusData.seats = originalBus.seats.map(s => ({ ...s, status: 'Available', passenger: null }));
+
+        const newBus = new Bus(newBusData);
+        await newBus.save();
+
+        res.json({ success: true, busId: newBus._id });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

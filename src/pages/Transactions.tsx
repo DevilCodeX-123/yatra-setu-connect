@@ -31,7 +31,22 @@ export default function Transactions() {
                     <h1 className="text-2xl sm:text-3xl text-premium text-primary mb-1">Booked Tickets</h1>
                     <p className="text-[10px] font-bold text-muted-foreground">View and manage your recent booking history.</p>
                 </div>
-                <Card className="border-border shadow-card overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <Card className="border-border shadow-card overflow-hidden bg-primary/5 border-primary/20">
+                        <CardHeader className="pb-2">
+                            <p className="text-[10px] font-black text-primary uppercase tracking-wider">Total Investment</p>
+                            <CardTitle className="text-3xl font-black text-primary">₹{bookings.reduce((acc, b) => acc + (b.amount || 0), 0).toLocaleString()}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
+                                <Ticket className="w-3 h-3" />
+                                <span>{bookings.length} Confirmed Tickets</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card className="border-border shadow-card overflow-hidden mt-6">
                     <CardHeader className="flex flex-row items-center gap-4 bg-secondary border-b border-border">
                         <div className="p-2.5 bg-primary/10 rounded-xl shadow-sm">
                             <History className="w-5 h-5 text-primary" />
@@ -58,7 +73,7 @@ export default function Transactions() {
                         ) : (
                             <div className="divide-y divide-border">
                                 {bookings.map((booking) => {
-                                    const busDate = booking.bus?.date || format(new Date(booking.date), 'yyyy-MM-dd');
+                                    const busDate = booking.bus?.date || (booking.date ? format(new Date(booking.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
                                     const departureTime = booking.bus?.departureTime || "00:00";
 
                                     const getStatus = () => {
@@ -68,14 +83,14 @@ export default function Transactions() {
                                             tripDate.setHours(hours, minutes, 0, 0);
 
                                             const now = new Date();
-                                            if (now > tripDate) return { label: "Expired", color: "bg-secondary text-muted-foreground border-border", icon: History };
+                                            if (now > tripDate) return { label: "EXPIRED", color: "bg-secondary text-muted-foreground border-border", icon: History };
 
-                                            const diff = differenceInCalendarDays(tripDate, now);
-                                            if (diff === 0) return { label: "Travel Today", color: "bg-primary-light/10 text-primary border-primary/20", icon: Calendar };
-                                            if (diff === 1) return { label: "Tomorrow", color: "bg-blue-500/10 text-blue-600 border-blue-500/20", icon: Calendar };
-                                            return { label: `${diff} Days to Travel`, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: Calendar };
+                                            const diffMinutes = (tripDate.getTime() - now.getTime()) / (1000 * 60);
+                                            if (diffMinutes > 0 && diffMinutes < 180) return { label: "LIVE", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: Bus };
+
+                                            return { label: "UPCOMING", color: "bg-primary-light/10 text-primary border-primary/20", icon: Calendar };
                                         } catch (e) {
-                                            return { label: "Confirmed", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: Ticket };
+                                            return { label: "CONFIRMED", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: Ticket };
                                         }
                                     };
 

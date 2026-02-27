@@ -16,12 +16,20 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/buses`, { headers: getAuthHeaders() });
         return res.json();
     },
-    getBusById: async (id: string) => {
-        const res = await fetch(`${API_BASE_URL}/buses/by-id/${id}`, { headers: getAuthHeaders() });
+    getBusById: async (id: string, date?: string) => {
+        const url = date ? `${API_BASE_URL}/buses/by-id/${id}?date=${date}` : `${API_BASE_URL}/buses/by-id/${id}`;
+        const res = await fetch(url, { headers: getAuthHeaders() });
         return res.json();
     },
     searchBuses: async (from: string, to: string, date: string) => {
         const res = await fetch(`${API_BASE_URL}/buses/search?from=${from}&to=${to}&date=${date}`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    repeatBusRoute: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/buses/${busId}/repeat`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
         return res.json();
     },
     lockSeat: async (busId: string, seatNumber: number, lockerId: string) => {
@@ -293,6 +301,38 @@ export const api = {
         const res = await fetch(url, { headers: getAuthHeaders() });
         return res.json();
     },
+    updateBusLocation: async (busNumber: string, lat: number, lng: number, source: string = 'GPS') => {
+        const res = await fetch(`${API_BASE_URL}/employee/location`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ busNumber, lat, lng, source })
+        });
+        return res.json();
+    },
+    reportEmergency: async (busNumber: string, type: string, description: string, location: any) => {
+        const res = await fetch(`${API_BASE_URL}/employee/emergency`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ busNumber, type, description, location })
+        });
+        return res.json();
+    },
+    submitStopPoll: async (busId: string, stopIndex: number, status: string) => {
+        const res = await fetch(`${API_BASE_URL}/employee/stop-poll`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ busId, stopIndex, status })
+        });
+        return res.json();
+    },
+    setOriginLocation: async (busId: string, location: { lat: number, lng: number }) => {
+        const res = await fetch(`${API_BASE_URL}/employee/set-origin`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ busId, location })
+        });
+        return res.json();
+    },
 
     // Rental
     createRentalRequest: async (rentalData: any) => {
@@ -340,6 +380,25 @@ export const api = {
             method: 'POST',
             headers: getAuthHeaders()
         });
+        return res.json();
+    },
+    payAdvance: async (bookingId: string) => {
+        const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/pay-advance`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    sendBookingMessage: async (bookingId: string, message: string) => {
+        const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/chat`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ message })
+        });
+        return res.json();
+    },
+    getBookingChat: async (bookingId: string) => {
+        const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/chat`, { headers: getAuthHeaders() });
         return res.json();
     },
     addPassenger: async (passengerData: any) => {

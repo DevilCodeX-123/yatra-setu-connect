@@ -32,6 +32,7 @@ import Login from "./pages/Login";
 import RouteSelection from "./pages/RouteSelection";
 import NotFound from "./pages/NotFound";
 import OrganizationTracking from "./pages/OrganizationTracking";
+import BookingChat from "@/pages/BookingChat";
 import SplashLoader from "@/components/brand/SplashLoader";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -97,6 +98,7 @@ const AppShell = () => {
           <Route path="/profile/referrals" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.referrals')} /></ProtectedRoute>} />
           <Route path="/profile/about" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.about')} /></ProtectedRoute>} />
           <Route path="/profile/rate" element={<ProtectedRoute><ProfilePlaceholder title={t('profile.rate')} /></ProtectedRoute>} />
+          <Route path="/profile/chat/:id" element={<ProtectedRoute><BookingChat /></ProtectedRoute>} />
 
           {/* Passenger-specific */}
           <Route path="/passenger" element={<RoleRoute roles={["Passenger", "Employee", "Owner", "Admin"]}><PassengerDashboard /></RoleRoute>} />

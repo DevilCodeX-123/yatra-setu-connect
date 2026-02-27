@@ -143,7 +143,7 @@ export default function Booking() {
 
   const fetchBusRealTime = async (id: string) => {
     try {
-      const bus = await api.getBusById(id);
+      const bus = await api.getBusById(id, searchDate);
       if (bus) {
         setSelectedBus(bus);
         setActiveLocks(bus.activeLocks || []);
@@ -158,14 +158,14 @@ export default function Booking() {
       const interval = setInterval(() => fetchBusRealTime(selectedBus._id), 2000); // Poll every 2 seconds
       return () => clearInterval(interval);
     }
-  }, [step, selectedBus?._id]);
+  }, [step, selectedBus?._id, searchDate]);
 
   useEffect(() => {
     if (busIdParam && step === "search") {
       const loadDirectBus = async () => {
         setLoading(true);
         try {
-          const bus = await api.getBusById(busIdParam);
+          const bus = await api.getBusById(busIdParam, searchDate);
           if (bus) {
             setSelectedBus(bus);
             setActiveLocks(bus.activeLocks || []);
@@ -1008,15 +1008,22 @@ export default function Booking() {
               </div>
             </div>
 
-            <div className="flex gap-3 justify-center">
-              <Button variant="outline" className="font-black text-[9px] border-border" asChild>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button variant="outline" className="font-black text-[9px] border-border h-11 px-6 shadow-sm" asChild>
                 <Link to="/"> {t('common.backToHome')}</Link>
               </Button>
-              <Button className="font-black text-[9px] " asChild>
+              <Button className="font-black text-[9px] h-11 px-6 shadow-md" asChild>
                 <Link to={isRental ? "/profile/bookings" : "/verify"}>
                   {isRental ? t('booking.myRequests') : t('booking.verifyTicket')}
                 </Link>
               </Button>
+              {isRental && (
+                <Button variant="secondary" className="font-black text-[9px] h-11 px-6 shadow-sm bg-primary/10 text-primary border-primary/20" asChild>
+                  <Link to="/support">
+                    Chat with Owner
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         )}

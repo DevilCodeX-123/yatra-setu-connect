@@ -269,4 +269,44 @@ router.post('/invitations/:busId/reject', verifyToken, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// ═══ ADDITIONAL DRIVER FEATURES ═══════════════════════════════════════════════
+router.post('/emergency', verifyToken, async (req, res) => {
+    const { busNumber, type, description, location } = req.body;
+    try {
+        const bus = await Bus.findOne({ busNumber: busNumber?.toUpperCase() });
+        const userId = await resolveUserId(req.user);
+        const user = await User.findById(userId);
+
+        if (bus?.owner) {
+            await Notification.create({
+                userId: bus.owner,
+                type: 'danger',
+                title: `EMERGENCY: ${type}`,
+                message: `Driver ${user?.name} reported ${description} for Bus ${busNumber}. Location: ${location?.lat}, ${location?.lng}`
+            });
+        }
+        res.json({ success: true, message: 'Emergency reported successfully' });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.post('/set-origin', verifyToken, async (req, res) => {
+    const { busId, location } = req.body;
+    try {
+        await Bus.findByIdAndUpdate(busId, { originLocation: location });
+        res.json({ success: true, message: 'Origin location set' });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.post('/stop-poll', verifyToken, async (req, res) => {
+    const { busId, stopIndex, status } = req.body;
+    const io = req.app.get('io');
+    if (io) {
+        const bus = await Bus.findById(busId);
+        if (bus) {
+            io.to(`bus:${bus.busNumber}`).emit('stop:update', { stopIndex, status, busNumber: bus.busNumber });
+        }
+    }
+    res.json({ success: true });
+});
+
 module.exports = router;

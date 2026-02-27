@@ -98,6 +98,10 @@ const BusSchema = new mongoose.Schema({
         perDaySalary: { type: Number, default: 0 },
         joinedAt: { type: Date, default: Date.now }
     }],
+
+    // ─── Loop & Return Logic ──────────────────────────────────────────────────
+    lastReturnTime: { type: Date },
+    originLocation: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Bus', BusSchema);

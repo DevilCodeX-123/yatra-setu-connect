@@ -37,7 +37,16 @@ const BookingSchema = new mongoose.Schema({
     amount: { type: Number, required: true },
     depositAmount: { type: Number },
     bookingSource: { type: String, enum: ['Online', 'Employee', 'Agent'], default: 'Online' },
-    paymentMethod: { type: String, enum: ['Online', 'Cash', 'UPI'], default: 'Online' }
+    paymentMethod: { type: String, enum: ['Online', 'Cash', 'UPI'], default: 'Online' },
+
+    // ─── Advance Payment & Chat ──────────────────────────────────────────────
+    advanceAmount: { type: Number, default: 0 },
+    isAdvancePaid: { type: Boolean, default: false },
+    chatHistory: [{
+        sender: { type: String }, // 'User' or 'Owner'
+        message: { type: String },
+        timestamp: { type: Date, default: Date.now }
+    }]
 }, { timestamps: true });
 
 

@@ -334,9 +334,16 @@ export default function OwnerPanel() {
   };
 
   const handleRequestAction = async (requestId: string, status: 'Accepted' | 'Rejected') => {
+    let advanceAmount = 0;
+    if (status === 'Accepted') {
+      const input = window.prompt("Enter Advance Amount (₹) for this rental:", "1000");
+      if (input === null) return;
+      advanceAmount = Number(input) || 0;
+    }
+
     try {
-      await api.updateRequestStatus(requestId, status);
-      toast.success(`Request ${status.toLowerCase()} successfully`);
+      await api.updateRequestStatus(requestId, status, { advanceAmount });
+      toast.success(`Request ${status.toLowerCase()} successfully ${advanceAmount > 0 ? `with ₹${advanceAmount} advance` : ''}`);
       fetchDashboard();
     } catch (err) {
       toast.error("Failed to update request");
@@ -713,10 +720,26 @@ export default function OwnerPanel() {
                               <MapPin className="w-3 h-3 mr-1" /> Route
                             </Button>
                             {bus.route?.from && (
-                              <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-success border-success/40 hover:bg-success/10"
-                                onClick={() => handleRunOnRoute(bus)}>
-                                <PlayCircle className="w-3 h-3 mr-1" /> Run
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-success border-success/40 hover:bg-success/10"
+                                  onClick={() => handleRunOnRoute(bus)}>
+                                  <PlayCircle className="w-3 h-3 mr-1" /> Run
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-amber-600 border-amber-500/40 hover:bg-amber-50"
+                                  onClick={async () => {
+                                    if (window.confirm("Repeat this route for a new trip? This will copy all stops and settings.")) {
+                                      try {
+                                        const res = await api.repeatBusRoute(bus._id);
+                                        if (res.success) {
+                                          toast.success("Route cloned! New bus entry created.");
+                                          fetchDashboard();
+                                        }
+                                      } catch (err) { toast.error("Failed to repeat route"); }
+                                    }
+                                  }}>
+                                  <Repeat className="w-3 h-3 mr-1" /> Repeat
+                                </Button>
+                              </div>
                             )}
                             <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-info border-info/40 hover:bg-info/10"
                               onClick={() => openScheduleModal(bus)}>
@@ -928,15 +951,15 @@ export default function OwnerPanel() {
                       </button>
                     </div>
 
-                    {scheduleForm.loopEnabled && (
-                      <div className="flex items-center gap-3">
-                        <label className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Loop Every</label>
-                        <Input type="number" min={15} max={480} className="w-24 text-sm"
-                          value={scheduleForm.loopIntervalMinutes}
-                          onChange={e => setScheduleForm(f => ({ ...f, loopIntervalMinutes: Number(e.target.value) }))} />
-                        <span className="text-xs text-muted-foreground">minutes</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Loop Every</label>
+                      <Input type="number" min={15} max={480} className="w-24 text-sm"
+                        value={scheduleForm.loopIntervalMinutes}
+                        onChange={e => setScheduleForm(f => ({ ...f, loopIntervalMinutes: Number(e.target.value) }))} />
+                      <span className="text-xs text-muted-foreground">
+                        mins ({(scheduleForm.loopIntervalMinutes / 60).toFixed(1)} hrs)
+                      </span>
+                    </div>
 
                     {/* Notes */}
                     <div>
@@ -1285,18 +1308,25 @@ export default function OwnerPanel() {
                             </span>
                           </td>
                           <td className="px-4 py-4 text-right">
-                            {req.status === 'PendingOwner' ? (
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-black border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleRequestAction(req._id, 'Rejected')}>
-                                  Reject
+                            <div className="flex justify-end gap-2">
+                              {req.status === 'PendingOwner' ? (
+                                <>
+                                  <Button size="sm" variant="outline" className="h-8 text-[10px] font-black border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleRequestAction(req._id, 'Rejected')}>
+                                    Reject
+                                  </Button>
+                                  <Button size="sm" className="h-8 text-[10px] font-black bg-emerald-600 hover:bg-emerald-700" onClick={() => handleRequestAction(req._id, 'Accepted')}>
+                                    Accept
+                                  </Button>
+                                </>
+                              ) : (
+                                <span className="text-[9px] font-black text-muted-foreground opacity-40 uppercase mr-2 mt-2">Handled</span>
+                              )}
+                              <Link to={`/profile/chat/${req._id}`}>
+                                <Button size="sm" variant="secondary" className="h-8 text-[10px] font-black bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
+                                  Chat
                                 </Button>
-                                <Button size="sm" className="h-8 text-[10px] font-black bg-emerald-600 hover:bg-emerald-700" onClick={() => handleRequestAction(req._id, 'Accepted')}>
-                                  Accept
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-[9px] font-black text-muted-foreground opacity-40 uppercase">Handled</span>
-                            )}
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1629,8 +1659,21 @@ export default function OwnerPanel() {
                                 <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">{b.bus?.route?.from || 'Unknown'} → {b.bus?.route?.to || 'Unknown'}</p>
                               </td>
                               <td className="px-4 py-3">
-                                <p className="font-bold text-foreground">{b.user?.name || (b.passengers && b.passengers[0]?.name) || 'Unknown'}</p>
-                                {b.passengers?.length > 0 && <p className="text-[10px] text-muted-foreground mt-0.5">{b.passengers.length} seat(s): {b.passengers.map((p: any) => p.seatNumber).join(', ')}</p>}
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5 mb-1 opacity-60">
+                                    <Users className="w-2.5 h-2.5" />
+                                    <span className="text-[9px] font-black uppercase tracking-wider">Booked by: {b.user?.name || 'Guest'}</span>
+                                  </div>
+                                  {b.passengers?.map((p: any, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                      <span className="w-5 h-5 rounded bg-primary/10 text-primary text-[9px] font-black flex items-center justify-center border border-primary/20">{p.seatNumber}</span>
+                                      <span className="text-xs font-bold text-foreground">{p.name} ({p.age}y, {p.gender})</span>
+                                    </div>
+                                  )) || (
+                                      <p className="font-bold text-foreground">{b.user?.name || 'Unknown'}</p>
+                                    )}
+                                  <p className="text-[9px] text-muted-foreground px-7">{b.user?.phone}</p>
+                                </div>
                               </td>
                               <td className="px-4 py-3">
                                 {b.bookingSource === 'Employee' ? (

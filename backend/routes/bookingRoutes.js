@@ -252,7 +252,27 @@ router.patch('/owner/request/:id', verifyToken, requireAuth, async (req, res) =>
         }
 
         booking.status = status;
+        if (status === 'Accepted' && req.body.advanceAmount) {
+            booking.advanceAmount = req.body.advanceAmount;
+        }
         await booking.save();
+
+        // Notify user
+        try {
+            const Notification = require('../models/Notification');
+            const bus = booking.bus;
+            await Notification.create({
+                userId: booking.user,
+                type: status === 'Accepted' ? 'success' : 'warning',
+                title: status === 'Accepted' ? 'Rental Request Accepted!' : 'Rental Request Rejected',
+                message: status === 'Accepted'
+                    ? `Your rental for bus ${bus.busNumber} to ${booking.rentalDetails.destination} is accepted. Please pay ₹${booking.advanceAmount || 0} as advance.`
+                    : `Sorry, your rental request for ${bus.busNumber} was rejected.`
+            });
+        } catch (notifyErr) {
+            console.error("Notification failed", notifyErr);
+        }
+
         res.json(booking);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -305,6 +325,40 @@ router.patch('/owner/bus/:id/settings', verifyToken, requireAuth, async (req, re
 
         await bus.save();
         res.json(bus);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get chat history for a booking
+router.get('/:id/chat', verifyToken, requireAuth, async (req, res) => {
+    try {
+        const booking = await Booking.findById(req.params.id).select('chatHistory');
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+        res.json(booking.chatHistory);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Send a message in booking chat
+router.post('/:id/chat', verifyToken, requireAuth, async (req, res) => {
+    const { message } = req.body;
+    try {
+        const booking = await Booking.findById(req.params.id);
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+        const userId = await resolveUserId(req.user);
+        const sender = booking.user.toString() === userId.toString() ? 'User' : 'Owner';
+
+        booking.chatHistory.push({
+            sender,
+            message,
+            timestamp: new Date()
+        });
+
+        await booking.save();
+        res.status(201).json(booking.chatHistory[booking.chatHistory.length - 1]);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
