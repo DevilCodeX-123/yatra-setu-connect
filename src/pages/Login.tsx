@@ -168,11 +168,75 @@ export default function Login() {
                         </div>
                     </div>
 
-                    {/* Team Attribution at Bottom */}
-                    <div className="pb-12">
-                        <p className="text-white/40 text-sm font-medium tracking-[0.4em] uppercase">
-                            Developed by Team Transify
-                        </p>
+                    {/* Official Team Attribution at Bottom */}
+                    <div className="pb-12 text-center w-full max-w-2xl px-8">
+                        {/* Government Style Header */}
+                        <div className="flex items-center justify-center gap-4 mb-8">
+                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                            <p className="text-white/30 text-[9px] font-black tracking-[0.5em] uppercase">
+                                Development Authority
+                            </p>
+                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-x-16 gap-y-8">
+                            {/* Division 01: Hardware Engineering */}
+                            <div className="flex flex-col gap-4 text-right border-r border-white/5 pr-12">
+                                <h4 className="text-[8px] text-white/20 font-black tracking-widest uppercase mb-1">Hardware Division</h4>
+                                <div className="space-y-3">
+                                    <a
+                                        href="https://www.linkedin.com/in/prakhar-khare12?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group block"
+                                    >
+                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">Prakhar Khare</span>
+                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Hardware Lead</span>
+                                    </a>
+                                    <a
+                                        href="https://www.linkedin.com/in/aditi-anand-2437ab32a?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group block"
+                                    >
+                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">Aditi Anand</span>
+                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Hardware Assistant</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Division 02: Software Engineering */}
+                            <div className="flex flex-col gap-4 text-left">
+                                <h4 className="text-[8px] text-white/20 font-black tracking-widest uppercase mb-1">Software Division</h4>
+                                <div className="space-y-3">
+                                    <a
+                                        href="https://in.linkedin.com/in/krish-kasana-3069403a6"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group block"
+                                    >
+                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">DEVIL KK</span>
+                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Software Lead</span>
+                                    </a>
+                                    <a
+                                        href="https://www.linkedin.com/in/chahak-agarwal-9a7ab8366?utm_source=share_via&utm_content=profile&utm_medium=member_android"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group block"
+                                    >
+                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">Chahak Agarwal</span>
+                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Software Assistant</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Signature */}
+                        <div className="mt-10 pt-6 border-t border-white/5">
+                            <p className="text-white/40 text-[10px] font-black tracking-[0.6em] uppercase">
+                                Developed by Team Transify
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
