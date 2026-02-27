@@ -31,6 +31,56 @@ import {
 } from "@/components/ui/dialog";
 import { useTranslation } from "@/contexts/LanguageContext";
 
+const TeamShowcase = ({ className = "" }: { className?: string }) => (
+    <div className={`text-center w-full px-4 ${className}`}>
+        <div className="flex items-center justify-center gap-4 mb-6">
+            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20" />
+            <p className="text-[9px] font-black tracking-[0.5em] uppercase opacity-40">
+                Development Authority
+            </p>
+            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20" />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-xl mx-auto">
+            {/* Hardware Division */}
+            <div className="flex flex-col gap-3 sm:text-right sm:border-r sm:border-current sm:pr-8 opacity-80 border-white/5">
+                <h4 className="text-[8px] font-black tracking-widest uppercase opacity-30 mb-1">Hardware Division</h4>
+                <div className="space-y-3">
+                    <a href="https://www.linkedin.com/in/prakhar-khare12" target="_blank" rel="noopener noreferrer" className="group block">
+                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">Prakhar Khare</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Hardware Lead</span>
+                    </a>
+                    <a href="https://www.linkedin.com/in/aditi-anand-2437ab32a" target="_blank" rel="noopener noreferrer" className="group block">
+                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">Aditi Anand</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Hardware Assistant</span>
+                    </a>
+                </div>
+            </div>
+
+            {/* Software Division */}
+            <div className="flex flex-col gap-3 text-left opacity-80">
+                <h4 className="text-[8px] font-black tracking-widest uppercase opacity-30 mb-1">Software Division</h4>
+                <div className="space-y-3">
+                    <a href="https://in.linkedin.com/in/krish-kasana-3069403a6" target="_blank" rel="noopener noreferrer" className="group block">
+                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">DEVIL KK</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Software Lead</span>
+                    </a>
+                    <a href="https://www.linkedin.com/in/chahak-agarwal-9a7ab8366" target="_blank" rel="noopener noreferrer" className="group block">
+                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">Chahak Agarwal</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Software Assistant</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-current opacity-10">
+            <p className="text-[10px] font-black tracking-[0.6em] uppercase">
+                Developed by Team Transify
+            </p>
+        </div>
+    </div>
+);
+
 export default function Login() {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -155,104 +205,38 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-background flex relative">
-            <SplashLoader />
+        <>
+            <div className="min-h-screen bg-background flex relative">
+                <SplashLoader />
 
-            {/* Left branding panel - Unified Deep Blue (60% width) */}
-            <div className="hidden lg:flex lg:w-3/5 flex-col items-center justify-center p-6 relative bg-[#1E3A8A]">
-                <div className="relative flex flex-col items-center justify-center h-full w-full">
-                    {/* Centered Logo - Large prominence with transparency fix */}
-                    <div className="flex-1 flex items-center justify-center w-full px-12">
-                        <div className="mix-blend-screen w-full flex justify-center">
-                            <LogoIcon size={650} variant="white" className="w-full max-w-3xl opacity-90" />
-                        </div>
-                    </div>
-
-                    {/* Official Team Attribution at Bottom */}
-                    <div className="pb-12 text-center w-full max-w-2xl px-8">
-                        {/* Government Style Header */}
-                        <div className="flex items-center justify-center gap-4 mb-8">
-                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                            <p className="text-white/30 text-[9px] font-black tracking-[0.5em] uppercase">
-                                Development Authority
-                            </p>
-                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-x-16 gap-y-8">
-                            {/* Division 01: Hardware Engineering */}
-                            <div className="flex flex-col gap-4 text-right border-r border-white/5 pr-12">
-                                <h4 className="text-[8px] text-white/20 font-black tracking-widest uppercase mb-1">Hardware Division</h4>
-                                <div className="space-y-3">
-                                    <a
-                                        href="https://www.linkedin.com/in/prakhar-khare12?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group block"
-                                    >
-                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">Prakhar Khare</span>
-                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Hardware Lead</span>
-                                    </a>
-                                    <a
-                                        href="https://www.linkedin.com/in/aditi-anand-2437ab32a?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group block"
-                                    >
-                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">Aditi Anand</span>
-                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Hardware Assistant</span>
-                                    </a>
-                                </div>
-                            </div>
-
-                            {/* Division 02: Software Engineering */}
-                            <div className="flex flex-col gap-4 text-left">
-                                <h4 className="text-[8px] text-white/20 font-black tracking-widest uppercase mb-1">Software Division</h4>
-                                <div className="space-y-3">
-                                    <a
-                                        href="https://in.linkedin.com/in/krish-kasana-3069403a6"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group block"
-                                    >
-                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">DEVIL KK</span>
-                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Software Lead</span>
-                                    </a>
-                                    <a
-                                        href="https://www.linkedin.com/in/chahak-agarwal-9a7ab8366?utm_source=share_via&utm_content=profile&utm_medium=member_android"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group block"
-                                    >
-                                        <span className="block text-[10px] font-black text-white/60 group-hover:text-primary-light transition-colors tracking-wider">Chahak Agarwal</span>
-                                        <span className="block text-[7px] text-white/20 font-bold uppercase tracking-tight">Software Assistant</span>
-                                    </a>
-                                </div>
+                {/* Left branding panel - Unified Deep Blue (60% width) */}
+                <div className="hidden lg:flex lg:w-3/5 flex-col items-center justify-center p-6 relative bg-[#1E3A8A]">
+                    <div className="relative flex flex-col items-center justify-center h-full w-full">
+                        {/* Centered Logo - Premium Government-style Emblem */}
+                        <div className="flex-1 flex items-center justify-center w-full px-12 lg:px-24">
+                            <div className="bg-white/95 p-12 lg:p-20 rounded-[48px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-sm transform hover:scale-[1.02] transition-transform duration-700 flex items-center justify-center">
+                                <LogoIcon size={550} variant="full" className="w-full max-w-2xl" />
                             </div>
                         </div>
 
-                        {/* Signature */}
-                        <div className="mt-10 pt-6 border-t border-white/5">
-                            <p className="text-white/40 text-[10px] font-black tracking-[0.6em] uppercase">
-                                Developed by Team Transify
-                            </p>
-                        </div>
+                        {/* Desktop Team Attribution */}
+                        <TeamShowcase className="pb-16 text-white/90" />
                     </div>
                 </div>
-            </div>
 
-            {/* Right form panel (40% width) */}
-            <div className="w-full lg:w-2/5 flex items-center justify-center p-6 sm:p-12 bg-background">
-                <div className="w-full max-w-md space-y-0 relative">
-                    <Card className="w-full shadow-elevated border border-border animate-in fade-in zoom-in duration-500 overflow-hidden rounded-[32px] bg-card">
-                        <CardHeader className="space-y-2 text-center bg-primary text-primary-foreground py-10 lg:hidden relative overflow-hidden">
+                {/* Right form panel (40% width) - Vertically Centered */}
+                <div className="w-full lg:w-2/5 flex flex-col items-center justify-center p-4 lg:p-12 relative">
+                    <Card className="w-full max-w-md shadow-elevated border border-border animate-in fade-in zoom-in duration-500 overflow-hidden rounded-[32px] bg-card">
+                        <CardHeader className="space-y-4 text-center bg-primary text-primary-foreground py-12 lg:hidden relative overflow-hidden">
                             <div className="absolute inset-0 opacity-10" style={{
                                 backgroundImage: "url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23ffffff%22 fill-opacity=%220.4%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')"
                             }} />
                             <div className="flex justify-center mb-0 relative">
-                                <LogoIcon size={120} className="drop-shadow-2xl" />
+                                <div className="bg-white p-4 rounded-3xl shadow-lg">
+                                    <LogoIcon size={120} variant="full" className="drop-shadow-sm" />
+                                </div>
                             </div>
-                            <CardDescription className="text-white/70 font-medium text-[10px] relative uppercase tracking-[0.2em]">{isLogin ? "IDENTITY VERIFICATION" : "NEW REGISTRATION"}</CardDescription>
+                            <CardDescription className="text-white/70 font-medium text-[10px] relative uppercase tracking-[0.2em] pt-2">{isLogin ? "IDENTITY VERIFICATION" : "NEW REGISTRATION"}</CardDescription>
                         </CardHeader>
 
                         <div className="hidden lg:block px-10 pt-10 pb-2">
@@ -429,6 +413,8 @@ export default function Login() {
                                     {isLogin ? t('login.noAccount') : t('login.hasAccount')}
                                 </button>
                             </div>
+
+                            <TeamShowcase className="lg:hidden mt-10 text-foreground" />
                         </CardContent>
                         <CardFooter className="flex justify-center pb-8 pt-2">
                             <div className="flex flex-col items-center gap-3">
@@ -500,6 +486,6 @@ export default function Login() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     );
 }

@@ -14,8 +14,8 @@
     /* Core palette */
     --background: 214 60% 97%;
     /* #EFF6FF — Soft Blue-White */
-    --foreground: 222 47% 11%;
-    /* #1E293B — Dark Navy Text */
+    --foreground: 0 0% 0%;
+    /* #000000 — Pure Black Text */
 
     --card: 0 0% 100%;
     /* #FFFFFF — Pure White */
@@ -49,8 +49,8 @@
     --secondary-foreground: 222 47% 25%;
 
     --muted: 214 32% 91%;
-    --muted-foreground: 215 25% 44%;
-    /* #475569 */
+    --muted-foreground: 222 47% 25%;
+    /* Darker slate for better legibility in light mode */
 
     /* Status — keep functional colors */
     --success: 142 71% 30%;
@@ -78,7 +78,8 @@
     /* Sidebar — Deep Navy */
     --sidebar-background: 224 71% 22%;
     /* #102057 deep navy */
-    --sidebar-foreground: 0 0% 95%;
+    --sidebar-foreground: 0 0% 0%;
+    /* #000000 — Force Black in light mode */
     --sidebar-primary: 221 83% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 224 60% 30%;

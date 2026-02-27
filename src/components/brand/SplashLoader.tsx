@@ -49,12 +49,12 @@ export const SplashLoader: React.FC = () => {
                 <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-white/20 rounded-full blur-[120px] transition-opacity duration-1000 ${phase >= 2 ? 'opacity-100' : 'opacity-0'}`} />
 
                 <div className={`relative transition-all duration-1000 ease-out transform ${phase >= 1 ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-8'}`}>
-                    {/* The logo itself - No drop-shadow here to avoid box artifacts */}
-                    <div className="mix-blend-screen px-4 overflow-hidden rounded-3xl">
+                    {/* The logo in a premium white container for consistency */}
+                    <div className="bg-white p-10 rounded-[32px] shadow-2xl overflow-hidden">
                         <LogoIcon
-                            size={340}
-                            variant="white"
-                            className="w-full h-auto opacity-90"
+                            size={280}
+                            variant="full"
+                            className="w-full h-auto"
                         />
                     </div>
                 </div>

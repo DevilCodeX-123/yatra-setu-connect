@@ -22,6 +22,7 @@ export default function ProfileInfo() {
     // Tab state
     const [activeTab, setActiveTab] = useState<'personal' | 'settings'>('personal');
     const [isEditing, setIsEditing] = useState(false);
+    const [isRegistered, setIsRegistered] = useState(false);
 
     // Form states
     const [formData, setFormData] = useState({
@@ -60,7 +61,7 @@ export default function ProfileInfo() {
                     setFormData({
                         name: data.name || "",
                         phone: data.phone || "",
-                        age: data.age || "",
+                        age: data.age?.toString() || "",
                         gender: data.gender || "",
                         address: {
                             city: data.address?.city || "",
@@ -72,7 +73,7 @@ export default function ProfileInfo() {
                     setFormData({
                         name: authUser.name || "",
                         phone: authUser.phone || "",
-                        age: authUser.age || "",
+                        age: authUser.age?.toString() || "",
                         gender: authUser.gender || "",
                         address: {
                             city: authUser.address?.city || "",
@@ -87,7 +88,7 @@ export default function ProfileInfo() {
                     setFormData({
                         name: authUser.name || "",
                         phone: authUser.phone || "",
-                        age: authUser.age || "",
+                        age: authUser.age?.toString() || "",
                         gender: authUser.gender || "",
                         address: {
                             city: authUser.address?.city || "",
@@ -164,6 +165,16 @@ export default function ProfileInfo() {
         toast.info("Logged out from all devices successfully");
     };
 
+    const onEnterKey = () => {
+        const key = window.prompt("Enter Staff Identity Activation Key:");
+        if (key === "YS2026") {
+            setIsRegistered(true);
+            toast.success("Identity Registered! Staff Management is now live.");
+        } else if (key !== null) {
+            toast.error("Invalid activation key.");
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-slate-400">{t('common.loading')}</div>;
 
     const initials = profile?.name?.split(' ').map((n: any) => n[0]).join('').toUpperCase() || 'YS';
@@ -178,12 +189,12 @@ export default function ProfileInfo() {
         >
             <div className="max-w-4xl mx-auto space-y-8 animate-slide-up pb-20">
                 {/* Profile Identity */}
-                <div className="portal-card p-8 bg-[#1E293B] text-white relative overflow-hidden rounded-[40px] flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+                <div className="portal-card p-8 bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-white/5 relative overflow-hidden rounded-[40px] flex flex-col md:flex-row items-center gap-8 shadow-2xl transition-colors">
                     <div className="absolute top-0 right-0 w-80 h-80 bg-primary/20 blur-[100px] -mr-40 -mt-40 rounded-full opacity-60" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 blur-[80px] -ml-32 -mb-32 rounded-full opacity-40" />
 
                     <div className="relative group shrink-0">
-                        <div className="w-32 h-32 rounded-[45px] bg-white text-[#1E293B] flex items-center justify-center text-5xl font-black shadow-2xl border-4 border-white/20 transition-transform group-hover:scale-105 duration-500">
+                        <div className="w-32 h-32 rounded-[45px] bg-slate-900 dark:bg-white text-white dark:text-[#1E293B] flex items-center justify-center text-5xl font-black shadow-2xl border-4 border-white/20 transition-transform group-hover:scale-105 duration-500">
                             {initials}
                         </div>
                         {isEditing && (
@@ -194,12 +205,12 @@ export default function ProfileInfo() {
                     </div>
 
                     <div className="flex-1 text-center md:text-left z-10">
-                        <p className="text-[10px] font-black tracking-[0.4em] text-accent mb-2 uppercase">{t('profile.identity')}</p>
-                        <h2 className="text-4xl font-black mb-4">{profile?.name || "Member"}</h2>
+                        <p className="text-[10px] font-black tracking-[0.4em] text-blue-600 dark:text-blue-400 mb-2 uppercase">{t('profile.identity')}</p>
+                        <h2 className="text-4xl font-black mb-4 text-black dark:text-white transition-colors">{profile?.name || "Member"}</h2>
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                             <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-emerald-400 bg-emerald-400/10 px-4 py-1.5 rounded-full border border-emerald-400/20">
                                 <Shield className="w-3.5 h-3.5" />
-                                {profile?.identityVerified ? t('profile.verified') : t('profile.pending')}
+                                {isRegistered ? "STAFF ID REGISTERED" : (profile?.identityVerified ? t('profile.verified') : t('profile.pending'))}
                             </div>
                             <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-blue-400 bg-blue-400/10 px-4 py-1.5 rounded-full border border-blue-400/20">
                                 <User className="w-3.5 h-3.5" />
@@ -214,8 +225,8 @@ export default function ProfileInfo() {
                         className={cn(
                             "md:ml-auto z-20 p-4 rounded-3xl transition-all duration-300 flex items-center gap-3 font-black text-[10px] tracking-widest hover:scale-105 active:scale-95",
                             activeTab === 'settings'
-                                ? "bg-white text-primary shadow-xl"
-                                : "bg-white/10 text-white border border-white/10 hover:bg-white/20"
+                                ? "bg-slate-900 dark:bg-white text-white dark:text-primary shadow-xl"
+                                : "bg-slate-100 dark:bg-white/10 text-black dark:text-white border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/20"
                         )}
                     >
                         {activeTab === 'personal' ? (
@@ -267,7 +278,7 @@ export default function ProfileInfo() {
                                     <div className="p-3 bg-primary/10 rounded-2xl">
                                         <User className="w-5 h-5 text-primary" />
                                     </div>
-                                    <h3 className="text-xl font-black text-primary">Personal Details</h3>
+                                    <h3 className="text-xl font-black text-black dark:text-white">Personal Details</h3>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

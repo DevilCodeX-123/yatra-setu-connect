@@ -4,6 +4,8 @@ import Footer from "./Footer";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { Link } from "react-router-dom";
+import LogoIcon from "./brand/LogoIcon";
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,14 +16,18 @@ export default function Layout({ children, noFooter }: LayoutProps) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col flex-1">
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5">
+      <header className="sticky top-0 z-40 bg-white dark:bg-[#020617] backdrop-blur-md border-b border-slate-200 dark:border-white/5">
         <div className="flex h-16 items-center gap-4 px-6 justify-between">
           <div className="flex items-center gap-4">
             <SidebarTrigger className="text-primary" />
-            <div className="h-4 w-px bg-slate-200 hidden md:block" />
-            <div className="hidden md:block">
-              <p className="text-[9px] font-black tracking-[0.3em] text-primary">{t('layout.portalName')}</p>
-            </div>
+            <div className="h-6 w-px bg-slate-200" />
+            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <LogoIcon size={32} variant="full" />
+              <div className="hidden md:flex flex-col leading-none">
+                <p className="text-[10px] font-black tracking-[0.2em] !text-black dark:!text-white uppercase transition-colors">Yatra Setu</p>
+                <p className="text-[7px] font-bold !text-slate-600 dark:!text-slate-400 uppercase tracking-tighter transition-colors">Official Portal</p>
+              </div>
+            </Link>
           </div>
           <Navbar minimal />
         </div>

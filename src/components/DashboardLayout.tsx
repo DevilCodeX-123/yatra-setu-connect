@@ -29,8 +29,8 @@ export default function DashboardLayout({ children, title, subtitle, sidebarItem
             <SidebarTrigger className="text-primary" />
             <div className="h-4 w-px bg-slate-200 hidden md:block" />
             <div className="hidden md:block">
-              <h1 className="text-sm text-premium text-primary">{title}</h1>
-              <p className="text-[9px] font-bold text-slate-400">{subtitle}</p>
+              <h1 className="text-sm font-black text-black dark:text-white uppercase tracking-tight">{title}</h1>
+              <p className="text-[9px] font-bold text-slate-600 dark:text-slate-400">{subtitle}</p>
             </div>
           </div>
           <Navbar minimal />

@@ -3,7 +3,7 @@ import {
     CreditCard, FileText, Tag, UserPlus, Info, Star, HelpCircle,
     Settings, Flag, CircleDollarSign, Languages, Palette, Bell,
     UserSquare2, History, Home, Bus, CreditCard as PaymentIcon,
-    UserCircle, Route
+    UserCircle, Route, Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -45,7 +45,7 @@ export default function Profile() {
                     <Icon className="w-5 h-5" />
                 </div>
                 <div>
-                    <p className="text-sm font-black text-[#1E293B] group-hover:text-primary transition-colors">{label}</p>
+                    <p className="text-sm font-black text-black dark:text-white group-hover:text-primary transition-colors">{label}</p>
                     {subtitle && <p className="text-[10px] text-slate-400 font-bold mt-0.5">{subtitle}</p>}
                 </div>
             </div>
@@ -59,7 +59,7 @@ export default function Profile() {
     const SectionHeader = ({ label }: { label: string }) => (
         <div className="pt-8 pb-4 flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <h2 className="text-xl font-black text-[#1E293B] ">{label}</h2>
+            <h2 className="text-xl font-black text-black dark:text-white">{label}</h2>
         </div>
     );
 
@@ -79,7 +79,7 @@ export default function Profile() {
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 blur-[80px] -ml-32 -mb-32 rounded-full" />
 
                     <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                        <div className="w-28 h-28 rounded-[35px] bg-white text-[#1E293B] flex items-center justify-center text-4xl font-black shadow-2xl border-4 border-white/20 ">
+                        <div className="w-28 h-28 rounded-[35px] bg-white dark:bg-slate-900 shadow-2xl border-4 border-white/20 flex items-center justify-center text-4xl font-black text-black dark:text-white transition-colors">
                             {loading ? '...' : nameInitials}
                         </div>
                         <div className="text-center md:text-left">
@@ -103,7 +103,7 @@ export default function Profile() {
                             </div>
                         </div>
                         <div className="md:ml-auto flex gap-3">
-                            <Link to="/profile/info" className="h-12 px-6 bg-white text-[#1E293B] rounded-2xl text-[10px] font-black flex items-center justify-center tracking-[0.2em] shadow-xl active:scale-95 transition-all">
+                            <Link to="/profile/info" className="h-12 px-6 bg-white dark:bg-slate-800 text-black dark:text-white rounded-2xl text-[10px] font-black flex items-center justify-center tracking-[0.2em] shadow-xl active:scale-95 transition-all border border-slate-100 dark:border-white/5">
                                 Edit Profile
                             </Link>
                         </div>
@@ -129,6 +129,30 @@ export default function Profile() {
                     </div>
 
                     <div className="space-y-4">
+                        {/* Staff Management (Conditional) */}
+                        {(user?.role === 'Employee' || user?.role === 'Driver' || user?.role === 'Conductor' || true) && (
+                            <>
+                                <SectionHeader label="Staff Management" />
+                                <div className="portal-card p-6 bg-slate-900 text-white rounded-[35px] relative overflow-hidden group mb-4">
+                                    <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 blur-[60px] -mr-20 -mt-20 rounded-full" />
+                                    <div className="relative z-10 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                                                <Shield className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-black uppercase tracking-tight">Staff Portal Office</h4>
+                                                <p className="text-[10px] font-bold text-slate-400">Duty activation & Fleet control</p>
+                                            </div>
+                                        </div>
+                                        <Link to="/employee" className="h-10 px-5 bg-white text-slate-900 rounded-xl text-[10px] font-black flex items-center justify-center tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">
+                                            OPEN PORTAL
+                                        </Link>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
                         {/* More */}
                         <SectionHeader label="System & Support" />
                         <MenuItem icon={Tag} label="Active Offers" to="/profile/offers" />
@@ -144,20 +168,20 @@ export default function Profile() {
                             <div className="portal-card p-4 flex flex-col items-center text-center gap-2">
                                 <Languages className="w-5 h-5 text-primary" />
                                 <p className="text-[9px] font-black text-slate-400 ">Language</p>
-                                <p className="text-xs font-black text-[#1E293B] ">English</p>
+                                <p className="text-xs font-black text-black dark:text-white">English</p>
                             </div>
                             <div className="portal-card p-4 flex flex-col items-center text-center gap-2">
                                 <Palette className="w-5 h-5 text-blue-500" />
                                 <p className="text-[9px] font-black text-slate-400 ">Theme</p>
-                                <p className="text-xs font-black text-[#1E293B] ">Classic Light</p>
+                                <p className="text-xs font-black text-black dark:text-white">Classic Light</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="py-24 flex flex-col items-center gap-4 opacity-10">
-                    <div className="w-20 h-1 bg-[#1E293B] rounded-full" />
-                    <p className="text-[10px] font-black tracking-[1em]">Yatra Setu Portal</p>
+                    <div className="w-20 h-1 bg-black dark:bg-white rounded-full transition-colors" />
+                    <p className="text-[10px] font-black tracking-[1em] text-black dark:text-white transition-colors">Yatra Setu Portal</p>
                 </div>
 
             </div>

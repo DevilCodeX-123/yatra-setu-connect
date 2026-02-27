@@ -101,13 +101,17 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      {/* Header */}
-      <SidebarHeader className="bg-sidebar border-b border-white/5 pt-5 pb-4">
+      {/* Header - Theme-Aware Branding Zone */}
+      <SidebarHeader className="bg-white dark:bg-[#0f172a] border-b border-slate-200 dark:border-white/5 pt-5 pb-4 transition-colors">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="hover:bg-white/10 rounded-xl transition-all h-auto py-2">
+            <SidebarMenuButton size="lg" asChild className="hover:bg-slate-100/50 rounded-xl transition-all h-auto py-2">
               <Link to="/" className="flex items-center gap-3">
-                <LogoIcon size={40} className="shrink-0" variant="white" />
+                <LogoIcon size={32} className="shrink-0" variant="full" />
+                <div className="flex flex-col leading-none">
+                  <span className="text-[10px] font-black !text-black dark:!text-white tracking-[0.2em] uppercase transition-colors">Yatra Setu</span>
+                  <span className="text-[8px] font-bold !text-slate-600 dark:!text-slate-400 uppercase tracking-tighter mt-0.5 transition-colors">Portal</span>
+                </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

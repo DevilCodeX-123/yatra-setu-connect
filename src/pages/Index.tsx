@@ -156,7 +156,9 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col items-center gap-6 mb-8">
-              <Logo variant="white" className="h-24 md:h-32 drop-shadow-2xl" />
+              <div className="bg-white p-6 rounded-[32px] shadow-2xl">
+                <Logo variant="full" className="h-20 md:h-28" />
+              </div>
             </div>
 
             <p className="text-base sm:text-lg font-medium max-w-2xl mx-auto text-blue-100/80 mt-4">
@@ -336,7 +338,7 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="text-2xl font-black leading-none text-foreground">{stat.value}</p>
-                  <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{stat.label}</p>
+                  <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 mt-1">{stat.label}</p>
                 </div>
               </div>
             ))}
@@ -500,7 +502,7 @@ export default function Home() {
             </div>
             <div>
               <h3 className="text-sm font-black text-foreground">{t('home.actions.adv_booking')}</h3>
-              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('home.actions.adv_desc')}</p>
+              <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-tight leading-none">{t('home.actions.adv_desc')}</p>
             </div>
             <ArrowRight className="w-4 h-4 ml-auto text-primary/30 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -512,7 +514,7 @@ export default function Home() {
             </div>
             <div>
               <h3 className="text-sm font-black text-foreground">{t('home.actions.verify_ticket')}</h3>
-              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('home.actions.verify_desc')}</p>
+              <p className="text-[10px] font-bold text-slate-500 mt-1">{t('home.actions.verify_desc')}</p>
             </div>
             <ArrowRight className="w-4 h-4 ml-auto text-emerald-500/30 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -524,7 +526,21 @@ export default function Home() {
             </div>
             <div>
               <h3 className="text-sm font-black text-foreground">{t('nav.orgTracking')}</h3>
-              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('nav.orgTrackingDesc')}</p>
+              <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-tight leading-none">{t('nav.orgTrackingDesc')}</p>
+            </div>
+            <ArrowRight className="w-4 h-4 ml-auto text-blue-500/30 group-hover:translate-x-1 transition-transform" />
+          </Link>
+
+          <Link to="/employee" className="bg-card dark:bg-[#0B1120] border border-blue-500/20 p-6 flex items-center gap-5 hover:shadow-2xl transition-all group rounded-[28px] relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-12 translate-x-12" />
+            <div className="p-4 rounded-2xl shrink-0 bg-blue-500/10 group-hover:scale-110 transition-transform text-blue-600">
+              <Bus className="w-7 h-7" />
+            </div>
+            <div className="flex-1">
+              <div>
+                <h3 className="text-sm font-black text-blue-600 dark:text-blue-400">Staff Portal</h3>
+                <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-tight leading-none">Driver & Conductor login</p>
+              </div>
             </div>
             <ArrowRight className="w-4 h-4 ml-auto text-blue-500/30 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -536,7 +552,7 @@ export default function Home() {
             </div>
             <div>
               <h3 className="text-sm font-black text-red-600">{t('home.actions.emergency')}</h3>
-              <p className="text-[10px] font-black text-muted-foreground opacity-40 mt-1">{t('home.actions.emergency_desc')}</p>
+              <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-tight leading-none">{t('home.actions.emergency_desc')}</p>
             </div>
             <ArrowRight className="w-4 h-4 ml-auto text-red-500/30 group-hover:translate-x-1 transition-transform" />
           </Link>
