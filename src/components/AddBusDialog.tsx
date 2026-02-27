@@ -13,6 +13,7 @@ import {
     CheckCircle2, ArrowRight, Copy, Users, MapPin, Clock, Calendar, X,
     Columns, Minus
 } from 'lucide-react';
+import { STATE_DISTRICT_MAP } from '@/lib/locations';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -758,14 +759,36 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                         <Label className="text-xs text-muted-foreground">State *</Label>
-                                        <Select value={stateVal} onValueChange={setStateVal}>
+                                        <Select value={stateVal} onValueChange={(val) => {
+                                            setStateVal(val);
+                                            setDistrict(''); // Reset district when state changes
+                                        }}>
                                             <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
                                             <SelectContent className="max-h-60">{INDIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label className="text-xs text-muted-foreground">District *</Label>
-                                        <Input value={district} onChange={e => setDistrict(e.target.value)} placeholder="e.g. Kota" />
+                                        <Select value={district} onValueChange={setDistrict} disabled={!stateVal}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={stateVal ? "Select district" : "Select state first"} />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-60">
+                                                {stateVal && STATE_DISTRICT_MAP[stateVal] ? (
+                                                    STATE_DISTRICT_MAP[stateVal].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)
+                                                ) : (
+                                                    <div className="p-2 text-xs text-muted-foreground">No data for this state. Please type manually.</div>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                        {!STATE_DISTRICT_MAP[stateVal] && stateVal && (
+                                            <Input
+                                                value={district}
+                                                onChange={e => setDistrict(e.target.value)}
+                                                placeholder="Enter district manually"
+                                                className="mt-2 h-8 text-xs"
+                                            />
+                                        )}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
