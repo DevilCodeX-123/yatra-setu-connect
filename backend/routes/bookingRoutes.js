@@ -10,24 +10,7 @@ const { verifyToken, requireAuth, resolveUserId } = require('../middleware/auth'
 // Get all bookings for the user
 router.get('/', verifyToken, requireAuth, async (req, res) => {
     if (mongoose.connection.readyState !== 1) {
-        return res.json([
-            {
-                pnr: 'YS1234567890',
-                user: req.user.id,
-                bus: {
-                    busNumber: 'KA-01-F-1234',
-                    operator: 'KSRTC',
-                    departureTime: '06:30',
-                    arrivalTime: '09:15',
-                    route: { from: 'Bengaluru', to: 'Mysuru' }
-                },
-                passengers: [{ name: 'Demo User', seatNumber: 5 }],
-                date: new Date().toISOString().split('T')[0],
-                amount: 180,
-                status: 'Confirmed',
-                createdAt: new Date()
-            }
-        ]);
+        return res.json([]); // no fake tickets in demo mode
     }
     try {
         const userId = await resolveUserId(req.user);

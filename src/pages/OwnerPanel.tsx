@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import {
   Bus, DollarSign, BarChart2, Users, Edit, Plus, Calendar, TrendingUp, Package,
-  MapPin, ShieldCheck, Clock, CheckCircle2, Trash2, Copy, Lock, Phone, UserCheck,
-  X, Route, PlayCircle, Power, WifiOff, Wifi, ToggleLeft, ToggleRight, Timer, RefreshCw, Repeat
+  MapPin, ShieldCheck, Clock, CheckCircle2, Trash2, Copy, Lock as LockIcon, Phone, UserCheck,
+  X, Route, PlayCircle, Power, WifiOff, Wifi, ToggleLeft, ToggleRight, Timer, RefreshCw, Repeat,
+  Settings, HelpCircle, Search, MessageSquare, Save, ShieldAlert, ArrowRight, Loader2, Download, AlertCircle, Eye
 } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -237,6 +238,18 @@ export default function OwnerPanel() {
 
   useEffect(() => {
     fetchDashboard();
+  }, []);
+
+  // Sync active sidebar tab from URL hash (e.g., #bookings -> 'bookings')
+  useEffect(() => {
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace('#', ''); // e.g., 'bookings'
+      const matched = sidebarItems.find(item => item.id === hash);
+      setActiveTab(matched ? matched.id : 'fleet');
+    };
+    syncFromHash(); // Run on mount
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
   }, []);
 
   const { isConnected, joinBus, on } = useSocket();
@@ -614,7 +627,7 @@ export default function OwnerPanel() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted">
-                      {["Bus Number", "Name", "Route", "Seats", "Fare (₹/km)", "Rental Settings", "Controls", "Rental", "Actions"].map(h => (
+                      {["Bus Number", "Name", "Route", "Seats", "Fare (₹/km)", "Rental Settings", "Controls", "Rental", "Code", "Actions"].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground">{h}</th>
                       ))}
                     </tr>
@@ -813,6 +826,26 @@ export default function OwnerPanel() {
                           </button>
                         </td>
 
+                        {/* ── Activation Code ── */}
+                        <td className="px-4 py-3">
+                          {bus.activationCode ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] font-black tracking-widest bg-primary/10 text-primary px-2 py-1 rounded-lg border border-primary/20">
+                                {bus.activationCode}
+                              </span>
+                              <button
+                                onClick={() => { navigator.clipboard.writeText(bus.activationCode); toast.success('Code copied!'); }}
+                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                title="Copy code"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[9px] text-muted-foreground opacity-40 italic">No code set</span>
+                          )}
+                        </td>
+
                         {/* ── Actions ── */}
                         <td className="px-4 py-3">
                           <div className="flex gap-1 flex-wrap">
@@ -821,7 +854,7 @@ export default function OwnerPanel() {
                               <MapPin className="w-3 h-3 mr-1" /> Route
                             </Button>
                             {bus.route?.from && (
-                              <div className="flex gap-1">
+                              <div className="flex gap-1 flex-wrap">
                                 <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-success border-success/40 hover:bg-success/10"
                                   onClick={() => handleRunOnRoute(bus)}>
                                   <PlayCircle className="w-3 h-3 mr-1" /> Run
@@ -839,6 +872,10 @@ export default function OwnerPanel() {
                                     }
                                   }}>
                                   <Repeat className="w-3 h-3 mr-1" /> Repeat
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-purple-600 border-purple-500/40 hover:bg-purple-50"
+                                  onClick={() => window.open('http://10.201.205.41:5000/', '_blank')}>
+                                  <Eye className="w-3 h-3 mr-1" /> View Live
                                 </Button>
                               </div>
                             )}
@@ -1847,7 +1884,7 @@ export default function OwnerPanel() {
 
                       <div className={`flex items-center gap-4 ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'bg-white/40 border-amber-100' : 'bg-white/60 border-emerald-100'} p-3 rounded-xl border`}>
                         <div className={`w-12 h-12 rounded-2xl ${liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} flex items-center justify-center shadow-inner`}>
-                          {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? <Lock className="w-6 h-6 animate-bounce" /> : <UserCheck className="w-6 h-6" />}
+                          {liveSync[buses.find(b => b._id === selectedBusForEmp)?.busNumber]?.status === 'verifying' ? <LockIcon className="w-6 h-6 animate-bounce" /> : <UserCheck className="w-6 h-6" />}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
@@ -1871,7 +1908,7 @@ export default function OwnerPanel() {
                   {/* Bus Activation Code Management */}
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-1.5">
-                      <Lock className="w-3 h-3" /> Staff Activation Code
+                      <LockIcon className="w-3 h-3" /> Staff Activation Code
                     </p>
                     <div className="flex gap-2">
                       <Input

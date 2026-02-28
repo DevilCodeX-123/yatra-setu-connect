@@ -41,33 +41,33 @@ const TeamShowcase = ({ className = "" }: { className?: string }) => (
             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-w-xl mx-auto">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 max-w-xl mx-auto">
             {/* Hardware Division */}
-            <div className="flex flex-col gap-3 sm:text-right sm:border-r sm:border-current sm:pr-8 opacity-80 border-white/5">
-                <h4 className="text-[8px] font-black tracking-widest uppercase opacity-30 mb-1">Hardware Division</h4>
+            <div className="flex flex-col gap-3 text-right border-r border-current/20 pr-4 opacity-80">
+                <h4 className="text-[8px] font-black tracking-widest uppercase opacity-30 mb-1">Hardware</h4>
                 <div className="space-y-3">
                     <a href="https://www.linkedin.com/in/prakhar-khare12" target="_blank" rel="noopener noreferrer" className="group block">
-                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">Prakhar Khare</span>
-                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Hardware Lead</span>
+                        <span className="block text-[9px] font-black group-hover:text-primary transition-colors leading-tight">Prakhar Khare</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">HW Lead</span>
                     </a>
                     <a href="https://www.linkedin.com/in/aditi-anand-2437ab32a" target="_blank" rel="noopener noreferrer" className="group block">
-                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">Aditi Anand</span>
-                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Hardware Assistant</span>
+                        <span className="block text-[9px] font-black group-hover:text-primary transition-colors leading-tight">Aditi Anand</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">HW Assist</span>
                     </a>
                 </div>
             </div>
 
             {/* Software Division */}
             <div className="flex flex-col gap-3 text-left opacity-80">
-                <h4 className="text-[8px] font-black tracking-widest uppercase opacity-30 mb-1">Software Division</h4>
+                <h4 className="text-[8px] font-black tracking-widest uppercase opacity-30 mb-1">Software</h4>
                 <div className="space-y-3">
                     <a href="https://in.linkedin.com/in/krish-kasana-3069403a6" target="_blank" rel="noopener noreferrer" className="group block">
-                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">DEVIL KK</span>
-                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Software Lead</span>
+                        <span className="block text-[9px] font-black group-hover:text-primary transition-colors leading-tight">Devil KK</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">SW Lead</span>
                     </a>
                     <a href="https://www.linkedin.com/in/chahak-agarwal-9a7ab8366" target="_blank" rel="noopener noreferrer" className="group block">
-                        <span className="block text-[10px] font-black group-hover:text-primary transition-colors tracking-wider">Chahak Agarwal</span>
-                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">Software Assistant</span>
+                        <span className="block text-[9px] font-black group-hover:text-primary transition-colors leading-tight">Chahak Agarwal</span>
+                        <span className="block text-[7px] font-bold uppercase tracking-tight opacity-40">SW Assist</span>
                     </a>
                 </div>
             </div>

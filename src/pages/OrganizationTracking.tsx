@@ -546,9 +546,9 @@ export default function OrganizationTracking() {
                                                     <div className="relative group">
                                                         <Input
                                                             type={showCode ? "text" : "password"}
-                                                            placeholder="Enter 6-digit code"
+                                                            placeholder="e.g. YS-123456 or 123456"
                                                             value={accessCode}
-                                                            onChange={e => setAccessCode(e.target.value)}
+                                                            onChange={e => setAccessCode(e.target.value.toUpperCase().trim())}
                                                             className="h-14 font-mono text-center tracking-widest transition-all focus:ring-2 focus:ring-primary/20"
                                                         />
                                                         <button

@@ -465,14 +465,22 @@ export default function EmployeePanel() {
         if (!cashForm.name || !cashForm.seat) return toast.error("Passenger name & seat required");
         setAddingTicket(true);
         try {
-            const data = await apiPost("/cash-passenger", { ...cashForm, busNumber });
+            const data = await apiPost("/cash-passenger", {
+                busNumber,
+                passengerName: cashForm.name,
+                seatNumber: cashForm.seat,
+                from: cashForm.from,
+                to: cashForm.to,
+                amount: cashForm.amount,
+                paymentMethod: cashForm.paymentMethod,
+            });
             if (data.success) {
                 toast.success(`Ticket created! PNR: ${data.pnr}`);
                 setShowCashModal(false);
                 setCashForm({ name: "", seat: "", from: "", to: "", amount: "", paymentMethod: "Cash" });
                 loadPassengers();
             } else { toast.error(data.message || "Failed"); }
-        } catch { toast.error("Network error"); }
+        } catch { toast.error("Network error. Check if backend is running."); }
         finally { setAddingTicket(false); }
     };
 
@@ -585,7 +593,7 @@ export default function EmployeePanel() {
                             </div>
                             {!isConnected && (
                                 <button
-                                    onClick={reconnect}
+                                    onClick={() => { toast.info("Attempting to reconnect..."); reconnect(); }}
                                     className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
                                 >
                                     <RefreshCw className="w-3 h-3" />
@@ -1068,9 +1076,16 @@ export default function EmployeePanel() {
                             </div>
                         </div>
                         {cashForm.paymentMethod === "UPI" && (
-                            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
+                            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center flex flex-col items-center gap-2">
                                 <p className="text-xs font-bold text-purple-600 dark:text-purple-400">Show your UPI QR to passenger</p>
-                                <p className="text-[10px] text-muted-foreground mt-1">Confirm after payment received</p>
+                                <div className="p-2 bg-white rounded-xl shadow-sm inline-block">
+                                    <img
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=yatra@upi&pn=Yatra+Setu&am=${cashForm.amount || 0}&cu=INR`)}`}
+                                        alt="UPI QR Code"
+                                        className="w-32 h-32"
+                                    />
+                                </div>
+                                <p className="text-[10px] font-black text-muted-foreground uppercase opacity-80 mt-1">₹{cashForm.amount || "0"} • Scan to Pay</p>
                             </div>
                         )}
                         <Button onClick={addCashTicket} disabled={addingTicket} className="w-full gap-2">

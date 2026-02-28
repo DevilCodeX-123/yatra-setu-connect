@@ -44,7 +44,7 @@ const BusSchema = new mongoose.Schema({
     liveLocation: {
         lat: { type: Number },
         lng: { type: Number },
-        source: { type: String, enum: ['gps', 'driver', 'conductor', 'manual'] },
+        source: { type: String, enum: ['gps', 'driver', 'conductor', 'manual', 'mobile', 'vehicle', 'GPS'] },
         updatedAt: { type: Date },
     },
 
