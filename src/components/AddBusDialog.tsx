@@ -29,10 +29,6 @@ interface GridCell {
 /** Full 2D seat grid: grid[rowIdx][colIdx] */
 type SeatGrid = GridCell[][];
 
-interface Stop { name: string; time: string; price: number; distance: number; }
-interface RouteSchedule { type: ScheduleType; days: string[]; specificDates: string[]; startTime: string; endTime: string; loopEnabled: boolean; loopIntervalMinutes: number; }
-interface BusRoute { id: string; label: string; stops: Stop[]; schedule: RouteSchedule; }
-
 interface AddBusDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -41,7 +37,7 @@ interface AddBusDialogProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STEPS = ['Bus Details', 'Routes & Stops', 'Seat Layout', 'Mode', 'Review', 'Confirmation'];
+const STEPS = ['Bus Details', 'Seat Layout', 'Mode', 'Review', 'Confirmation'];
 const BUS_TYPES = ['Ordinary', 'AC', 'Non-AC', 'Express', 'Volvo', 'Sleeper'];
 const ORG_TYPES = ['School', 'College', 'Office', 'Other'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -96,13 +92,6 @@ const getSeatNumber = (grid: SeatGrid, row: number, col: number): number => {
     return n;
 };
 
-const makeRoute = (idx: number): BusRoute => ({
-    id: `route-${Date.now()}-${idx}`,
-    label: `Route ${idx + 1}`,
-    stops: [{ name: '', time: '', price: 0, distance: 0 }, { name: '', time: '', price: 0, distance: 0 }],
-    schedule: { type: 'specific', days: [], specificDates: [], startTime: '', endTime: '', loopEnabled: false, loopIntervalMinutes: 60 },
-});
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogProps) {
@@ -126,18 +115,31 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
     const [mileage, setMileage] = useState('4');
     const [rentalPerDay, setRentalPerDay] = useState('5000');
     const [rentalPerHour, setRentalPerHour] = useState('500');
+    const [amenities, setAmenities] = useState<string[]>([]);
 
-    // Step 1 – Routes
-    const [routes, setRoutes] = useState<BusRoute[]>([makeRoute(0)]);
-    const [activeRouteIdx, setActiveRouteIdx] = useState(0);
+    const formatBusNumber = (val: string) => {
+        const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        let formatted = '';
+        for (let i = 0; i < clean.length; i++) {
+            if (i === 2 || i === 4 || i === 6) formatted += ' ';
+            formatted += clean[i];
+        }
+        return formatted.trim();
+    };
 
-    // Step 2 – Seat Layout (2D grid)
+    const toggleAmenity = (amenity: string) => {
+        setAmenities(prev => prev.includes(amenity) ? prev.filter(a => a !== amenity) : [...prev, amenity]);
+    };
+
+    const AMENITY_OPTIONS = ['WiFi', 'AC', 'Water Bottle', 'Charging Port', 'Reading Light', 'Blanket', 'CCTV', 'GPS'];
+
+    // Step 1 – Seat Layout (2D grid)
     const [leftCols, setLeftCols] = useState(2);
     const [rightCols, setRightCols] = useState(2);
     const [seatGrid, setSeatGrid] = useState<SeatGrid>(() => buildGrid(10, 2, 2));
     const [selectedType, setSelectedType] = useState<SeatType>('general');
 
-    // Step 3 – Mode
+    // Step 2 – Mode
     const [isPrivate, setIsPrivate] = useState(false);
     const [stateVal, setStateVal] = useState('');
     const [district, setDistrict] = useState('');
@@ -148,7 +150,6 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
 
     const totalSeats = countSeats(seatGrid);
     const totalCols = leftCols + rightCols;
-    const activeRoute = routes[activeRouteIdx] ?? routes[0];
 
     // ─── Grid operations ─────────────────────────────────────────────────────
 
@@ -193,51 +194,12 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
     const assignType = (row: number, col: number) =>
         updateCell(row, col, { type: selectedType, exists: true });
 
-    // ─── Route helpers ────────────────────────────────────────────────────────
-
-    const updateRoute = (ri: number, patch: Partial<BusRoute>) =>
-        setRoutes(p => p.map((r, i) => i === ri ? { ...r, ...patch } : r));
-
-    const updateStop = (ri: number, si: number, field: keyof Stop, val: string | number) =>
-        setRoutes(p => p.map((r, i) => i !== ri ? r : {
-            ...r, stops: r.stops.map((s, j) => j !== si ? s : { ...s, [field]: val })
-        }));
-
-    const addStop = (ri: number) =>
-        setRoutes(p => p.map((r, i) => i !== ri ? r : { ...r, stops: [...r.stops, { name: '', time: '', price: 0, distance: 0 }] }));
-
-    const removeStop = (ri: number, si: number) =>
-        setRoutes(p => p.map((r, i) => i !== ri ? r : { ...r, stops: r.stops.filter((_, j) => j !== si) }));
-
-    const addRoute = () => { setRoutes(p => [...p, makeRoute(p.length)]); setActiveRouteIdx(routes.length); };
-
-    const removeRoute = (ri: number) => {
-        if (routes.length <= 1) return;
-        setRoutes(p => p.filter((_, i) => i !== ri));
-        setActiveRouteIdx(prev => Math.max(0, prev >= ri ? prev - 1 : prev));
-    };
-
-    const toggleDay = (ri: number, day: string) => {
-        const days = routes[ri].schedule.days;
-        updateRoute(ri, { schedule: { ...routes[ri].schedule, days: days.includes(day) ? days.filter(d => d !== day) : [...days, day] } });
-    };
-
-    const addDate = (ri: number, date: string) => {
-        if (!date) return;
-        const dates = routes[ri].schedule.specificDates;
-        if (!dates.includes(date)) updateRoute(ri, { schedule: { ...routes[ri].schedule, specificDates: [...dates, date].sort() } });
-    };
-
-    const removeDate = (ri: number, date: string) =>
-        updateRoute(ri, { schedule: { ...routes[ri].schedule, specificDates: routes[ri].schedule.specificDates.filter(d => d !== date) } });
-
     // ─── Validation ───────────────────────────────────────────────────────────
 
     const canNext = () => {
         if (step === 0) return busNumber.trim().length >= 4;
-        if (step === 1) return routes.every(r => r.stops.length >= 2 && r.stops[0].name && r.stops[r.stops.length - 1].name);
-        if (step === 2) return totalSeats >= 2;
-        if (step === 3) return !isPrivate || (!!stateVal && !!district && !!orgCategory && !!orgName && pinCode.length === 6);
+        if (step === 1) return totalSeats >= 2;
+        if (step === 2) return !isPrivate || (!!stateVal && !!district && !!orgCategory && !!orgName && pinCode.length === 6);
         return true;
     };
 
@@ -253,28 +215,20 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                 if (cell.exists) seatList.push({ number: seatNum++, status: 'Available', reservedFor: cell.type });
             }));
 
-            const firstRoute = routes[0];
             const payload = {
                 busNumber: busNumber.trim().toUpperCase(),
                 name: busName.trim() || busNumber.trim().toUpperCase(),
                 type: busType, mileage: Number(mileage) || 4.0,
                 totalSeats: totalSeats,
                 seats: seatList,
-                stops: firstRoute.stops.map((s, i) => ({ name: s.name, arrivalTime: s.time, price: i === 0 ? 0 : Number(s.price), sequence: i })),
-                departureTime: firstRoute.stops[0]?.time || '',
-                arrivalTime: firstRoute.stops[firstRoute.stops.length - 1]?.time || '',
-                routes: routes.map(r => ({
-                    label: r.label,
-                    stops: r.stops.map((s, i) => ({ name: s.name, arrivalTime: s.time, price: i === 0 ? 0 : Number(s.price), distance: i === 0 ? 0 : Number(s.distance), sequence: i })),
-                    schedule: r.schedule,
-                })),
                 isPrivate,
                 ...(isPrivate ? { state: stateVal, district, town, pinCode, orgCategory, orgName } : {}),
                 rentalPricePerDay: Number(rentalPerDay),
                 rentalPricePerHour: Number(rentalPerHour),
+                amenities,
             };
             const res = await api.addBus(payload);
-            if (res.success) { setCreatedBus(res.bus); setStep(6); onBusAdded(); }
+            if (res.success) { setCreatedBus(res.bus); setStep(5); onBusAdded(); }
             else toast.error(res.message || 'Failed to add bus');
         } catch { toast.error('Network error. Please try again.'); }
         finally { setLoading(false); }
@@ -283,9 +237,9 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
     const handleClose = () => {
         setStep(0); setCreatedBus(null);
         setBusNumber(''); setBusName(''); setBusType('Ordinary'); setMileage('4');
-        setRoutes([makeRoute(0)]); setActiveRouteIdx(0);
         setLeftCols(2); setRightCols(2); setSeatGrid(buildGrid(10, 2, 2));
         setIsPrivate(false); setStateVal(''); setDistrict(''); setTown(''); setPinCode(''); setOrgCategory(''); setOrgName('');
+        setAmenities([]);
         onOpenChange(false);
     };
 
@@ -461,14 +415,14 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-foreground text-lg">
                         <Bus className="w-5 h-5 text-primary" />
-                        {step === 6 ? 'Bus Registered! 🎉' : 'Register New Bus'}
+                        {step === 5 ? 'Bus Registered! 🎉' : 'Register New Bus'}
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground text-xs">
-                        {step === 6 ? 'Bus added to your fleet.' : `Step ${step + 1} of ${STEPS.length}: ${STEPS[step]}`}
+                        {step === 5 ? 'Bus added to your fleet.' : `Step ${step + 1} of ${STEPS.length}: ${STEPS[step]}`}
                     </DialogDescription>
                 </DialogHeader>
 
-                {step < 6 && (
+                {step < 5 && (
                     <div className="flex gap-1 mb-1">
                         {STEPS.map((s, i) => (
                             <div key={s} className={`h-1 flex-1 rounded-full transition-all ${i <= step ? 'bg-primary' : 'bg-muted'}`} />
@@ -482,13 +436,38 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">Bus Number *</Label>
-                                <Input value={busNumber} onChange={e => setBusNumber(e.target.value.toUpperCase())} placeholder="e.g. MH-12-AB-1234" className="uppercase" />
+                                <Input
+                                    value={busNumber}
+                                    onChange={e => setBusNumber(formatBusNumber(e.target.value))}
+                                    placeholder="e.g. MH 12 AB 1234"
+                                    className="uppercase font-mono font-bold tracking-wider"
+                                    maxLength={13}
+                                />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">Bus Name / Operator</Label>
                                 <Input value={busName} onChange={e => setBusName(e.target.value)} placeholder="e.g. City Express" />
                             </div>
                         </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Facilities (Amenities)</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {AMENITY_OPTIONS.map(opt => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => toggleAmenity(opt)}
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all border ${amenities.includes(opt)
+                                                ? 'bg-primary text-white border-primary shadow-sm scale-105'
+                                                : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                                            }`}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">Bus Type</Label>
@@ -517,226 +496,11 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                     </div>
                 )}
 
-                {/* ── STEP 1: Routes & Stops ── */}
-                {step === 1 && (
-                    <div className="space-y-3">
-                        {/* Route Tabs */}
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                            {routes.map((r, ri) => (
-                                <div key={r.id} className="flex items-center shrink-0">
-                                    <button onClick={() => setActiveRouteIdx(ri)}
-                                        className={`px-3 py-1.5 rounded-l-lg text-xs font-semibold border transition-all ${activeRouteIdx === ri ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'}`}>
-                                        {r.label}
-                                    </button>
-                                    {routes.length > 1 && (
-                                        <button onClick={() => removeRoute(ri)}
-                                            className={`px-1.5 py-1.5 rounded-r-lg border-y border-r text-xs transition-all ${activeRouteIdx === ri ? 'bg-primary/80 text-primary-foreground border-primary' : 'bg-muted border-border text-muted-foreground hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10'}`}>
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            <Button size="sm" variant="outline" onClick={addRoute} className="h-8 shrink-0 border-dashed text-primary hover:bg-primary/5">
-                                <Plus className="w-3 h-3 mr-1" /> Route
-                            </Button>
-                        </div>
+                {/* ── STEP 1: Seat Layout ── */}
+                {step === 1 && renderGrid()}
 
-                        {/* Route Label */}
-                        <Input value={activeRoute.label} onChange={e => updateRoute(activeRouteIdx, { label: e.target.value })}
-                            className="h-8 text-xs font-semibold" placeholder="Route name (e.g. Morning Service)" />
-
-                        {/* Schedule */}
-                        <div className="bg-muted/40 rounded-xl p-3 space-y-3 border border-border">
-                            <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                                <Calendar className="w-4 h-4 text-primary" />
-                                <span className="text-xs font-bold text-foreground">Route Schedule</span>
-                                <div className="flex items-center gap-1.5 ml-auto">
-                                    {(['daily', 'days', 'specific'] as ScheduleType[]).map(t => (
-                                        <button key={t} onClick={() => updateRoute(activeRouteIdx, { schedule: { ...activeRoute.schedule, type: t } })}
-                                            className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${activeRoute.schedule.type === t ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background border border-border text-muted-foreground hover:bg-muted'}`}>
-                                            {t === 'daily' ? '🔁 Daily' : t === 'days' ? '📅 Specific Days' : '📆 Specific Dates'}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Days Selection */}
-                            {activeRoute.schedule.type === 'days' && (
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Select Days</Label>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {WEEKDAYS.map(d => (
-                                            <button key={d} onClick={() => toggleDay(activeRouteIdx, d)}
-                                                className={`w-10 h-10 rounded-xl text-xs font-bold transition-all shadow-sm ${activeRoute.schedule.days.includes(d) ? 'bg-primary text-primary-foreground border-primary scale-105 ring-2 ring-primary/20' : 'bg-background border border-border text-muted-foreground hover:border-primary/40 hover:bg-muted'}`}>
-                                                {d}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Dates Selection */}
-                            {activeRoute.schedule.type === 'specific' && (
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Select Dates</Label>
-                                    <div className="flex flex-col sm:flex-row gap-3 items-start">
-                                        <div className="relative">
-                                            <Input type="date" min={new Date().toISOString().split('T')[0]}
-                                                onChange={e => { addDate(activeRouteIdx, e.target.value); e.target.value = ''; }}
-                                                className="h-10 text-sm w-44 bg-background border-primary/20 hover:border-primary/50 transition-colors cursor-pointer" />
-                                        </div>
-                                        <div className="flex flex-wrap gap-2 flex-1 items-center bg-background/50 p-2 rounded-lg border border-border/50 min-h-[40px]">
-                                            {activeRoute.schedule.specificDates.length === 0 && <p className="text-[10px] text-muted-foreground italic">No dates chosen. Please pick a date.</p>}
-                                            {activeRoute.schedule.specificDates.map(d => (
-                                                <Badge key={d} variant="default" className="text-xs py-1 px-2.5 gap-1.5 cursor-pointer bg-primary/15 text-primary hover:bg-red-500/15 hover:text-red-500 hover:border-red-500/30 transition-all border border-primary/20 group"
-                                                    onClick={() => removeDate(activeRouteIdx, d)}>
-                                                    {new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                    <X className="w-3 h-3 opacity-50 group-hover:opacity-100" />
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeRoute.schedule.type === 'daily' && (
-                                <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
-                                    <p className="text-xs text-primary font-medium flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> This route will run every single day automatically.
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Time Selection */}
-                            <div className="flex gap-4 pt-2 border-t border-border/50">
-                                <div className="space-y-1.5 flex-1">
-                                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Start Time</Label>
-                                    <Input type="time"
-                                        value={activeRoute.schedule.startTime || ''}
-                                        onChange={e => updateRoute(activeRouteIdx, { schedule: { ...activeRoute.schedule, startTime: e.target.value } })}
-                                        className="h-9 text-sm w-full bg-background" />
-                                </div>
-                                <div className="space-y-1.5 flex-1">
-                                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">End Time</Label>
-                                    <Input type="time"
-                                        value={activeRoute.schedule.endTime || ''}
-                                        onChange={e => updateRoute(activeRouteIdx, { schedule: { ...activeRoute.schedule, endTime: e.target.value } })}
-                                        className="h-9 text-sm w-full bg-background" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Stops Header with Import */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
-                            <span className="text-xs font-bold text-foreground">Route Stops</span>
-                            {pastBuses.filter(b => b.route?.stops?.length > 1).length > 0 && (
-                                <Select onValueChange={(busId) => {
-                                    const bus = pastBuses.find(b => b._id === busId);
-                                    if (bus && bus.route?.stops) {
-                                        updateRoute(activeRouteIdx, {
-                                            label: bus.route.from && bus.route.to ? `${bus.route.from} to ${bus.route.to}` : activeRoute.label,
-                                            stops: bus.route.stops.map((s: any) => ({
-                                                name: s.name || '',
-                                                time: s.arrivalTime || '',
-                                                price: s.price || 0,
-                                                distance: s.distance || 0
-                                            }))
-                                        });
-                                        toast.success('Route imported successfully!');
-                                    }
-                                }}>
-                                    <SelectTrigger className="h-8 text-xs w-[220px] bg-accent/5 border-accent/20 text-accent font-semibold hover:bg-accent/10 transition-colors">
-                                        <SelectValue placeholder="Import from Past Buses" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {pastBuses.filter(b => b.route?.stops?.length > 1).map(bus => (
-                                            <SelectItem key={bus._id} value={bus._id} className="text-xs">
-                                                {bus.busNumber} ({bus.route?.from} → {bus.route?.to})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        </div>
-
-                        {/* Stops */}
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {activeRoute.stops.map((stop, si) => (
-                                <div key={si} className="flex items-start gap-2">
-                                    <div className="flex flex-col items-center gap-0.5 shrink-0 pt-2">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold border ${si === 0 ? 'bg-green-500/20 border-green-500 text-green-600 dark:text-green-400' :
-                                            si === activeRoute.stops.length - 1 ? 'bg-red-500/20 border-red-500 text-red-600 dark:text-red-400' :
-                                                'bg-primary/10 border-primary/30 text-primary'
-                                            }`}>{si + 1}</div>
-                                        {si < activeRoute.stops.length - 1 && <div className="w-px h-3 bg-border" />}
-                                    </div>
-                                    <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: si > 0 ? '1fr 1fr 1fr 1fr' : '2fr 1fr 1fr' }}>
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-muted-foreground">Stop Name</Label>
-                                            <Input value={stop.name} onChange={e => updateStop(activeRouteIdx, si, 'name', e.target.value)}
-                                                placeholder={si === 0 ? 'Origin' : si === activeRoute.stops.length - 1 ? 'Destination' : `Stop ${si + 1}`}
-                                                className="h-8 text-xs" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                                <Clock className="w-2.5 h-2.5" />{si === 0 ? 'Departure' : 'Arrival'}
-                                            </Label>
-                                            <Input type="time" value={stop.time} onChange={e => updateStop(activeRouteIdx, si, 'time', e.target.value)} className="h-8 text-xs" />
-                                        </div>
-                                        {si > 0 && (
-                                            <div className="space-y-1">
-                                                <Label className="text-[10px] text-muted-foreground">Dist (km)</Label>
-                                                <Input type="number" value={stop.distance || ''} min="0" step="0.1"
-                                                    onChange={e => updateStop(activeRouteIdx, si, 'distance', e.target.value)}
-                                                    placeholder="km" className="h-8 text-xs text-center" />
-                                            </div>
-                                        )}
-                                        {si > 0 ? (
-                                            <div className="space-y-1">
-                                                <Label className="text-[10px] text-muted-foreground">Fare (₹)</Label>
-                                                <Input type="number" value={stop.price || ''} min="0"
-                                                    onChange={e => updateStop(activeRouteIdx, si, 'price', e.target.value)}
-                                                    placeholder="₹0" className="h-8 text-xs text-center" />
-                                            </div>
-                                        ) : <div />}
-                                    </div>
-                                    <div className="pt-7">
-                                        {si > 0 && si < activeRoute.stops.length - 1 ? (
-                                            <Button size="icon" variant="ghost" onClick={() => removeStop(activeRouteIdx, si)} className="h-7 w-7 text-destructive hover:bg-destructive/10">
-                                                <Trash2 className="w-3 h-3" />
-                                            </Button>
-                                        ) : <div className="w-7" />}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => addStop(activeRouteIdx)} className="w-full border-dashed text-primary hover:bg-primary/5">
-                            <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Stop
-                        </Button>
-                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] text-muted-foreground">{activeRoute.label}</p>
-                                <p className="text-sm font-semibold">{activeRoute.stops[0]?.name || '—'} <ArrowRight className="inline w-3 h-3 mx-1" /> {activeRoute.stops[activeRoute.stops.length - 1]?.name || '—'}</p>
-                            </div>
-                            <div className="flex gap-4 text-right">
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Total Distance</p>
-                                    <p className="text-base font-bold text-primary">{activeRoute.stops.slice(1).reduce((s, st) => s + (Number(st.distance) || 0), 0).toFixed(1)} km</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Total Fare</p>
-                                    <p className="text-lg font-bold text-green-600 dark:text-green-400">₹{activeRoute.stops.slice(1).reduce((s, st) => s + (Number(st.price) || 0), 0)}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── STEP 2: Seat Layout ── */}
-                {step === 2 && renderGrid()}
-
-                {/* ── STEP 3: Mode ── */}
-                {step === 3 && (
+                {/* ── STEP 2: Mode ── */}
+                {step === 2 && (
                     <div className="space-y-5">
                         <div className="grid grid-cols-2 gap-3">
                             <button onClick={() => setIsPrivate(false)}
@@ -819,8 +583,8 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                     </div>
                 )}
 
-                {/* ── STEP 4: Review ── */}
-                {step === 4 && (
+                {/* ── STEP 3: Review ── */}
+                {step === 3 && (
                     <div className="bg-muted/40 rounded-xl p-4 space-y-3">
                         <RRow label="Bus Number" value={<span className="font-mono font-bold text-primary">{busNumber.toUpperCase()}</span>} />
                         {busName && <RRow label="Name" value={busName} />}
@@ -839,32 +603,6 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                             </div>
                         } />
                         <Separator />
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">{routes.length} Route{routes.length > 1 ? 's' : ''}</p>
-                        {routes.map(r => {
-                            const fare = r.stops.slice(1).reduce((s, st) => s + (Number(st.price) || 0), 0);
-                            const sched = r.schedule.type === 'daily' ? 'Daily' : r.schedule.type === 'days' ? r.schedule.days.join(', ') : `${r.schedule.specificDates.length} date(s)`;
-                            return (
-                                <div key={r.id} className="bg-background border border-border rounded-xl p-3 space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold">{r.label}</span>
-                                        <div className="flex gap-1.5">
-                                            <Badge variant="outline" className="text-[9px]">{sched}</Badge>
-                                            <span className="text-xs font-bold text-green-600 dark:text-green-400">₹{fare}</span>
-                                        </div>
-                                    </div>
-                                    {r.stops.map((s, si) => (
-                                        <div key={si} className="flex items-center justify-between text-xs">
-                                            <span className="text-foreground/70 flex items-center gap-1">
-                                                <span className={`w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold ${si === 0 ? 'bg-green-500/20 text-green-600' : si === r.stops.length - 1 ? 'bg-red-500/20 text-red-600' : 'bg-primary/15 text-primary'}`}>{si + 1}</span>
-                                                {s.name || `Stop ${si + 1}`}{s.time && <span className="text-muted-foreground ml-1">@ {s.time}</span>}
-                                            </span>
-                                            {si > 0 && <span className="text-green-600 dark:text-green-400 font-semibold">+₹{s.price}</span>}
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        })}
-                        <Separator />
                         <RRow label="Mode" value={isPrivate
                             ? <Badge className="bg-primary/15 text-primary border-primary/30 text-xs gap-1"><Lock className="w-2.5 h-2.5" />Private</Badge>
                             : <Badge className="bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30 text-xs gap-1"><Globe className="w-2.5 h-2.5" />Public</Badge>}
@@ -872,8 +610,8 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                     </div>
                 )}
 
-                {/* ── STEP 5: Final Confirmation ── */}
-                {step === 5 && (
+                {/* ── STEP 4: Final Confirmation ── */}
+                {step === 4 && (
                     <div className="space-y-4">
                         <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 text-center space-y-2">
                             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
@@ -894,17 +632,7 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                             <div className="bg-muted/30 p-3 rounded-xl border border-border">
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Operations</p>
                                 <p className="text-sm font-bold">{isPrivate ? 'Private' : 'Public'}</p>
-                                <p className="text-[10px] text-muted-foreground">{routes.length} Service Route(s)</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-start gap-3">
-                            <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-xs font-bold text-amber-700 dark:text-amber-400">Scheduled Departure</p>
-                                <p className="text-[10px] text-amber-600/80">
-                                    Initial service starts from {routes[0]?.stops[0]?.name || 'Origin'} at {routes[0]?.stops[0]?.time || '--:--'}.
-                                </p>
+                                <p className="text-[10px] text-muted-foreground">No route assigned yet.</p>
                             </div>
                         </div>
 
@@ -916,8 +644,8 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                     </div>
                 )}
 
-                {/* ── STEP 6: Success ── */}
-                {step === 6 && createdBus && (
+                {/* ── STEP 5: Success ── */}
+                {step === 5 && createdBus && (
                     <div className="space-y-4 text-center">
                         <div className="flex justify-center">
                             <div className="w-16 h-16 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center">
@@ -942,12 +670,12 @@ export function AddBusDialog({ open, onOpenChange, onBusAdded }: AddBusDialogPro
                 )}
 
                 {/* Navigation */}
-                {step < 6 && (
+                {step < 5 && (
                     <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">
                         {step > 0 && <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="text-muted-foreground"><ChevronLeft className="w-4 h-4 mr-1" />Back</Button>}
                         <div className="flex-1" />
-                        {step < 5
-                            ? <Button onClick={() => setStep(s => s + 1)} disabled={!canNext()}>{step === 4 ? 'Confirm & Continue' : 'Next'}<ChevronRight className="w-4 h-4 ml-1" /></Button>
+                        {step < 4
+                            ? <Button onClick={() => setStep(s => s + 1)} disabled={!canNext()}>{step === 3 ? 'Confirm & Continue' : 'Next'}<ChevronRight className="w-4 h-4 ml-1" /></Button>
                             : <Button onClick={handleSubmit} disabled={loading} className="bg-green-600 hover:bg-green-700 text-white min-w-[140px] shadow-lg shadow-green-500/20 animate-pulse-slow">
                                 {loading ? 'Launching...' : '🚀 Make Bus Live'}
                             </Button>

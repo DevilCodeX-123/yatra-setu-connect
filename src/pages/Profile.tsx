@@ -39,19 +39,19 @@ export default function Profile() {
     }, []);
 
     const MenuItem = ({ icon: Icon, label, subtitle, trailing, to = "#" }: { icon: any; label: string; subtitle?: string; trailing?: string; to?: string }) => (
-        <Link to={to} className="portal-card flex items-center justify-between p-4 mb-2 hover:bg-slate-50 transition-all cursor-pointer group active:scale-[0.99] border-l-4 border-l-transparent hover:border-l-primary group block">
+        <Link to={to} className="portal-card flex items-center justify-between p-4 mb-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer group active:scale-[0.99] border-l-4 border-l-transparent hover:border-l-primary block">
             <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:text-primary transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-300 group-hover:text-primary transition-colors">
                     <Icon className="w-5 h-5" />
                 </div>
                 <div>
-                    <p className="text-sm font-black text-black dark:text-white group-hover:text-primary transition-colors">{label}</p>
-                    {subtitle && <p className="text-[10px] text-slate-400 font-bold mt-0.5">{subtitle}</p>}
+                    <p className="text-sm font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">{label}</p>
+                    {subtitle && <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">{subtitle}</p>}
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                {trailing && <span className="text-[10px] font-black text-slate-400 ">{trailing}</span>}
-                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
+                {trailing && <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">{trailing}</span>}
+                <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
             </div>
         </Link>
     );
@@ -74,7 +74,7 @@ export default function Profile() {
             <div className="max-w-5xl space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
                 {/* Profile Card Overlay Style */}
-                <div className="portal-card p-10 mb-8 bg-[#1E293B] text-white relative overflow-hidden rounded-[40px]">
+                <div className="portal-card p-10 mb-8 relative overflow-hidden rounded-[40px]">
                     <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 blur-[100px] -mr-40 -mt-40 rounded-full" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 blur-[80px] -ml-32 -mb-32 rounded-full" />
 
@@ -83,20 +83,20 @@ export default function Profile() {
                             {loading ? '...' : nameInitials}
                         </div>
                         <div className="text-center md:text-left">
-                            <h1 className="text-4xl font-black mb-1">
+                            <h1 className="text-4xl font-black mb-1 text-slate-900 dark:text-white">
                                 {loading ? 'Loading...' : (user?.name || 'Guest User')}
                             </h1>
-                            <p className="text-sm font-bold text-emerald-400 tracking-[0.3em] mb-4">
+                            <p className="text-sm font-bold text-emerald-500 tracking-[0.3em] mb-4">
                                 {user?.role || 'Passenger'} Member
                             </p>
-                            <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                                <div className="bg-white/10 px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                            <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
+                                <div className="bg-slate-100 dark:bg-white/10 px-4 py-1.5 rounded-full border border-slate-200 dark:border-white/10 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                                    <span className="text-[10px] font-black ">Active Status</span>
+                                    <span className="text-[10px] font-black text-slate-700 dark:text-white">Active Status</span>
                                 </div>
-                                <div className="bg-white/10 px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-                                    <span className="text-[10px] font-black text-slate-400">ID:</span>
-                                    <span className="text-[10px] font-black text-white">
+                                <div className="bg-slate-100 dark:bg-white/10 px-4 py-1.5 rounded-full border border-slate-200 dark:border-white/10 flex items-center gap-2">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">ID:</span>
+                                    <span className="text-[10px] font-black text-slate-700 dark:text-white">
                                         {user?._id?.slice(-8).toUpperCase() || 'YS-NEW'}
                                     </span>
                                 </div>
@@ -133,19 +133,19 @@ export default function Profile() {
                         {(user?.role === 'Employee' || user?.role === 'Driver' || user?.role === 'Conductor' || true) && (
                             <>
                                 <SectionHeader label="Staff Management" />
-                                <div className="portal-card p-6 bg-slate-900 text-white rounded-[35px] relative overflow-hidden group mb-4">
-                                    <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 blur-[60px] -mr-20 -mt-20 rounded-full" />
+                                <div className="portal-card p-6 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-[35px] relative overflow-hidden group mb-4">
+                                    <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 dark:bg-primary/20 blur-[60px] -mr-20 -mt-20 rounded-full" />
                                     <div className="relative z-10 flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
                                                 <Shield className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
-                                                <h4 className="text-sm font-black uppercase tracking-tight">Staff Portal Office</h4>
-                                                <p className="text-[10px] font-bold text-slate-400">Duty activation & Fleet control</p>
+                                                <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Staff Portal Office</h4>
+                                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Duty activation & Fleet control</p>
                                             </div>
                                         </div>
-                                        <Link to="/employee" className="h-10 px-5 bg-white text-slate-900 rounded-xl text-[10px] font-black flex items-center justify-center tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">
+                                        <Link to="/employee" className="h-10 px-5 bg-primary dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black flex items-center justify-center tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">
                                             OPEN PORTAL
                                         </Link>
                                     </div>
@@ -167,13 +167,13 @@ export default function Profile() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="portal-card p-4 flex flex-col items-center text-center gap-2">
                                 <Languages className="w-5 h-5 text-primary" />
-                                <p className="text-[9px] font-black text-slate-400 ">Language</p>
-                                <p className="text-xs font-black text-black dark:text-white">English</p>
+                                <p className="text-[9px] font-black text-slate-500">Language</p>
+                                <p className="text-xs font-black text-slate-900 dark:text-white">English</p>
                             </div>
                             <div className="portal-card p-4 flex flex-col items-center text-center gap-2">
                                 <Palette className="w-5 h-5 text-blue-500" />
-                                <p className="text-[9px] font-black text-slate-400 ">Theme</p>
-                                <p className="text-xs font-black text-black dark:text-white">Classic Light</p>
+                                <p className="text-[9px] font-black text-slate-500">Theme</p>
+                                <p className="text-xs font-black text-slate-900 dark:text-white">Classic Light</p>
                             </div>
                         </div>
                     </div>

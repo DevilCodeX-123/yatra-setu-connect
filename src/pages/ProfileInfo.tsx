@@ -68,7 +68,13 @@ export default function ProfileInfo() {
                             state: data.address?.state || ""
                         }
                     });
+                } else if (data?.message === 'User not found' || data?.message === 'Invalid token') {
+                    console.error("User not found in database. Forcing logout to clear invalid session.");
+                    toast.error("Your session is invalid or user was deleted. Please log in again.");
+                    logout();
+                    navigate("/login");
                 } else if (authUser) {
+                    // Only fallback to authUser if there was a network error, NOT a 404 or auth error
                     setProfile(authUser);
                     setFormData({
                         name: authUser.name || "",
@@ -83,6 +89,7 @@ export default function ProfileInfo() {
                 }
             } catch (err) {
                 console.error("Profile fetch error:", err);
+                // If it's an API error (not a 404 JSON response, but a genuine network failure), we can tentatively use cached local data
                 if (authUser) {
                     setProfile(authUser);
                     setFormData({

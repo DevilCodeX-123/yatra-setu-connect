@@ -1,13 +1,12 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Info, ShieldCheck, Heart } from "lucide-react";
+import { HelpCircle, Mail, Phone, MessageCircle, FileText, Share2, Star, Settings, Info, ShieldCheck } from "lucide-react";
 
 export default function More() {
     const sections = [
         { title: "App Settings", icon: Settings, desc: "Theme, language, and accessibility" },
         { title: "About Us", icon: Info, desc: "Learn more about our mission" },
         { title: "Privacy Policy", icon: ShieldCheck, desc: "How we protect your data" },
-        { title: "Support Us", icon: Heart, desc: "Contribute to the smart network" },
     ];
 
     return (

@@ -11,6 +11,8 @@ const BookingSchema = new mongoose.Schema({
         seatNumber: { type: String }
     }],
     bookingType: { type: String, enum: ['Seat', 'FullBus'], default: 'Seat' },
+    fromStop: { type: String }, // For seat bookings
+    toStop: { type: String },   // For seat bookings
     rentalDetails: {
         startDate: { type: Date },
         endDate: { type: Date },

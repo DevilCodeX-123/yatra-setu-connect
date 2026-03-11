@@ -8,6 +8,7 @@ const Booking = require('../models/Booking');
 const Attendance = require('../models/Attendance');
 const Expense = require('../models/Expense');
 const Notification = require('../models/Notification');
+const EmergencyAlert = require('../models/EmergencyAlert');
 const { verifyToken, requireRole, resolveUserId } = require('../middleware/auth');
 
 
@@ -17,8 +18,8 @@ const { verifyToken, requireRole, resolveUserId } = require('../middleware/auth'
 
 router.use(verifyToken, requireRole('Owner', 'Owner+Employee', 'Admin'));
 
-const genCode = (prefix, len = 6) =>
-    `${prefix}-${crypto.randomBytes(len).toString('hex').toUpperCase().slice(0, len)}`;
+const genCode = (prefix) =>
+    `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
 
 
 // ─── GET /api/owner/dashboard ─────────────────────────────────────────────────
@@ -140,6 +141,7 @@ router.patch('/buses/:busId', async (req, res) => {
         if (totalSeats !== undefined) bus.totalSeats = Number(totalSeats);
         if (pricePerKm !== undefined) bus.pricePerKm = Number(pricePerKm);
         if (status !== undefined) bus.status = status;
+        if (amenities !== undefined) bus.amenities = Array.isArray(amenities) ? amenities : [];
         if (isRentalEnabled !== undefined) bus.isRentalEnabled = Boolean(isRentalEnabled);
         if (schedule !== undefined) {
             bus.schedule = { ...bus.schedule?.toObject?.() || {}, ...schedule };
@@ -179,6 +181,80 @@ router.patch('/buses/:busId/schedule', async (req, res) => {
         res.json({ success: true, schedule: bus.schedule });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
+
+// ─── POST /api/owner/buses/:busId/future-route ── Add planned future route ──
+router.post('/buses/:busId/future-route', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const { from, to, stops, plannedDate } = req.body;
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        bus.futureRoutes.push({
+            from, to, stops: stops || [], plannedDate: plannedDate || new Date()
+        });
+        await bus.save();
+        res.json({ success: true, futureRoutes: bus.futureRoutes });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── DELETE /api/owner/buses/:busId/future-route/:routeId ── Remove future route ──
+router.delete('/buses/:busId/future-route/:routeId', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        bus.futureRoutes = bus.futureRoutes.filter(r => r._id.toString() !== req.params.routeId);
+        await bus.save();
+        res.json({ success: true, futureRoutes: bus.futureRoutes });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── POST /api/owner/buses/:busId/apply-future-route/:routeId ── Apply future route as current ──
+router.post('/buses/:busId/apply-future-route/:routeId', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const futureRouteIndex = bus.futureRoutes.findIndex(r => r._id.toString() === req.params.routeId);
+        if (futureRouteIndex === -1) return res.status(404).json({ message: 'Future route not found' });
+
+        const futureRoute = bus.futureRoutes[futureRouteIndex];
+
+        // Archive current route if it exists
+        if (bus.route && bus.route.from && bus.route.to) {
+            bus.routeHistory.push({
+                from: bus.route.from,
+                to: bus.route.to,
+                stops: bus.route.stops || [],
+                savedAt: new Date()
+            });
+            // Keep only latest 25
+            if (bus.routeHistory.length > 25) {
+                bus.routeHistory = bus.routeHistory.slice(-25);
+            }
+        }
+
+        // Set new active route
+        bus.route = {
+            from: futureRoute.from,
+            to: futureRoute.to,
+            stops: futureRoute.stops || []
+        };
+
+        // Remove from future routes
+        bus.futureRoutes.splice(futureRouteIndex, 1);
+
+        await bus.save();
+        res.json({ success: true, route: bus.route, futureRoutes: bus.futureRoutes, routeHistory: bus.routeHistory });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
 
 // ─── POST /api/owner/buses/seed-test ── Insert 4 test buses for current owner ──
 router.post('/buses/seed-test', async (req, res) => {
@@ -372,6 +448,7 @@ router.post('/buses', async (req, res) => {
             owner: ownerId,
             rentalPricePerDay: Number(rentalPricePerDay) || 5000,
             rentalPricePerHour: Number(rentalPricePerHour) || 500,
+            amenities: Array.isArray(req.body.amenities) ? req.body.amenities : []
         };
 
         if (isPrivate) {
@@ -661,6 +738,52 @@ router.post('/attendance/mark', async (req, res) => {
             { upsert: true, new: true }
         );
         res.json({ success: true, record: rec });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── GET /api/owner/sos ─── All emergency alerts for owner's buses ───────────
+router.get('/sos', async (req, res) => {
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const { busId } = req.query;
+
+        const buses = await Bus.find({ owner: ownerId }, '_id');
+        const busIds = buses.map(b => b._id.toString());
+
+        let query = { bus: { $in: busIds } };
+        if (busId) {
+            if (!busIds.includes(busId)) return res.status(403).json({ message: 'Unauthorized' });
+            query.bus = busId;
+        }
+
+        const alerts = await EmergencyAlert.find(query)
+            .populate('bus', 'busNumber route')
+            .populate('user', 'name phone role')
+            .populate('driver', 'name phone')
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, alerts });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── PATCH /api/owner/sos/:alertId/status ─── Update SOS status ──────────────
+router.patch('/sos/:alertId/status', async (req, res) => {
+    const { status } = req.body;
+    const allowed = ['Active', 'Dispatched', 'Resolved', 'False Alarm'];
+    if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const alert = await EmergencyAlert.findById(req.params.alertId);
+        if (!alert) return res.status(404).json({ message: 'Alert not found' });
+
+        // Verify ownership via bus
+        const bus = await Bus.findOne({ _id: alert.bus, owner: ownerId });
+        if (!bus) return res.status(403).json({ message: 'Unauthorized' });
+
+        alert.status = status;
+        await alert.save();
+        res.json({ success: true, alert });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

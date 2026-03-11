@@ -60,17 +60,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("ys_user", JSON.stringify(updated));
     };
 
-    // Verify token still valid on mount
+    // Verify token validity on mount
     useEffect(() => {
-        if (token && !user) {
+        if (token) {
             setIsVerifying(true);
             fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
                 .then(r => r.json())
                 .then(u => {
-                    if (u._id) setUser(u);
-                    else logout();
+                    if (u._id) {
+                        // Token is valid and matches DB, optionally sync any updated DB fields
+                        setUser(prev => ({ ...prev, ...u }));
+                    } else {
+                        console.error("Token verification failed (Server response):", u.message);
+                        logout();
+                    }
                 })
-                .catch(logout)
+                .catch(err => {
+                    console.error("Token verification network error:", err);
+                    // Network errors shouldn't forcefully log the user out, only explicit auth errors
+                })
                 .finally(() => setIsVerifying(false));
         } else {
             setIsVerifying(false);

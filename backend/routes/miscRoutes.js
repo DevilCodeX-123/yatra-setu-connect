@@ -107,9 +107,25 @@ router.post('/emergency', verifyToken, requireAuth, async (req, res) => {
         return res.status(201).json({ id: 'demo-sos-' + Date.now(), ...req.body });
     }
     try {
+        const { bus: busId, ...alertData } = req.body;
+        let driverSnapshot = null;
+        let conductorSnapshot = "";
+
+        if (busId) {
+            const bus = await Bus.findById(busId);
+            if (bus) {
+                // If there's an active driver on this bus, capture it
+                driverSnapshot = bus.currentDriver || null;
+                conductorSnapshot = bus.currentConductor || "";
+            }
+        }
+
         const alert = new EmergencyAlert({
             user: req.user.id,
-            ...req.body
+            bus: busId,
+            driver: driverSnapshot,
+            conductor: conductorSnapshot,
+            ...alertData
         });
         await alert.save();
         res.status(201).json(alert);

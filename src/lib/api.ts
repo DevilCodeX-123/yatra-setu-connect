@@ -207,6 +207,77 @@ export const api = {
         });
         return res.json();
     },
+    addFutureRoute: async (busId: string, routeData: { from: string; to: string; stops: any[]; plannedDate: string }) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/future-route`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(routeData)
+        });
+        return res.json();
+    },
+    deleteFutureRoute: async (busId: string, routeId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/future-route/${routeId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    applyFutureRoute: async (busId: string, routeId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/apply-future-route/${routeId}`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    getOwnerRoutes: async () => {
+        const res = await fetch(`${API_BASE_URL}/owner-routes`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    addOwnerRoute: async (routeData: { from: string; to: string; stops: any[]; name?: string }) => {
+        const res = await fetch(`${API_BASE_URL}/owner-routes`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(routeData)
+        });
+        return res.json();
+    },
+    editOwnerRoute: async (routeId: string, data: { name?: string; stops?: any[] }) => {
+        const res = await fetch(`${API_BASE_URL}/owner-routes/${routeId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    blockOwnerRoute: async (routeId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner-routes/${routeId}/block`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    blockOwnerRouteVariant: async (routeId: string, variantIdx: number) => {
+        const res = await fetch(`${API_BASE_URL}/owner-routes/${routeId}/variant/${variantIdx}/block`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    activateOwnerRoute: async (routeId: string, variantIdx: number, busId: string, startTime: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner-routes/${routeId}/activate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ variantIdx, busId, startTime })
+        });
+        return res.json();
+    },
+    deleteOwnerRoute: async (routeId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner-routes/${routeId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
     toggleRental: async (busId: string, isRentalEnabled: boolean) => {
         const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}`, {
             method: 'PATCH',
@@ -471,6 +542,23 @@ export const api = {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    // SOS Management
+    getOwnerSOS: async () => {
+        const res = await fetch(`${API_BASE_URL}/owner/sos`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getBusSOSHistory: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/sos?busId=${busId}`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    updateSOSStatus: async (alertId: string, status: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/sos/${alertId}/status`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status })
         });
         return res.json();
     }

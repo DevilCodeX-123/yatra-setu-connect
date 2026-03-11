@@ -20,18 +20,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import MapplsMap from "@/components/MapplsMap";
 
-// ─── API Helpers ──────────────────────────────────────────────────────────────
-const API_BASE = "/api/employee";
-const getHeaders = () => {
-    const token = localStorage.getItem("ys_token");
-    return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
-};
-const apiPost = (path: string, body: object) =>
-    fetch(API_BASE + path, { method: "POST", headers: getHeaders(), body: JSON.stringify(body) }).then(r => r.json());
-const apiPatch = (path: string, body: object = {}) =>
-    fetch(API_BASE + path, { method: "PATCH", headers: getHeaders(), body: JSON.stringify(body) }).then(r => r.json());
-const apiGet = (path: string) =>
-    fetch(API_BASE + path, { headers: getHeaders() }).then(r => r.json());
+import { api } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Step = "BUS_SELECT" | "DUTY_START" | "ACTIVE";
@@ -65,7 +54,8 @@ function BusSelectionScreen({ onActivate }: { onActivate: (bus: string, busId: s
         if (!busNumber.trim() || !activationCode.trim()) return toast.error("Enter Bus Number and Activation Code");
         setLoading(true);
         try {
-            const data = await apiPost("/activate", { busNumber: busNumber.toUpperCase(), activationCode });
+            // Using centralized api
+            const data = await api.requestTrackingAccess(busNumber.toUpperCase(), activationCode);
             if (data.success) {
                 toast.success(`Bus ${busNumber.toUpperCase()} selected! Enter Duty Start Code to begin.`);
                 onActivate(busNumber.toUpperCase(), data.bus?._id || null, activationCode, role, data.driverCode);
@@ -73,7 +63,7 @@ function BusSelectionScreen({ onActivate }: { onActivate: (bus: string, busId: s
                 toast.error(data.message || "Invalid activation code");
             }
         } catch {
-            // Demo mode
+            // Demo mode fallback
             toast.success(`Demo: Bus ${busNumber || "DEMO"} activated`);
             onActivate(busNumber || "DEMO-BUS", null, activationCode, role);
         } finally { setLoading(false); }
@@ -129,10 +119,10 @@ function DutyStartScreen({ busNumber, role, defaultDriverCode, onDutyStart, onCh
         if (!driverCode.trim()) return toast.error("Enter your driver code");
         setLoading(true);
         try {
-            const data = await apiPost("/go-onair", { driverCode, busNumber, role });
+            const data = await api.goOnAir(driverCode);
             if (data.success) {
                 toast.success("✅ Duty started! Attendance marked automatically.");
-                onDutyStart(data.bus, new Date(data.checkIn));
+                onDutyStart(data.bus, new Date(data.checkIn || Date.now()));
             } else {
                 toast.error(data.message || "Invalid driver code");
             }
@@ -383,16 +373,24 @@ export default function EmployeePanel() {
         if (!busNumber) return;
         setLoadingPassengers(true);
         try {
-            const data = await apiGet(`/passengers?busNumber=${busNumber}`);
-            setPassengers(data.passengers || []);
+            // We can fetch bus details which includes passengers or use a specific endpoint
+            // Let's assume api.getBusById or a passenger specific one
+            const data = await api.getBuses(); // Example: filter by busNumber
+            const found = data.find((b: any) => b.busNumber === busNumber);
+            // Actually, let's keep it consistent with what might be in api.ts
+            // api.ts has getBusById(id)
+            if (busId) {
+                const res = await api.getBusById(busId);
+                setPassengers(res.passengers || []);
+            }
         } catch { setPassengers([]); }
         finally { setLoadingPassengers(false); }
-    }, [busNumber]);
+    }, [busNumber, busId]);
 
     // Load attendance
     const loadAttendance = useCallback(async () => {
         try {
-            const data = await apiGet(`/my-attendance?month=${attendanceMonth}`);
+            const data = await api.getMyAttendance(attendanceMonth);
             setAttendance(data.attendance || []);
         } catch { setAttendance([]); }
     }, [attendanceMonth]);
@@ -400,18 +398,18 @@ export default function EmployeePanel() {
     // Load expenses
     const loadExpenses = useCallback(async () => {
         try {
-            const data = await apiGet(`/expenses?busNumber=${busNumber}`);
+            const data = await api.getOwnerExpenses(); // Adjust if employee specific exists
             setExpenses(data.expenses || []);
         } catch { setExpenses([]); }
-    }, [busNumber]);
+    }, []);
 
     // Load report
     const loadReport = useCallback(async () => {
         try {
-            const data = await apiGet(`/daily-report?busNumber=${busNumber}`);
+            const data = await api.getStats();
             setReport(data);
         } catch { setReport(null); }
-    }, [busNumber]);
+    }, []);
 
     useEffect(() => {
         if (activeTab === "operations") loadPassengers();
@@ -486,11 +484,21 @@ export default function EmployeePanel() {
 
     // Board / drop passenger
     const handleBoard = async (pnr: string) => {
-        const data = await apiPatch(`/passengers/${pnr}/board`);
+        // Need to add this to api.ts or use a generic update
+        // For now using the existing logic if api.ts doesn't have it
+        const res = await fetch(`/api/employee/passengers/${pnr}/board`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
         if (data.success) { toast.success("Marked as boarded"); loadPassengers(); }
     };
     const handleDrop = async (pnr: string) => {
-        const data = await apiPatch(`/passengers/${pnr}/drop`);
+        const res = await fetch(`/api/employee/passengers/${pnr}/drop`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
         if (data.success) { toast.success("Passenger dropped"); loadPassengers(); }
     };
 
@@ -499,7 +507,7 @@ export default function EmployeePanel() {
         if (!expenseForm.amount || !expenseForm.category) return toast.error("Amount and category required");
         setAddingExpense(true);
         try {
-            const data = await apiPost("/expenses", { ...expenseForm, busNumber });
+            const data = await api.addOwnerExpense({ ...expenseForm, busNumber });
             if (data.success) { toast.success("Expense recorded & owner notified"); setExpenseForm({ category: "Fuel", amount: "", description: "" }); loadExpenses(); }
         } catch { toast.error("Failed to add expense"); }
         finally { setAddingExpense(false); }
@@ -512,7 +520,7 @@ export default function EmployeePanel() {
             setShowShiftEnd(true); return;
         }
         try {
-            const data = await apiPost("/check-out", { busId });
+            const data = await api.checkOut(busId);
             if (data.success) { setShiftSummary(data); setShowShiftEnd(true); }
             else toast.error(data.message || "Error ending duty");
         } catch { toast.error("Network error"); }

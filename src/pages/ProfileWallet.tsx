@@ -49,7 +49,7 @@ export default function ProfileWallet() {
         >
             <div className="max-w-4xl space-y-8 animate-slide-up">
                 {/* Wallet Balance Card */}
-                <div className="portal-card p-10 bg-primary text-white relative overflow-hidden rounded-[40px] shadow-2xl shadow-primary/30">
+                <div className="p-10 bg-primary text-white relative overflow-hidden rounded-[40px] shadow-2xl shadow-primary/30">
                     <div className="absolute top-0 right-0 w-80 h-80 bg-accent/20 blur-[100px] -mr-40 -mt-40 rounded-full" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 blur-[80px] -ml-32 -mb-32 rounded-full" />
 
@@ -126,14 +126,14 @@ export default function ProfileWallet() {
                                         {t.type === 'Credit' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-[#1E293B] ">{t.source}</h4>
+                                        <h4 className="text-sm font-black text-slate-900 dark:text-white ">{t.source}</h4>
                                         <p className="text-[10px] font-bold text-slate-400 mt-0.5">
                                             {new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-black ${t.type === 'Credit' ? 'text-emerald-500' : 'text-[#1E293B]'}`}>
+                                    <p className={`text-base font-black ${t.type === 'Credit' ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
                                         {t.type === 'Credit' ? '+' : '-'} ₹ {t.amount}
                                     </p>
                                     <span className="text-[8px] font-black text-slate-400">{t.status}</span>

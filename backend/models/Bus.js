@@ -12,6 +12,8 @@ const StopSchema = new mongoose.Schema({
     lat: { type: Number },
     lng: { type: Number },
     price: { type: Number, default: 0 },
+    priceFromPrev: { type: Number, default: 0 },
+    arrivalTime: { type: String, default: '' },
     sequence: { type: Number },
 }, { _id: false });
 
@@ -35,11 +37,28 @@ const BusSchema = new mongoose.Schema({
     arrivalTime: { type: String },
     date: { type: String },
 
+    busType: { type: String },
+    amenities: { type: [String], default: [] },
     route: {
         from: { type: String },
         to: { type: String },
         stops: [StopSchema],
     },
+
+    routeHistory: [{
+        from: { type: String },
+        to: { type: String },
+        stops: [StopSchema],
+        savedAt: { type: Date, default: Date.now }
+    }],
+
+    futureRoutes: [{
+        from: { type: String },
+        to: { type: String },
+        stops: [StopSchema],
+        plannedDate: { type: Date },
+        createdAt: { type: Date, default: Date.now }
+    }],
 
     liveLocation: {
         lat: { type: Number },
@@ -99,7 +118,11 @@ const BusSchema = new mongoose.Schema({
         joinedAt: { type: Date, default: Date.now }
     }],
 
-    // ─── Loop & Return Logic ──────────────────────────────────────────────────
+    // ─── Live Operation Snapshot ──────────────────────────────────────────────
+    currentDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    currentDriverName: { type: String },
+    currentConductor: { type: String },
+
     lastReturnTime: { type: Date },
     originLocation: { type: String },
 }, { timestamps: true });

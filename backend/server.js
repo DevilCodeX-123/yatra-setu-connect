@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); // Restarted at: 2026-03-07T11:55:00
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -7,6 +7,10 @@ const fs = require('fs');
 const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const dns = require('dns');
+
+// Bypass Windows DNS cache/ISP filters to fix MongoDB ENOTFOUND resolution
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 // Load environment variables
 const envPath = path.join(__dirname, '../.env');
@@ -98,22 +102,25 @@ io.on('connection', (socket) => {
 const startServer = async () => {
     try {
         console.log('⏳ Connecting to MongoDB...');
-        // Increased timeout and added fallback
+        if (!MONGODB_URI) {
+            throw new Error('MONGODB_URI environment variable is missing!');
+        }
+        console.log('🔗 Connection Target:', MONGODB_URI.substring(0, 20) + '...');
+
         await mongoose.connect(MONGODB_URI, {
-            serverSelectionTimeoutMS: 5000, // Reduced for faster demo fallback
-            connectTimeoutMS: 10000
+            serverSelectionTimeoutMS: 20000,
+            connectTimeoutMS: 30000,
+            family: 4 // Force IPv4 to fix getaddrinfo ENOTFOUND
         });
         console.log('✅ Connected to MongoDB Atlas');
     } catch (err) {
-        console.error('⚠️ Database connection failed:', err.message);
+        console.error('❌ Database connection failed Error Details:', err.message);
         console.log('🚀 Starting in OFFLINE DEMO MODE (Server will run without Database)');
     } finally {
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
             console.log(`🔌 Socket.io ready`);
-            if (mongoose.connection.readyState !== 1) {
-                console.log('📢 WARNING: Running in Demo Mode (Local data only)');
-            }
+            console.log(`📊 DB STATUS: ${mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED'}`);
         });
     }
 };
@@ -140,6 +147,7 @@ const mapRoutes = require('./routes/mapRoutes');
 const authRoutes = require('./routes/authRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
+const ownerRouteRoutes = require('./routes/ownerRouteRoutes');
 const trackingRoutes = require('./routes/trackingRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
 
@@ -151,6 +159,7 @@ app.use('/api', miscRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/owner', ownerRoutes);
+app.use('/api/owner-routes', ownerRouteRoutes);
 app.use('/api/tracking', trackingRoutes);
 app.use('/api/complaints', complaintRoutes);
 

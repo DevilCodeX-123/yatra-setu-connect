@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, UserPlus, Trash2, Edit2, ShieldCheck, Phone, Mail, User, BookOpen, AlertCircle, HeartPulse } from "lucide-react";
+import { Users, UserPlus, Trash2, Edit2, ShieldCheck, Phone, Mail, User, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -255,7 +255,7 @@ export default function ProfilePassengers() {
                                             </div>
                                             {p.emergencyContact && (
                                                 <div className="flex items-center gap-1.5">
-                                                    <HeartPulse className="w-3.5 h-3.5 text-red-500" />
+                                                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
                                                     <span className="text-[9px] font-black text-red-500 uppercase">Emergency: {p.emergencyContact}</span>
                                                 </div>
                                             )}

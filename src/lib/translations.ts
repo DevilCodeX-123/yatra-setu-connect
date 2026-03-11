@@ -134,7 +134,10 @@ export const translations = {
             trackLive: "Track Live",
             topRanked: "TOP RANKED",
             avgLate: "Avg. Late",
-            onTime: "On Time"
+            onTime: "On Time",
+            verified: "Verified",
+            rentPerDay: "Rent / Day",
+            anywhere: "As Scheduled"
         },
         profile: {
             title: "Personal Information",
@@ -508,7 +511,10 @@ export const translations = {
             trackLive: "लाइव ट्रैक करें",
             topRanked: "टॉप रैंक",
             avgLate: "औसत देरी",
-            onTime: "समय पर"
+            onTime: "समय पर",
+            verified: "सत्यापित",
+            rentPerDay: "किराया / दिन",
+            anywhere: "निर्धारित अनुसार"
         },
         profile: {
             title: "व्यक्तिगत जानकारी",

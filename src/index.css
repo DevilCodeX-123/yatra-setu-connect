@@ -78,8 +78,8 @@
     /* Sidebar — Deep Navy */
     --sidebar-background: 224 71% 22%;
     /* #102057 deep navy */
-    --sidebar-foreground: 0 0% 0%;
-    /* #000000 — Force Black in light mode */
+    --sidebar-foreground: 0 0% 98%;
+    /* White text on dark navy in light mode */
     --sidebar-primary: 221 83% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 224 60% 30%;

@@ -30,6 +30,8 @@ import Support from "./pages/Support";
 import BusTracking from "./pages/BusTracking";
 import Login from "./pages/Login";
 import RouteSelection from "./pages/RouteSelection";
+import BusOperationsBoard from "./pages/BusOperationsBoard";
+import BusManagement from "./pages/BusManagement";
 import NotFound from "./pages/NotFound";
 import OrganizationTracking from "./pages/OrganizationTracking";
 import BookingChat from "@/pages/BookingChat";
@@ -103,13 +105,15 @@ const AppShell = () => {
           {/* Passenger-specific */}
           <Route path="/passenger" element={<RoleRoute roles={["Passenger", "Employee", "Owner", "Admin"]}><PassengerDashboard /></RoleRoute>} />
 
-          {/* Employee / Driver panel – Employee role only */}
+          {/* Employee portal – Unified Driver/Conductor view */}
           <Route path="/employee" element={<RoleRoute roles={["Employee"]}><EmployeePanel /></RoleRoute>} />
-          <Route path="/driver" element={<RoleRoute roles={["Employee"]}><DriverPanel /></RoleRoute>} />
+          <Route path="/driver" element={<Navigate to="/employee" replace />} />
 
           {/* Owner panel – Owner role only */}
           <Route path="/owner" element={<RoleRoute roles={["Owner"]}><OwnerPanel /></RoleRoute>} />
           <Route path="/owner/route-selection" element={<RoleRoute roles={["Owner"]}><RouteSelection /></RoleRoute>} />
+          <Route path="/owner/board" element={<RoleRoute roles={["Owner"]}><BusOperationsBoard /></RoleRoute>} />
+          <Route path="/owner/bus/:id" element={<RoleRoute roles={["Owner"]}><BusManagement /></RoleRoute>} />
 
           {/* Admin panel – Admin role only */}
           <Route path="/admin" element={<RoleRoute roles={["Admin"]}><AdminPanel /></RoleRoute>} />

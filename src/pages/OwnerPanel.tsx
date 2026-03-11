@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import {
-  Bus, DollarSign, BarChart2, Users, Edit, Plus, Calendar, TrendingUp, Package,
-  MapPin, ShieldCheck, Clock, CheckCircle2, Trash2, Copy, Lock as LockIcon, Phone, UserCheck,
-  X, Route, PlayCircle, Power, WifiOff, Wifi, ToggleLeft, ToggleRight, Timer, RefreshCw, Repeat,
-  Settings, HelpCircle, Search, MessageSquare, Save, ShieldAlert, ArrowRight, Loader2, Download, AlertCircle, Eye
+  Bus, Users, DollarSign, TrendingUp, MoreHorizontal,
+  Plus, Settings, LogOut, ChevronRight, MapPin,
+  Calendar, Clock, ShieldCheck, CreditCard, HelpCircle,
+  AlertCircle, LayoutDashboard, Database, Wifi, Edit,
+  ArrowRight, Trash2, Key, UserPlus, PlayCircle, Repeat,
+  Activity, Map, ArrowLeft, Zap, ChevronDown, CheckCircle2,
+  X, Search, Filter, Package, WifiOff, Power, ToggleRight,
+  ToggleLeft, Copy, Timer, Route, LockIcon, UserCheck, RefreshCw, Phone
 } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,6 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogDescription,
+  DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { AddBusDialog } from "@/components/AddBusDialog";
 import { useSocket } from "@/hooks/useSocket";
@@ -23,6 +35,7 @@ const sidebarItems = [
   { label: "Rent for Event", icon: <Package className="w-4 h-4" />, id: "rent", url: "/owner#rent" },
   { label: "Tracking Requests", icon: <ShieldCheck className="w-4 h-4" />, id: "tracking", url: "/owner#tracking" },
   { label: "Employees", icon: <Users className="w-4 h-4" />, id: "employees", url: "/owner#employees" },
+  { label: "Safety & SOS", icon: <ShieldCheck className="w-4 h-4 text-red-500" />, id: "sos", url: "/owner#sos" },
   { label: "Feedback", icon: <Edit className="w-4 h-4" />, id: "complaints", url: "/owner#complaints" },
 ];
 
@@ -30,6 +43,16 @@ export default function OwnerPanel() {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeRoot, setActiveTab] = useState("fleet");
+
+  const formatBusNumber = (val: string) => {
+    const clean = (val || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    let formatted = '';
+    for (let i = 0; i < clean.length; i++) {
+      if (i === 2 || i === 4 || i === 6) formatted += ' ';
+      formatted += clean[i];
+    }
+    return formatted.trim();
+  };
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [ownerBookings, setOwnerBookings] = useState<any[]>([]);
   const [ownerExpenses, setOwnerExpenses] = useState<any[]>([]);
@@ -37,12 +60,19 @@ export default function OwnerPanel() {
   const [bookingFilters, setBookingFilters] = useState({ busId: 'all', route: 'all' });
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   const [trackingRequests, setTrackingRequests] = useState<any[]>([]);
+  const [sosAlerts, setSosAlerts] = useState<any[]>([]);
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddBus, setShowAddBus] = useState(false);
+  const [loadingSOS, setLoadingSOS] = useState(false);
 
   // Driver management state
   const [selectedBusForEmp, setSelectedBusForEmp] = useState<string>("");
+
+  // Selection Modal for Global Shortcuts
+  const [showSelectBusModal, setShowSelectBusModal] = useState(false);
+  const [pendingSelectionAction, setPendingSelectionAction] = useState<"route" | "board" | "hub" | null>(null);
+  const [busSearchQuery, setBusSearchQuery] = useState("");
   const [employees, setEmployees] = useState<any[]>([]);
   const [employeeCode, setEmployeeCode] = useState("");
   const [driverForm, setDriverForm] = useState({ name: "", phone: "", email: "", perDaySalary: "", driverCode: "" });
@@ -143,6 +173,13 @@ export default function OwnerPanel() {
 
   const handleBusStatusChange = async (busId: string, status: 'Active' | 'Inactive' | 'Temp-Offline') => {
     try {
+      if (status === 'Active') {
+        const bus = (dashboardData?.buses || []).find((b: any) => b._id === busId);
+        if (bus && (!bus.route?.from || !bus.route?.to)) {
+          toast.error("Please set a route before marking the bus as Live.");
+          return;
+        }
+      }
       const res = await api.updateBusStatus(busId, status);
       if (res.success) {
         const label = status === 'Active' ? '🟢 Live' : status === 'Temp-Offline' ? '🟡 Temp-Offline' : '🔴 Offline';
@@ -211,14 +248,15 @@ export default function OwnerPanel() {
 
   const fetchDashboard = async () => {
     try {
-      const [stats, bookingsRes, expensesRes, routesRes, rentalRes, trackingRes, complaintsRes] = await Promise.all([
+      const [stats, bookingsRes, expensesRes, routesRes, rentalRes, trackingRes, complaintsRes, sosRes] = await Promise.all([
         api.getOwnerDashboard(),
         api.getOwnerBookings(),
         api.getOwnerExpenses(),
         api.getRoutesHistory(),
         api.getOwnerRequests(),
         api.getOwnerTrackingRequests(),
-        api.getOwnerComplaints()
+        api.getOwnerComplaints(),
+        api.getOwnerSOS()
       ]);
 
       setDashboardData(stats);
@@ -229,7 +267,9 @@ export default function OwnerPanel() {
       setRentalRequests(rentalRes || []);
       setTrackingRequests(Array.isArray(trackingRes) ? trackingRes : trackingRes?.requests || []);
       setComplaints(Array.isArray(complaintsRes) ? complaintsRes : complaintsRes?.complaints || []);
-    } catch {
+      setSosAlerts(sosRes?.alerts || []);
+    } catch (err) {
+      console.error("Dashboard Load Error:", err);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
@@ -280,9 +320,15 @@ export default function OwnerPanel() {
       document.dispatchEvent(new CustomEvent('bus:employee-refresh', { detail: { busNumber } }));
     });
 
+    const unsubSOS = on("bus:sos", ({ busNumber, type, location }: any) => {
+      toast.error(`🚨 EMERGENCY: ${type} alert from Bus ${busNumber}!`, { duration: 10000 });
+      fetchDashboard();
+    });
+
     return () => {
       if (typeof unsubVerifying === 'function') unsubVerifying();
       if (typeof unsubDuty === 'function') unsubDuty();
+      if (typeof unsubSOS === 'function') unsubSOS();
     };
   }, [dashboardData?.buses, joinBus, on, isConnected]);
 
@@ -502,6 +548,37 @@ export default function OwnerPanel() {
     setShowRunModal(false);
   };
 
+  const openSelectBusFor = (action: "route" | "board" | "hub") => {
+    setPendingSelectionAction(action);
+    setShowSelectBusModal(true);
+  };
+
+  const handleGlobalShortcutBusSelect = (busId: string) => {
+    setShowSelectBusModal(false);
+    if (pendingSelectionAction === "route") {
+      navigate(`/owner/bus/${busId}?tab=route`);
+    } else if (pendingSelectionAction === "board") {
+      navigate(`/owner/bus/${busId}?tab=ops`);
+    } else {
+      navigate(`/owner/bus/${busId}`);
+    }
+    setPendingSelectionAction(null);
+  };
+
+  const handleSOSStatus = async (alertId: string, status: string) => {
+    try {
+      const res = await api.updateSOSStatus(alertId, status);
+      if (res.success) {
+        toast.success(`SOS status updated to ${status}`);
+        fetchDashboard();
+      } else {
+        toast.error(res.message || "Failed to update status");
+      }
+    } catch {
+      toast.error("Failed to update status");
+    }
+  };
+
   const currentSidebarItems = sidebarItems.map(item => ({
     ...item,
     active: activeRoot === item.id,
@@ -589,7 +666,7 @@ export default function OwnerPanel() {
                           <Bus className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="text-xs font-black text-primary uppercase">{bus.busNumber}</p>
+                          <p className="text-xs font-black text-primary uppercase">{formatBusNumber(bus.busNumber)}</p>
                           <p className="text-[10px] font-bold text-muted-foreground">{bus.route?.from || 'Start'} → {bus.route?.to || 'End'}</p>
                         </div>
                       </div>
@@ -609,6 +686,33 @@ export default function OwnerPanel() {
                 </div>
               </div>
             )}
+
+            {/* ── Global Quick Actions ──────────────────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <Button
+                onClick={() => openSelectBusFor("route")}
+                className="h-20 rounded-[28px] bg-primary/10 hover:bg-primary/15 text-primary border-none shadow-sm flex flex-col items-center justify-center gap-1 group transition-all hover:-translate-y-1"
+              >
+                <MapPin className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="text-[11px] font-black uppercase tracking-tight">Manage Routes</span>
+              </Button>
+
+              <Button
+                onClick={() => openSelectBusFor("board")}
+                className="h-20 rounded-[28px] bg-indigo-500/10 hover:bg-indigo-500/15 text-indigo-600 border-none shadow-sm flex flex-col items-center justify-center gap-1 group transition-all hover:-translate-y-1"
+              >
+                <Activity className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="text-[11px] font-black uppercase tracking-tight">Operations Board</span>
+              </Button>
+
+              <Button
+                onClick={() => navigate('/owner')}
+                className="h-20 rounded-[28px] bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-600 border-none shadow-sm flex flex-col items-center justify-center gap-1 group transition-all hover:-translate-y-1"
+              >
+                <Bus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="text-[11px] font-black uppercase tracking-tight">Fleet Overview</span>
+              </Button>
+            </div>
 
             {/* ── Fleet Table ─────────────────────────────────────────────── */}
             <div className="portal-card overflow-hidden">
@@ -643,7 +747,7 @@ export default function OwnerPanel() {
                     {buses.map((bus: any) => (
                       <tr key={bus._id} className="border-b border-border hover:bg-muted/20 transition-colors">
                         {/* Bus Number */}
-                        <td className="px-4 py-3 font-mono font-bold text-xs text-primary whitespace-nowrap">{bus.busNumber}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-xs text-primary whitespace-nowrap">{formatBusNumber(bus.busNumber)}</td>
 
                         {/* Name — inline editable */}
                         <td className="px-4 py-3 min-w-[130px]">
@@ -816,10 +920,16 @@ export default function OwnerPanel() {
                         {/* ── Rental Toggle ── */}
                         <td className="px-3 py-3">
                           <button
+                            disabled={bus.status !== 'Active'}
                             onClick={() => handleToggleRental(bus._id, bus.isRentalEnabled ?? true)}
-                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 border text-[10px] font-bold transition-all ${(bus.isRentalEnabled ?? true)
-                              ? 'bg-success/10 border-success text-success'
-                              : 'bg-muted border-border text-muted-foreground opacity-50'}`}>
+                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 border text-[10px] font-bold transition-all ${bus.status !== 'Active'
+                                ? 'bg-muted/50 border-muted text-muted-foreground/40 cursor-not-allowed opacity-50'
+                                : (bus.isRentalEnabled ?? true)
+                                  ? 'bg-success/10 border-success text-success'
+                                  : 'bg-muted border-border text-muted-foreground opacity-50'
+                              }`}
+                            title={bus.status !== 'Active' ? "Can only toggle rental when bus is Live" : ""}
+                          >
                             {(bus.isRentalEnabled ?? true)
                               ? <><ToggleRight className="w-3.5 h-3.5" /> ON</>
                               : <><ToggleLeft className="w-3.5 h-3.5" /> OFF</>}
@@ -846,50 +956,64 @@ export default function OwnerPanel() {
                           )}
                         </td>
 
-                        {/* ── Actions ── */}
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1 flex-wrap">
-                            <Button size="sm" variant="outline" className="h-7 text-xs px-2"
-                              onClick={() => navigate(`/owner/route-selection?busNumber=${bus._id}`)}>
-                              <MapPin className="w-3 h-3 mr-1" /> Route
-                            </Button>
-                            {bus.route?.from && (
-                              <div className="flex gap-1 flex-wrap">
-                                <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-success border-success/40 hover:bg-success/10"
-                                  onClick={() => handleRunOnRoute(bus)}>
-                                  <PlayCircle className="w-3 h-3 mr-1" /> Run
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-amber-600 border-amber-500/40 hover:bg-amber-50"
-                                  onClick={async () => {
-                                    if (window.confirm("Repeat this route for a new trip? This will copy all stops and settings.")) {
-                                      try {
-                                        const res = await api.repeatBusRoute(bus._id);
-                                        if (res.success) {
-                                          toast.success("Route cloned! New bus entry created.");
-                                          fetchDashboard();
-                                        }
-                                      } catch (err) { toast.error("Failed to repeat route"); }
-                                    }
-                                  }}>
-                                  <Repeat className="w-3 h-3 mr-1" /> Repeat
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-purple-600 border-purple-500/40 hover:bg-purple-50"
-                                  onClick={() => window.open('http://10.201.205.41:5000/', '_blank')}>
-                                  <Eye className="w-3 h-3 mr-1" /> View Live
-                                </Button>
-                              </div>
-                            )}
-                            <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-info border-info/40 hover:bg-info/10"
-                              onClick={() => openScheduleModal(bus)}>
-                              <Timer className="w-3 h-3 mr-1" />
-                              {bus.schedule?.isScheduleActive ? 'Sched ✓' : 'Schedule'}
-                            </Button>
-                          </div>
+                        {/* ── Actions (Unified Management) ── */}
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            onClick={() => navigate(`/owner/bus/${bus._id}`)}
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-4 gap-2 font-black border-primary text-primary hover:bg-primary hover:text-white transition-all rounded-xl shadow-sm"
+                          >
+                            <Settings className="w-3.5 h-3.5" /> Manage / Info
+                          </Button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* ── Fleet Summary Keys ────────────────────────────────────────── */}
+              <div className="px-5 py-4 bg-muted/20 border-t border-border flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-6">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase opacity-50">Total Busses</span>
+                    <span className="text-sm font-black text-primary flex items-center gap-1.5">
+                      <Bus className="w-3.5 h-3.5" /> {dashboardData?.buses?.length || 0}
+                    </span>
+                  </div>
+                  <div className="w-px h-6 bg-border/50"></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase opacity-50">Active</span>
+                    <span className="text-sm font-black text-success flex items-center gap-1.5">
+                      <Wifi className="w-3.5 h-3.5" /> {dashboardData?.buses?.filter((b: any) => b.status === "Active").length || 0}
+                    </span>
+                  </div>
+                  <div className="w-px h-6 bg-border/50"></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase opacity-50">Offline</span>
+                    <span className="text-sm font-black text-warning flex items-center gap-1.5">
+                      <WifiOff className="w-3.5 h-3.5" /> {dashboardData?.buses?.filter((b: any) => b.status === "Temp-Offline").length || 0}
+                    </span>
+                  </div>
+                  <div className="w-px h-6 bg-border/50"></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase opacity-50">Inactive</span>
+                    <span className="text-sm font-black text-muted-foreground flex items-center gap-1.5">
+                      <Power className="w-3.5 h-3.5" /> {dashboardData?.buses?.filter((b: any) => b.status === "Inactive").length || 0}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 bg-background rounded-xl border border-border shadow-sm flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-black text-muted-foreground uppercase">Total Fleet Capacity:</span>
+                    <span className="text-xs font-black text-primary">
+                      {dashboardData?.buses?.reduce((acc: number, b: any) => acc + (b.totalSeats || 0), 0) || 0} Seats
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1701,6 +1825,199 @@ export default function OwnerPanel() {
           </div>
         )}
 
+        {/* ===== SAFETY & SOS DASHBOARD ===== */}
+        {activeRoot === "sos" && (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="portal-card p-6 border-l-8 border-red-600 bg-red-50/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center text-white shadow-lg shadow-red-200">
+                    <ShieldCheck className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-red-700 tracking-tight uppercase underline decoration-red-200 underline-offset-4">Safety & SOS Command</h2>
+                    <p className="text-xs font-bold text-red-600/60 mt-1 uppercase tracking-widest">Real-time Emergency Response System</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="px-4 py-2 bg-white rounded-xl border border-red-100 shadow-sm flex flex-col items-center">
+                    <span className="text-[10px] font-black text-red-600/40 uppercase">Active Alerts</span>
+                    <span className="text-lg font-black text-red-600">{sosAlerts.filter(a => a.status === 'Active').length}</span>
+                  </div>
+                  <div className="px-4 py-2 bg-white rounded-xl border border-red-100 shadow-sm flex flex-col items-center">
+                    <span className="text-[10px] font-black text-emerald-600/40 uppercase">Resolved Today</span>
+                    <span className="text-lg font-black text-emerald-600">{sosAlerts.filter(a => a.status === 'Resolved' && new Date(a.updatedAt).toDateString() === new Date().toDateString()).length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Emergency Feed */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-red-500" />
+                    Live SOS Feed
+                  </h3>
+                  <Badge variant="outline" className="font-black text-[9px]">{sosAlerts.length} Total Logs</Badge>
+                </div>
+
+                {sosAlerts.length === 0 ? (
+                  <div className="rounded-[32px] border-dashed border-2 border-border p-12 flex flex-col items-center justify-center text-center opacity-40">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                      <AlertCircle className="w-8 h-8" />
+                    </div>
+                    <p className="font-black text-lg">System Secure</p>
+                    <p className="text-xs font-bold uppercase tracking-widest">No emergency alerts detected in the fleet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sosAlerts.map((alert: any) => (
+                      <div key={alert._id} className={`rounded-[28px] overflow-hidden border-2 bg-card transition-all ${alert.status === 'Active' ? 'border-red-500 shadow-xl shadow-red-100' : 'border-transparent bg-muted/20 opacity-80'}`}>
+                        <div className="p-5">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-3 rounded-2xl ${alert.status === 'Active' ? 'bg-red-600 text-white animate-pulse' : 'bg-muted text-muted-foreground'}`}>
+                                <AlertCircle className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-black text-lg tracking-tight">{alert.type} Alert</h4>
+                                  <Badge className={alert.status === 'Active' ? 'bg-red-600' : 'bg-muted-foreground'}>{alert.status}</Badge>
+                                </div>
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                                  Bus {alert.bus?.busNumber || 'Unknown'} • {alert.bus?.route?.from || '?'} → {alert.bus?.route?.to || '?'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs font-black">{format(new Date(alert.createdAt), 'hh:mm a')}</p>
+                              <p className="text-[9px] font-bold text-muted-foreground">{format(new Date(alert.createdAt), 'dd MMM yyyy')}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                            <div className="space-y-3">
+                              <div className="p-3 rounded-2xl bg-background border border-border/50">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase mb-1 flex items-center gap-1">
+                                  <UserPlus className="w-3 h-3 text-blue-500" /> Staff on Board
+                                </p>
+                                <p className="text-sm font-black">{alert.user?.name || "Unknown Driver"}</p>
+                                <p className="text-[10px] font-bold text-muted-foreground">{alert.user?.phone || "No phone recorded"}</p>
+                              </div>
+                              <div className="p-3 rounded-2xl bg-background border border-border/50">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase mb-1 flex items-center gap-1">
+                                  <Edit className="w-3 h-3 text-amber-500" /> Issue Description
+                                </p>
+                                <p className="text-xs font-bold italic leading-relaxed">
+                                  "{alert.type === 'SOS' ? "Manual Emergency Triggered" : alert.description || "No additional details provided"}"
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="p-3 rounded-2xl bg-background border border-border/50">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase mb-1 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-red-500" /> Alert Location
+                                </p>
+                                <p className="text-xs font-black truncate">{alert.location?.address || "Fetching address..."}</p>
+                                <p className="text-[9px] font-mono opacity-40">{alert.location?.latitude?.toFixed(6)}, {alert.location?.longitude?.toFixed(6)}</p>
+                                <Button
+                                  variant="link"
+                                  className="h-6 p-0 text-[10px] font-black text-primary uppercase mt-1"
+                                  onClick={() => window.open(`https://www.google.com/maps?q=${alert.location?.latitude},${alert.location?.longitude}`, '_blank')}
+                                >
+                                  View on Google Maps →
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {alert.status === 'Active' && (
+                            <div className="flex gap-3 pt-2 border-t border-border/50 mt-2">
+                              <Button
+                                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-emerald-100"
+                                onClick={() => handleSOSStatus(alert._id, 'Resolved')}
+                              >
+                                Mark as Resolved
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="flex-1 h-12 rounded-2xl border-red-100 text-red-600 hover:bg-red-50 font-black uppercase text-xs tracking-widest"
+                                onClick={() => handleSOSStatus(alert._id, 'False Alarm')}
+                              >
+                                False Alarm
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sidebar Info */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-black text-primary uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-500" />
+                    Live Fleet Locations
+                  </h3>
+                  <div className="bg-card rounded-[32px] border border-border p-5 space-y-4 shadow-sm">
+                    {dashboardData?.buses?.filter((b: any) => b.status === "Active").length === 0 ? (
+                      <p className="text-center py-4 text-xs font-bold text-muted-foreground">No active buses on route.</p>
+                    ) : (
+                      dashboardData.buses.filter((b: any) => b.status === "Active").map((bus: any) => (
+                        <div key={bus._id} className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 border border-transparent hover:border-primary/20 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-success/10 text-success flex items-center justify-center">
+                              <Bus className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black">{bus.busNumber}</p>
+                              <p className="text-[9px] font-bold text-muted-foreground uppercase">{bus.route?.from} → {bus.route?.to}</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 rounded-full text-primary"
+                            onClick={() => navigate(`/tracking/${bus.busNumber}`)}
+                          >
+                            <MapPin className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[32px] p-5 bg-primary/5 border border-primary/10 space-y-3">
+                  <h4 className="font-black text-xs uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" /> Safety Protocol
+                  </h4>
+                  <ul className="space-y-3">
+                    <li className="text-[10px] font-bold text-muted-foreground flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1 flex-shrink-0" />
+                      <span>Staff can trigger SOS directly from the Employee Panel.</span>
+                    </li>
+                    <li className="text-[10px] font-bold text-muted-foreground flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1 flex-shrink-0" />
+                      <span>Live location is automatically broadcasted during active SOS.</span>
+                    </li>
+                    <li className="text-[10px] font-bold text-muted-foreground flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1 flex-shrink-0" />
+                      <span>Always contact authorities for serious medical or safety crises.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeRoot === "bookings" && (
           <div className="portal-card overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-card text-card-foreground">
@@ -1794,13 +2111,20 @@ export default function OwnerPanel() {
                               </td>
                               <td className="px-4 py-3">
                                 <p className="font-bold text-primary flex items-center gap-1.5"><Bus className="w-3.5 h-3.5" /> {b.bus?.busNumber}</p>
-                                <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">{b.bus?.route?.from || 'Unknown'} → {b.bus?.route?.to || 'Unknown'}</p>
+                                <div className="mt-1 space-y-0.5">
+                                  <p className="text-[10px] font-semibold text-muted-foreground">{b.bus?.route?.from} → {b.bus?.route?.to}</p>
+                                  {(b.fromStop || b.toStop) && (
+                                    <p className="text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded-full w-fit flex items-center gap-1">
+                                      <MapPin className="w-2.5 h-2.5" /> {b.fromStop || '?'} ↔ {b.toStop || '?'}
+                                    </p>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-4 py-3">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-1.5 mb-1 opacity-60">
                                     <Users className="w-2.5 h-2.5" />
-                                    <span className="text-[9px] font-black uppercase tracking-wider">Booked by: {b.user?.name || 'Guest'}</span>
+                                    <p className="text-[9px] font-black uppercase tracking-wider">Booked by: {b.user?.name || 'Guest'} ({b.passengers?.length || 1} pass)</p>
                                   </div>
                                   {b.passengers?.map((p: any, idx: number) => (
                                     <div key={idx} className="flex items-center gap-2">
@@ -2071,7 +2395,7 @@ export default function OwnerPanel() {
                                     <code className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">{emp.driverCode}</code>
                                     <button onClick={() => { navigator.clipboard.writeText(emp.driverCode); toast.success('Driver code copied!'); }}
                                       className="p-0.5 rounded hover:bg-primary/20 transition-colors">
-                                      <Copy className="w-2.5 h-2.5 text-primary" />
+                                      <Copy className="w-2.5 h-2.5" />
                                     </button>
                                   </div>
                                 )}
@@ -2425,6 +2749,61 @@ export default function OwnerPanel() {
           </div>
         </div>
       )}
+      {/* ── Global Bus Selection Modal ── */}
+      <Dialog open={showSelectBusModal} onOpenChange={setShowSelectBusModal}>
+        <DialogContent className="max-w-md rounded-[32px] border-none shadow-2xl p-0 overflow-hidden bg-card/95 backdrop-blur-xl">
+          <div className="p-6 border-b border-border/50 bg-gradient-to-br from-primary/5 to-transparent">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                  {pendingSelectionAction === 'route' ? <MapPin className="w-5 h-5" /> :
+                    pendingSelectionAction === 'board' ? <Activity className="w-5 h-5" /> :
+                      <Bus className="w-5 h-5" />}
+                </div>
+                SELECT VEHICLE
+              </DialogTitle>
+              <DialogDescription className="text-xs font-bold text-muted-foreground opacity-60">
+                Which bus would you like to {pendingSelectionAction === 'route' ? 'manage the route for' : 'view the board for'}?
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="p-4 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-40" />
+              <Input
+                placeholder="Search Bus Number..."
+                value={busSearchQuery}
+                onChange={(e) => setBusSearchQuery(e.target.value)}
+                className="h-11 pl-10 rounded-2xl border-border bg-muted/30 font-bold focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 thin-scrollbar">
+              {buses
+                .filter(b => b.busNumber.toLowerCase().includes(busSearchQuery.toLowerCase()))
+                .map(bus => (
+                  <button
+                    key={bus._id}
+                    onClick={() => handleGlobalShortcutBusSelect(bus._id)}
+                    className="w-full p-4 rounded-2xl border border-border bg-background hover:border-primary hover:bg-primary/5 transition-all text-left group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-primary group-hover:bg-primary/10 transition-colors">
+                        <Bus className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-tight">{bus.busNumber}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground opacity-60 uppercase">{bus.busType}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                  </button>
+                ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout >
   );
 }

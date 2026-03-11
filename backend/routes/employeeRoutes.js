@@ -102,6 +102,16 @@ router.post('/go-onair', verifyToken, async (req, res) => {
             { $setOnInsert: { owner: bus.owner, checkIn: new Date(), present: true, notes: `Role: ${role || 'Driver'}` } },
             { upsert: true, new: true }
         );
+
+        // ─── Update Live Bus Snapshot ───
+        if ((role || 'Driver') === 'Driver') {
+            bus.currentDriver = emp.userId || userId;
+            bus.currentDriverName = emp.name;
+        } else {
+            bus.currentConductor = emp.name;
+        }
+        await bus.save();
+
         res.json({ success: true, attendanceId: att._id, checkIn: att.checkIn, bus: { _id: bus._id, busNumber: bus.busNumber, name: bus.name, route: bus.route }, employee: emp });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -130,6 +140,13 @@ router.post('/check-out', verifyToken, async (req, res) => {
         const bookings = await Booking.find({ bus: busId, date: { $gte: startOfDay, $lte: endOfDay } });
         const cashTotal = bookings.filter(b => b.paymentMethod === 'Cash').reduce((s, b) => s + b.amount, 0);
         const onlineTotal = bookings.filter(b => b.paymentMethod !== 'Cash').reduce((s, b) => s + b.amount, 0);
+
+        // ─── Update Live Bus Snapshot ───
+        await Bus.findByIdAndUpdate(busId, {
+            currentDriver: null,
+            currentDriverName: null,
+            currentConductor: null
+        });
 
         res.json({ success: true, hoursWorked: rec.hoursWorked, checkIn: rec.checkIn, checkOut: rec.checkOut, shiftSummary: { totalTickets: bookings.length, cashCollected: cashTotal, onlineCollected: onlineTotal, totalRevenue: cashTotal + onlineTotal } });
     } catch (err) { res.status(500).json({ message: err.message }); }

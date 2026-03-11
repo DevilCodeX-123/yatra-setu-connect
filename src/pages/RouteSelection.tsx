@@ -1,17 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import API_BASE_URL from '@/lib/api';
+import { useNavigate, useSearchParams } from "react-router-dom";
+import API_BASE_URL, { api } from '@/lib/api';
 import {
-    ArrowLeft, MapPin, Plus, Trash2, GripVertical, Save, Sparkles, Navigation, Map as MapIcon,
-    Search, Loader2
+    ArrowLeft, Trash2, GripVertical, Save, Map as MapIcon,
+    Loader2, BookOpen, Bus, X, RotateCcw, CheckCircle2,
+    Clock, IndianRupee, PlayCircle, Lock, Unlock, Zap, Edit, ArrowRight, ArrowLeftRight, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import MapplsMap from "@/components/MapplsMap";
+import { format } from "date-fns";
 
-// Fallback coordinates (used only if API search fails and user types manually)
 const FALLBACK_COORDINATES: Record<string, { lat: number, lon: number }> = {
     "bengaluru central": { lat: 12.9716, lon: 77.5946 },
     "majestic": { lat: 12.9767, lon: 77.5714 },
@@ -23,481 +26,429 @@ const FALLBACK_COORDINATES: Record<string, { lat: number, lon: number }> = {
 };
 
 interface Stop {
-    id: string;
-    name: string;
-    order: number;
-    lat: number;
-    lng: number;
+    id: string; name: string; order: number; lat: number; lng: number;
+    priceFromPrev: number; // ₹ from previous stop
+    minsFromPrev: number;  // travel time from previous stop
 }
+interface Suggestion { placeName: string; placeAddress: string; lat: number; lng: number; eLoc: string; type: string; }
 
-interface Suggestion {
-    placeName: string;
-    placeAddress: string;
-    lat: number;
-    lng: number;
-    eLoc: string;
-    type: string;
-}
-
-export default function RouteSelection() {
-    const navigate = useNavigate();
-    const [stops, setStops] = useState<Stop[]>(() => {
-        const saved = localStorage.getItem("yatra_setu_stops_v2");
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].lat !== undefined) {
-                    return parsed;
-                }
-            } catch (e) { }
-        }
-        return [
-            { id: "1", name: "Bengaluru Central", order: 0, lat: 12.9716, lng: 77.5946 },
-            { id: "2", name: "Mysuru", order: 1, lat: 12.2958, lng: 76.6394 },
-        ];
+function computeArrivalTimes(stops: any[], startTime: string): string[] {
+    if (!startTime) return stops.map(() => '');
+    const [h, m] = startTime.split(':').map(Number);
+    let total = h * 60 + m;
+    return stops.map((s, i) => {
+        if (i > 0) total += (s.minsFromPrev || 0);
+        const hr = Math.floor(total / 60) % 24;
+        const mn = total % 60;
+        return `${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
     });
+}
 
-    // Search states
-    const [searchQuery, setSearchQuery] = useState("");
+export default function RouteSelection({ embedded = false, targetBusId = null }: { embedded?: boolean, targetBusId?: string | null }) {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const urlBusId = targetBusId || searchParams.get('busNumber');
+    const [activeTab, setActiveTab] = useState<'builder' | 'library' | 'assign'>(embedded ? 'library' : 'builder');
+
+    // Builder State
+    const [stops, setStops] = useState<Stop[]>([]);
+    const [markers, setMarkers] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [routeName, setRouteName] = useState('');
+    const [isReversed, setIsReversed] = useState(false);
+
+    // Library State
+    const [savedRoutes, setSavedRoutes] = useState<any[]>([]);
+    const [loadingRoutes, setLoadingRoutes] = useState(false);
+
+    // Sidebar/Bus State
+    const [buses, setBuses] = useState<any[]>([]);
+
+    // Activation modal state
+    const [activating, setActivating] = useState<{ routeId: string; variantIdx: number } | null>(null);
+    const [activateBusId, setActivateBusId] = useState('');
+    const [activateStartTime, setActivateStartTime] = useState('');
+    const [activateLoading, setActivateLoading] = useState(false);
+
     const searchRef = useRef<HTMLDivElement>(null);
     const debounceTimer = useRef<any>(null);
 
-    // Drag state
-    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-    const [isSuggesting, setIsSuggesting] = useState(false);
-
-    // Map state
-    const [markers, setMarkers] = useState<any[]>([]);
-    const [routePoints, setRoutePoints] = useState("");
-    const [busNumber, setBusNumber] = useState<string | null>(null);
-
-    // Initial load from backend
+    // Initial load
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const bNum = params.get("busNumber");
-        if (bNum) {
-            setBusNumber(bNum);
-            fetchBusData(bNum);
-        }
-    }, []);
-
-    const fetchBusData = async (bNum: string) => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/buses/${bNum}/route`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.route && data.route.stops && data.route.stops.length > 0) {
-                    const formattedStops = data.route.stops.map((s: any, i: number) => ({
-                        id: Math.random().toString(36).substr(2, 9),
-                        name: s.name,
-                        order: i,
-                        lat: s.lat,
-                        lng: s.lng
-                    }));
-                    setStops(formattedStops);
-                    toast.success(`Loaded ${formattedStops.length} saved stops`);
+        api.getOwnerDashboard().then(res => {
+            if (res.buses) {
+                setBuses(res.buses);
+                // Pre-select bus if provided in URL or prop
+                if (urlBusId) {
+                    const bus = res.buses.find((b: any) => b._id === urlBusId);
+                    if (bus) {
+                        setActivateBusId(urlBusId);
+                        if (!embedded) setActiveTab('library');
+                    }
                 }
-            } else {
-                toast.error("Bus details not found. Using default stops.");
             }
-        } catch (err) {
-            console.error("Fetch failed:", err);
-            toast.error("Failed to fetch bus data from server.");
-        }
+        }).catch(console.error);
+        fetchSavedRoutes();
+        // Mock default route
+        setStops([
+            { id: '1', name: 'Bengaluru Central', order: 0, lat: 12.9716, lng: 77.5946, priceFromPrev: 0, minsFromPrev: 0 },
+            { id: '2', name: 'Mysuru', order: 1, lat: 12.2958, lng: 76.6394, priceFromPrev: 150, minsFromPrev: 90 },
+        ]);
+    }, [urlBusId]);
+
+    const fetchSavedRoutes = async () => {
+        setLoadingRoutes(true);
+        try {
+            const res = await api.getOwnerRoutes();
+            if (res.success) setSavedRoutes(res.routes);
+        } catch (err) { console.error(err); }
+        finally { setLoadingRoutes(false); }
     };
 
-    // Persist stops locally as backup
     useEffect(() => {
-        localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
+        setMarkers(stops.map((s, i) => ({
+            lat: s.lat, lon: s.lng,
+            label: i === 0 ? `START: ${s.name}` : i === stops.length - 1 ? `END: ${s.name}` : s.name
+        })));
     }, [stops]);
 
-    // Update map data
     useEffect(() => {
-        const newMarkers = stops.map((stop, index) => {
-            let label = stop.name;
-            if (index === 0) label = `START: ${stop.name}`;
-            else if (index === stops.length - 1) label = `END: ${stop.name}`;
-            else label = `STOP ${index}: ${stop.name}`;
-
-            return {
-                lat: stop.lat,
-                lon: stop.lng,
-                label: label
-            };
-        });
-        setMarkers(newMarkers);
-
-        const pts = newMarkers.map(m => `${m.lon},${m.lat}`).join(';');
-        setRoutePoints(pts);
-    }, [stops]);
-
-    // Close suggestions when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-                setShowSuggestions(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        const h = (e: MouseEvent) => { if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowSuggestions(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
     }, []);
 
-    // ===== SEARCH with Mappls API =====
     const searchPlaces = useCallback(async (query: string) => {
-        if (query.trim().length < 2) {
-            setSuggestions([]);
-            return;
-        }
-
-        setIsSearching(true);
+        if (query.trim().length < 2) { setSuggestions([]); return; }
         try {
             const res = await fetch(`${API_BASE_URL}/maps/search?q=${encodeURIComponent(query)}`);
             const data = await res.json();
-
-            if (data.suggestions && data.suggestions.length > 0) {
-                setSuggestions(data.suggestions.slice(0, 6));
-            } else {
-                setSuggestions([]);
-            }
-        } catch (err) {
-            console.error("Search failed:", err);
-            setSuggestions([]);
-        } finally {
-            setIsSearching(false);
-        }
+            setSuggestions(data.suggestions?.slice(0, 6) || []);
+        } catch { setSuggestions([]); }
     }, []);
 
-    // Debounced search
-    const handleSearchInput = (value: string) => {
-        setSearchQuery(value);
+    const handleSearchInput = (val: string) => {
+        setSearchQuery(val);
         setShowSuggestions(true);
-
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(() => {
-            searchPlaces(value);
-        }, 400);
+        debounceTimer.current = setTimeout(() => searchPlaces(val), 400);
     };
 
-    // ===== ADD STOP FROM SUGGESTION =====
-    const addStopFromSuggestion = (suggestion: Suggestion) => {
-        const stop: Stop = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: suggestion.placeName || suggestion.placeAddress.split(',')[0],
-            order: stops.length,
-            lat: suggestion.lat,
-            lng: suggestion.lng,
-        };
-        setStops([...stops, stop]);
-        setSearchQuery("");
-        setSuggestions([]);
-        setShowSuggestions(false);
-        toast.success(`📍 ${stop.name} added to route`);
-    };
-
-    // ===== ADD STOP MANUALLY (with fallback coordinates) =====
-    const addStopManually = () => {
-        if (!searchQuery.trim()) return;
-        const name = searchQuery.trim();
-        const key = name.toLowerCase();
-        const fallback = FALLBACK_COORDINATES[key];
-
-        if (fallback) {
-            const stop: Stop = {
-                id: Math.random().toString(36).substr(2, 9),
-                name: name,
-                order: stops.length,
-                lat: fallback.lat,
-                lng: fallback.lon,
-            };
-            setStops([...stops, stop]);
-            toast.success(`📍 ${name} added to route`);
-        } else {
-            toast.error("Please select a location from the suggestions for accurate mapping.");
-            return;
-        }
-
-        setSearchQuery("");
+    const addStopFromSuggestion = (s: Suggestion) => {
+        const newStop: Stop = { id: Math.random().toString(36).substr(2, 9), name: s.placeName, lat: s.lat, lng: s.lng, order: stops.length, priceFromPrev: 0, minsFromPrev: 0 };
+        setStops([...stops, newStop]);
+        setSearchQuery('');
         setSuggestions([]);
         setShowSuggestions(false);
     };
 
     const removeStop = (id: string) => {
-        if (stops.length <= 2) {
-            toast.error("A route must have at least 2 stations (Start & End)");
-            return;
-        }
         setStops(stops.filter(s => s.id !== id).map((s, i) => ({ ...s, order: i })));
-        toast.info("Stop removed");
     };
 
-    // Drag & Drop
-    const onDragStart = (e: React.DragEvent, index: number) => {
-        setDraggedIndex(index);
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", index.toString());
+    const updateStopPricing = (id: string, field: 'priceFromPrev' | 'minsFromPrev', val: number) => {
+        setStops(stops.map(s => s.id === id ? { ...s, [field]: val } : s));
     };
-    const onDragOver = (e: React.DragEvent, index: number) => {
+
+    const onDragStart = (idx: number) => setDraggedIndex(idx);
+    const onDragOver = (e: React.DragEvent, idx: number) => {
         e.preventDefault();
-        if (draggedIndex === null || draggedIndex === index) return;
+        if (draggedIndex === null || draggedIndex === idx) return;
         const newStops = [...stops];
         const item = newStops.splice(draggedIndex, 1)[0];
-        newStops.splice(index, 0, item);
+        newStops.splice(idx, 0, item);
         setStops(newStops.map((s, i) => ({ ...s, order: i })));
-        setDraggedIndex(index);
+        setDraggedIndex(idx);
     };
     const onDragEnd = () => setDraggedIndex(null);
 
-    const autoSuggestPath = () => {
-        setIsSuggesting(true);
-        toast.loading("Analyzing traffic and distance...");
-        setTimeout(() => {
-            const suggested = [...stops].sort((a, b) => a.name.localeCompare(b.name));
-            setStops(suggested.map((s, i) => ({ ...s, order: i })));
-            setIsSuggesting(false);
-            toast.dismiss();
-            toast.success("Smart Path Suggested!", { icon: <Sparkles className="w-4 h-4 text-primary-light" /> });
-        }, 1500);
+    const handleReverseRoute = () => {
+        setStops([...stops].reverse().map((s, i) => ({ ...s, order: i, priceFromPrev: 0, minsFromPrev: 0 })));
+        setIsReversed(!isReversed);
     };
 
-    const handleSave = async () => {
-        if (stops.length < 2) {
-            toast.error("Please add at least 2 stops");
-            return;
-        }
-
-        if (busNumber) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/buses/${busNumber}/route`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        from: stops[0].name,
-                        to: stops[stops.length - 1].name,
-                        stops: stops.map(s => ({ name: s.name, lat: s.lat, lng: s.lng }))
-                    })
-                });
-
-                if (response.ok) {
-                    toast.success("Route saved to database successfully!");
-                    localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
-                    setTimeout(() => navigate("/owner"), 1000);
-                } else {
-                    const data = await response.json();
-                    toast.error(data.message || "Failed to save route to database");
-                }
-            } catch (err) {
-                console.error("Save failed:", err);
-                toast.error("Connection error. Could not save to database.");
+    const handleSaveToLibrary = async () => {
+        if (stops.length < 2) return toast.error("Need at least 2 stops");
+        if (!routeName.trim()) return toast.error("Give this route a name");
+        try {
+            const res = await api.createOwnerRoute({
+                name: routeName,
+                stops: stops.map(s => ({ name: s.name, lat: s.lat, lng: s.lng, priceFromPrev: s.priceFromPrev, minsFromPrev: s.minsFromPrev }))
+            });
+            if (res.success) {
+                toast.success("Route saved and variants created!");
+                setSavedRoutes([res.route, ...savedRoutes]);
+                setActiveTab('library');
             }
-        } else {
-            // Fallback for when no bus context is present
-            localStorage.setItem("yatra_setu_stops_v2", JSON.stringify(stops));
-            toast.success("Route path saved locally (No bus selected)");
-            setTimeout(() => navigate("/owner"), 1000);
-        }
+        } catch (err) { toast.error("Failed to save route"); }
     };
 
-    return (
-        <div className="min-h-screen bg-background p-4 md:p-8">
-            <div className="max-w-4xl mx-auto space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigate("/owner")} className="rounded-full hover:bg-card shadow-sm border border-border">
-                            <ArrowLeft className="w-5 h-5 text-foreground opacity-60" />
-                        </Button>
-                        <div>
-                            <h1 className="text-3xl font-black text-primary">Route Selection</h1>
-                            <p className="text-sm text-muted-foreground font-black opacity-60">Design and optimize your bus route paths</p>
-                        </div>
-                    </div>
-                    <Button className="rounded-2xl h-12 px-8 font-black gap-2 shadow-lg shadow-primary/20 " onClick={handleSave}>
-                        <Save className="w-4 h-4" /> Save Route
-                    </Button>
-                </div>
+    const handleDeleteRoute = async (id: string) => {
+        if (!confirm("Delete this route from library?")) return;
+        try {
+            const res = await api.deleteOwnerRoute(id);
+            if (res.success) setSavedRoutes(savedRoutes.filter(r => r._id !== id));
+        } catch (err) { toast.error("Failed to delete"); }
+    };
 
-                {/* Interactive Map Hero */}
-                <Card className="border border-border shadow-card rounded-3xl overflow-hidden bg-secondary h-[450px]">
-                    <MapplsMap markers={markers} className="h-full" />
-                </Card>
+    const handleBlockVariant = async (routeId: string, variantIdx: number, currentStatus: boolean) => {
+        try {
+            const res = await api.blockRouteVariant(routeId, variantIdx, !currentStatus);
+            if (res.success) fetchSavedRoutes();
+        } catch (err) { toast.error("Update failed"); }
+    };
 
-                <div className="grid md:grid-cols-5 gap-6">
-                    {/* Stops List */}
-                    <div className="md:col-span-3 space-y-4">
-                        <Card className="border border-border shadow-card rounded-3xl overflow-hidden">
-                            <CardHeader className="bg-primary text-primary-foreground pb-6">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-xl font-black flex items-center gap-2">
-                                        <Navigation className="w-5 h-5" /> Manage Stops
-                                    </CardTitle>
-                                    <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full leading-none">
-                                        {stops.length} STATIONS
-                                    </span>
+    const handleActivateVariant = async () => {
+        if (!activateBusId || !activating) return toast.error("missing params");
+        setActivateLoading(true);
+        try {
+            const res = await api.activateRouteVariant(activating.routeId, activating.variantIdx, { busId: activateBusId, startTime: activateStartTime });
+            if (res.success) {
+                toast.success("Route Activted & Bus is Live!");
+                setActivating(null);
+                setActivateBusId('');
+                setActivateStartTime('');
+            }
+        } catch (err) { toast.error("Activation failed"); }
+        finally { setActivateLoading(false); }
+    };
+
+    // ===== Computed arrival times for preview
+    const previewArrivalTimes = (activateStartTime && activating)
+        ? computeArrivalTimes(
+            savedRoutes.find(r => r._id === activating.routeId)?.variants?.[activating.variantIdx]?.stops || [],
+            activateStartTime
+        )
+        : [];
+
+    const activatingRoute = activating ? savedRoutes.find(r => r._id === activating.routeId) : null;
+    const activatingVariant = activatingRoute?.variants?.[activating?.variantIdx ?? 0];
+
+    const renderContent = () => (
+        <>
+            {/* ROUTE BUILDER TAB */}
+            {activeTab === 'builder' && (
+                <div className="grid lg:grid-cols-5 gap-6 animate-in fade-in">
+                    <div className="lg:col-span-3 space-y-4">
+                        <Card className="border border-border rounded-3xl overflow-hidden">
+                            <div className="p-3 bg-primary/5 flex items-center justify-between border-b border-border/50">
+                                <div className="flex gap-2">
+                                    <Button onClick={handleReverseRoute} variant="outline" size="sm" className="h-8 text-xs gap-1.5 font-black border-primary text-primary rounded-xl bg-transparent">
+                                        <RotateCcw className="w-3 h-3" /> REVERSE
+                                    </Button>
                                 </div>
-                                <CardDescription className="text-primary-foreground/70 font-black text-[10px]">Search and add locations from Mappls for accurate mapping.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="pt-6 space-y-4">
-                                {/* ===== SEARCH INPUT WITH AUTOCOMPLETE ===== */}
+                                <span className="text-[10px] font-black text-muted-foreground opacity-50">{stops.length} STOPS</span>
+                            </div>
+                            <CardContent className="p-4 space-y-4">
+                                <Input placeholder="Route Name (e.g. Bengaluru Express)" value={routeName} onChange={e => setRouteName(e.target.value)} className="h-10 bg-secondary border-border rounded-xl font-bold text-xs" />
                                 <div ref={searchRef} className="relative">
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-40" />
-                                            <Input
-                                                placeholder="Search for a location..."
-                                                className="pl-10 h-12 bg-secondary border border-border rounded-xl pr-10 font-black text-[10px] placeholder:opacity-40"
-                                                value={searchQuery}
-                                                onChange={(e) => handleSearchInput(e.target.value)}
-                                                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        if (suggestions.length > 0) {
-                                                            addStopFromSuggestion(suggestions[0]);
-                                                        } else {
-                                                            addStopManually();
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                            {isSearching && (
-                                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
-                                            )}
-                                        </div>
-                                        <Button
-                                            onClick={() => {
-                                                if (suggestions.length > 0) addStopFromSuggestion(suggestions[0]);
-                                                else addStopManually();
-                                            }}
-                                            className="h-12 w-12 rounded-xl"
-                                        >
-                                            <Plus className="w-5 h-5" />
-                                        </Button>
-                                    </div>
-
-                                    {/* ===== SUGGESTIONS DROPDOWN ===== */}
+                                    <Input placeholder="Search city/location to add stop..." className="h-11 bg-secondary border-border rounded-xl font-bold text-xs"
+                                        value={searchQuery} onChange={e => handleSearchInput(e.target.value)}
+                                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)} />
                                     {showSuggestions && suggestions.length > 0 && (
-                                        <div className="absolute z-50 w-full mt-2 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
+                                        <div className="absolute z-50 w-full mt-2 bg-card rounded-xl shadow-xl border border-border p-2">
                                             {suggestions.map((s, i) => (
-                                                <button
-                                                    key={i}
-                                                    className="w-full flex items-start gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left border-b border-border last:border-none"
-                                                    onClick={() => addStopFromSuggestion(s)}
-                                                >
-                                                    <MapPin className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-black text-xs text-foreground truncate ">{s.placeName}</p>
-                                                        <p className="text-[10px] text-muted-foreground truncate font-black opacity-40">{s.placeAddress}</p>
-                                                    </div>
-                                                    <span className="text-[9px] font-black text-muted-foreground mt-1 opacity-40">{s.type}</span>
+                                                <button key={i} onClick={() => addStopFromSuggestion(s)} className="w-full p-3 text-left hover:bg-muted rounded-lg flex flex-col gap-0.5 transition-colors">
+                                                    <span className="text-xs font-black">{s.placeName}</span>
+                                                    <span className="text-[10px] text-muted-foreground opacity-70 truncate">{s.placeAddress}</span>
                                                 </button>
                                             ))}
                                         </div>
                                     )}
-
-                                    {showSuggestions && searchQuery.length >= 2 && suggestions.length === 0 && !isSearching && (
-                                        <div className="absolute z-50 w-full mt-2 bg-card rounded-2xl shadow-2xl border border-border p-4 text-center">
-                                            <p className="text-xs text-muted-foreground font-black opacity-40">No locations found. Try a different search term.</p>
-                                        </div>
-                                    )}
                                 </div>
 
-                                {/* ===== STOPS LIST ===== */}
-                                <div className="space-y-2 mt-6">
-                                    {stops.map((stop, index) => (
-                                        <div
-                                            key={stop.id}
-                                            draggable
-                                            onDragStart={(e) => onDragStart(e, index)}
-                                            onDragOver={(e) => onDragOver(e, index)}
-                                            onDragEnd={onDragEnd}
-                                            className={`flex items-center gap-3 p-4 bg-secondary rounded-2xl border border-border transition-all group cursor-grab active:cursor-grabbing ${draggedIndex === index ? "opacity-30 border-dashed border-primary" : "hover:border-primary/20"
-                                                }`}
-                                        >
-                                            <div className="flex flex-col gap-0 items-center">
-                                                <div className="p-1 px-2 text-muted-foreground opacity-20 group-hover:text-primary group-hover:opacity-100 transition-all cursor-grab">
-                                                    <GripVertical className="w-5 h-5" />
+                                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 thin-scrollbar">
+                                    {stops.map((stop, idx) => (
+                                        <div key={stop.id} draggable onDragStart={() => onDragStart(idx)} onDragOver={e => onDragOver(e, idx)} onDragEnd={onDragEnd}
+                                            className={`group relative flex flex-col p-4 rounded-2xl border transition-all ${draggedIndex === idx ? 'opacity-30' : 'bg-card hover:border-primary/40'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className="cursor-grab opacity-30 group-hover:opacity-100"><GripVertical className="w-4 h-4" /></div>
+                                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary">{idx + 1}</div>
+                                                <span className="text-xs font-black uppercase flex-1">{stop.name}</span>
+                                                <button onClick={() => removeStop(stop.id)} className="opacity-0 group-hover:opacity-100 text-destructive p-1 hover:bg-destructive/10 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                                            </div>
+
+                                            {idx > 0 && (
+                                                <div className="mt-3 pt-3 border-t border-dashed flex items-center gap-4 animate-in slide-in-from-top-2">
+                                                    <div className="flex-1 space-y-1">
+                                                        <label className="text-[9px] font-black text-muted-foreground uppercase opacity-50">Pricing from Prev Stop</label>
+                                                        <div className="relative">
+                                                            <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                                                            <Input type="number" placeholder="Fare" value={stop.priceFromPrev} onChange={e => updateStopPricing(stop.id, 'priceFromPrev', Number(e.target.value))} className="pl-7 h-8 text-[11px] font-bold rounded-lg bg-secondary/50 border-none" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 space-y-1">
+                                                        <label className="text-[9px] font-black text-muted-foreground uppercase opacity-50">Time from Prev (mins)</label>
+                                                        <div className="relative">
+                                                            <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                                                            <Input type="number" placeholder="Mins" value={stop.minsFromPrev} onChange={e => updateStopPricing(stop.id, 'minsFromPrev', Number(e.target.value))} className="pl-7 h-8 text-[11px] font-bold rounded-lg bg-secondary/50 border-none" />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-
-                                            <div className="flex-1 flex flex-col min-w-0">
-                                                <span className="text-[9px] font-black text-muted-foreground mb-0.5 opacity-40">
-                                                    {index === 0 ? "STARTING POINT" : index === stops.length - 1 ? "FINAL DESTINATION" : `STOP ${index}`}
-                                                </span>
-                                                <span className="font-black text-sm text-foreground truncate ">{stop.name}</span>
-                                                <span className="text-[9px] text-muted-foreground font-black opacity-40">
-                                                    {stop.lat.toFixed(4)}°N, {stop.lng.toFixed(4)}°E
-                                                </span>
-                                            </div>
-
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="w-8 h-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex-shrink-0 opacity-40 hover:opacity-100"
-                                                onClick={() => removeStop(stop.id)}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             </CardContent>
+                            <div className="p-4 bg-muted/30 border-t border-border/50">
+                                <Button onClick={handleSaveToLibrary} className="w-full rounded-2xl h-12 bg-primary hover:bg-primary/90 text-white font-black shadow-lg shadow-primary/20 gap-2">
+                                    <Save className="w-4 h-4" /> SAVE COMPLETE ROUTE
+                                </Button>
+                            </div>
                         </Card>
                     </div>
 
-                    {/* Path Suggestion & Info */}
-                    <div className="md:col-span-2 space-y-6">
-                        <Card className="border border-border shadow-card rounded-3xl bg-card text-foreground overflow-hidden">
-                            <CardHeader>
-                                <CardTitle className="text-lg font-black flex items-center gap-2">
-                                    <Sparkles className="w-5 h-5 text-primary-light" /> Smart Suggester
-                                </CardTitle>
-                                <CardDescription className="text-muted-foreground font-black text-[9px] opacity-60">Automatic path optimization powered by Yatra Core AI.</CardDescription>
+                    <div className="lg:col-span-2 space-y-4">
+                        <Card className="rounded-3xl border border-border overflow-hidden h-fit sticky top-6">
+                            <CardHeader className="p-4 border-b bg-muted/50">
+                                <CardTitle className="text-sm font-black uppercase flex items-center gap-2"> <MapIcon className="w-4 h-4 text-primary" /> Visual Route Path </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="p-4 bg-secondary rounded-2xl border border-border space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-muted-foreground opacity-40">TOTAL STOPS</span>
-                                        <span className="text-xs font-black text-primary dark:text-primary-light ">{stops.length}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-muted-foreground opacity-40">ROUTE TYPE</span>
-                                        <span className="text-xs font-black text-primary dark:text-primary-light ">Road Following</span>
-                                    </div>
-                                </div>
-
-                                <Button
-                                    className="w-full h-14 rounded-2xl bg-primary-light hover:bg-primary font-black gap-2 text-white shadow-lg shadow-blue-500/20 "
-                                    onClick={autoSuggestPath}
-                                    disabled={isSuggesting}
-                                >
-                                    {isSuggesting ? "Optimizing..." : "Suggest Smart Path"}
-                                </Button>
-
-                                <div className="pt-4 border-t border-border">
-                                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-black opacity-60">
-                                        <MapIcon className="w-4 h-4" />
-                                        <span>Applying to </span>
-                                        <span className="text-foreground underline decoration-amber-500">KA-01-F-1234</span>
-                                    </div>
-                                </div>
-                            </CardContent>
+                            <div className="h-[450px]">
+                                <MapplsMap markers={markers} showPath={true} zoom={7} />
+                            </div>
                         </Card>
-
-                        <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10">
-                            <h4 className="font-black text-primary mb-3 flex items-center gap-2 text-xs">
-                                <Navigation className="w-4 h-4" /> How It Works
-                            </h4>
-                            <ul className="text-[9px] text-muted-foreground font-black tracking-wider leading-relaxed space-y-3 opacity-80">
-                                <li className="flex gap-2"><span>🔍</span> <span>Search for any location using the high-precision bar</span></li>
-                                <li className="flex gap-2"><span>📍</span> <span>Select from Mappls suggestions for exact coordinates</span></li>
-                                <li className="flex gap-2"><span>🔄</span> <span>Drag stops to reorder the route flow</span></li>
-                                <li className="flex gap-2"><span>🗺️</span> <span>Map updates automatically with road-following paths</span></li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
+            )}
+
+            {/* ROUTE LIBRARY TAB */}
+            {activeTab === 'library' && (
+                <div className="space-y-6 animate-in fade-in">
+                    {loadingRoutes ? <div className="flex items-center justify-center p-20"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div> :
+                        savedRoutes.length === 0 ? <div className="p-20 text-center border-2 border-dashed rounded-3xl opacity-40 font-bold text-muted-foreground">No routes found in your library</div> :
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {savedRoutes.map(route => (
+                                    <Card key={route._id} className="rounded-[32px] border-none shadow-sm hover:shadow-xl transition-all group overflow-hidden bg-card/50 backdrop-blur-sm">
+                                        <div className="p-4 border-b border-border/50 bg-gradient-to-r from-muted/50 to-transparent flex items-center justify-between">
+                                            <div>
+                                                <h3 className="font-black text-sm uppercase tracking-tight">{route.name}</h3>
+                                                <p className="text-[10px] font-bold text-muted-foreground opacity-60 uppercase">{route.variants?.length || 0} Variants</p>
+                                            </div>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteRoute(route._id)} className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        </div>
+                                        <CardContent className="p-4 space-y-4">
+                                            {route.variants.map((v: any, vi: number) => (
+                                                <div key={vi} className={`p-4 rounded-[24px] border transition-all ${v.isBlocked ? 'bg-muted/50 grayscale' : 'bg-background hover:border-primary/40'}`}>
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-2 h-2 rounded-full ${v.isBlocked ? 'bg-red-400' : 'bg-emerald-400 animate-pulse'}`}></div>
+                                                            <span className="text-[10px] font-black uppercase opacity-60">Variant {vi + 1}: {v.stops[0]?.name} → {v.stops[v.stops.length - 1]?.name}</span>
+                                                        </div>
+                                                        <div className="flex gap-1.5">
+                                                            <Button onClick={() => handleBlockVariant(route._id, vi, v.isBlocked)} variant="ghost" className={`h-7 px-3 rounded-full text-[9px] font-black ${v.isBlocked ? 'text-primary' : 'text-destructive'}`}>
+                                                                {v.isBlocked ? <Unlock className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />} {v.isBlocked ? 'ENABLE' : 'DISABLE'}
+                                                            </Button>
+                                                            {!v.isBlocked && (
+                                                                <Button onClick={() => setActivating({ routeId: route._id, variantIdx: vi })} className="h-7 px-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black">
+                                                                    <PlayCircle className="w-3 h-3 mr-1" /> GO LIVE
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                        {v.stops.map((s: any, si: number) => (
+                                                            <div key={si} className="flex items-center flex-shrink-0">
+                                                                <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-lg border border-border/50">{s.name}</span>
+                                                                {si < v.stops.length - 1 && <ArrowRight className="w-2.5 h-2.5 mx-1 opacity-20" />}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                    }
+                </div>
+            )}
+
+            {/* ASSIGN TAB */}
+            {activeTab === 'assign' && (
+                <div className="space-y-6 animate-in fade-in">
+                    <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-emerald-50/20">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-black uppercase text-emerald-800">Assign Saved Route to Bus</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {buses.map(bus => (
+                                    <div key={bus._id} className="p-4 rounded-2xl border bg-card/80 backdrop-blur shadow-sm flex flex-col gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-primary"> <Bus className="w-5 h-5" /> </div>
+                                            <div>
+                                                <h4 className="text-xs font-black uppercase tracking-tight">{bus.busNumber}</h4>
+                                                <p className="text-[10px] font-bold text-muted-foreground truncate">{bus.name} • {bus.busType}</p>
+                                            </div>
+                                        </div>
+                                        <div className="px-3 py-2 rounded-xl bg-muted/30 border border-border">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-50 mb-1">Current Status</p>
+                                            <Badge variant={bus.status === 'Active' ? 'success' : 'secondary'} className="text-[8px] h-4 font-black"> {bus.status} </Badge>
+                                        </div>
+                                        <Button variant="outline" className="w-full text-[10px] font-black h-9 rounded-xl border-primary text-primary hover:bg-primary/5"
+                                            onClick={() => { setActiveTab('library'); setActivateBusId(bus._id); }}>
+                                            CHANGE ROUTE
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+        </>
+    );
+
+    if (embedded) {
+        return (
+            <div className="p-0 space-y-6">
+                <div className="flex flex-wrap bg-muted/50 p-1.5 rounded-2xl w-fit border border-border shadow-sm gap-1 ml-6 mt-6">
+                    {[
+                        { id: 'builder', label: 'Route Builder', Icon: MapIcon, acColor: 'bg-primary' },
+                        { id: 'library', label: `Route Library (${savedRoutes.length})`, Icon: BookOpen, acColor: 'bg-indigo-600' },
+                    ].map(({ id, label, Icon, acColor }) => (
+                        <button key={id} onClick={() => { setActiveTab(id as any); if (id === 'library') fetchSavedRoutes(); }}
+                            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 ${activeTab === id ? `${acColor} text-white shadow-md` : 'text-muted-foreground hover:bg-secondary/70'}`}>
+                            <Icon className="w-4 h-4" /> {label}
+                        </button>
+                    ))}
+                </div>
+                <div className="p-6 pt-0">
+                    {renderContent()}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-background p-4 md:p-8">
+            <div className="max-w-6xl mx-auto space-y-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/owner')} className="rounded-full border border-border bg-secondary">
+                        <ArrowLeft className="w-5 h-5 opacity-60" />
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-black text-primary tracking-tight">Route Management</h1>
+                        <p className="text-sm text-muted-foreground font-bold opacity-60 uppercase tracking-wider">Build, timing, assign</p>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap bg-secondary/50 p-1.5 rounded-2xl w-fit border border-border shadow-sm gap-1">
+                    {[
+                        { id: 'builder', label: 'Route Builder', Icon: MapIcon, acColor: 'bg-primary' },
+                        { id: 'library', label: `Route Library (${savedRoutes.length})`, Icon: BookOpen, acColor: 'bg-indigo-600' },
+                        { id: 'assign', label: 'Assign to Bus', Icon: Bus, acColor: 'bg-emerald-600' },
+                    ].map(({ id, label, Icon, acColor }) => (
+                        <button key={id} onClick={() => { setActiveTab(id as any); if (id === 'library') fetchSavedRoutes(); }}
+                            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 ${activeTab === id ? `${acColor} text-white shadow-md` : 'text-muted-foreground hover:bg-secondary/70'}`}>
+                            <Icon className="w-4 h-4" /> {label}
+                        </button>
+                    ))}
+                </div>
+                {renderContent()}
             </div>
         </div>
     );

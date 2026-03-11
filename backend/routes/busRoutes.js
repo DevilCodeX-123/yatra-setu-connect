@@ -140,9 +140,19 @@ router.get('/', async (req, res) => {
     }
     try {
         const buses = await Bus.find().populate('owner', 'upiId');
+
+        // If DB is connected but empty, handle it
+        if (buses.length === 0) {
+            console.log("📢 DB is connected but empty, returning empty array (preventing mock fallback for consistency)");
+            return res.json([]);
+        }
+
         const formatted = buses.map(b => {
             const obj = b.toObject();
             obj.ownerUPI = obj.owner?.upiId || '8302391227-2@ybl';
+            // Ensure front-end compatibility fields
+            if (!obj.price && obj.rentalPricePerDay) obj.price = obj.rentalPricePerDay;
+            if (!obj.type && obj.busType) obj.type = obj.busType;
             return obj;
         });
         res.json(formatted);
@@ -278,12 +288,34 @@ router.get('/:id/route', async (req, res) => {
 router.patch('/:id/route', async (req, res) => {
     const { from, to, stops } = req.body;
     try {
+        const existingBus = await Bus.findById(req.params.id);
+        if (!existingBus) return res.status(404).json({ message: 'Bus not found' });
+
+        const updateObj = {
+            $set: { 'route.from': from, 'route.to': to, 'route.stops': stops || [] }
+        };
+
+        // If existing bus has a valid route, archive it to history (max 25 entries)
+        if (existingBus.route && existingBus.route.from && existingBus.route.to) {
+            updateObj.$push = {
+                routeHistory: {
+                    $each: [{
+                        from: existingBus.route.from,
+                        to: existingBus.route.to,
+                        stops: existingBus.route.stops || [],
+                        savedAt: new Date()
+                    }],
+                    $slice: -25 // Keep only the latest 25
+                }
+            };
+        }
+
         const bus = await Bus.findByIdAndUpdate(
             req.params.id,
-            { $set: { 'route.from': from, 'route.to': to, 'route.stops': stops || [] } },
+            updateObj,
             { new: true }
         );
-        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
         res.json({ success: true, bus });
     } catch (err) {
         res.status(500).json({ message: err.message });
