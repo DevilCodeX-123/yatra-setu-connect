@@ -134,7 +134,7 @@ router.patch('/buses/:busId', async (req, res) => {
     if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
     try {
         const ownerId = await resolveUserId(req.user);
-        const { name, totalSeats, pricePerKm, status, isRentalEnabled, schedule } = req.body;
+        const { name, totalSeats, pricePerKm, status, isRentalEnabled, schedule, amenities } = req.body;
         const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
         if (!bus) return res.status(404).json({ message: 'Bus not found' });
         if (name !== undefined) bus.name = name;
@@ -784,6 +784,375 @@ router.patch('/sos/:alertId/status', async (req, res) => {
         alert.status = status;
         await alert.save();
         res.json({ success: true, alert });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── PATCH /api/owner/buses/:busId/settings ── Full settings save ─────────────
+router.patch('/buses/:busId/settings', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const {
+            name, type, totalSeats, mileage, amenities,
+            isRentalEnabled, rentalPricePerDay, rentalPricePerHour, returnChargePerKm
+        } = req.body;
+
+        if (name !== undefined) bus.name = name.trim();
+        if (type !== undefined) bus.type = type;
+        if (totalSeats !== undefined) bus.totalSeats = Number(totalSeats);
+        if (mileage !== undefined) bus.mileage = Number(mileage);
+        if (amenities !== undefined) bus.amenities = Array.isArray(amenities) ? amenities : [];
+        if (isRentalEnabled !== undefined) bus.isRentalEnabled = Boolean(isRentalEnabled);
+        if (rentalPricePerDay !== undefined) bus.rentalPricePerDay = Number(rentalPricePerDay);
+        if (rentalPricePerHour !== undefined) bus.rentalPricePerHour = Number(rentalPricePerHour);
+        if (returnChargePerKm !== undefined) bus.returnChargePerKm = Number(returnChargePerKm);
+
+        await bus.save();
+        res.json({ success: true, bus });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── GET /api/owner/buses/:busId/financials?month=YYYY-MM ─────────────────────
+router.get('/buses/:busId/financials', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const month = req.query.month || new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+        const [year, mon] = month.split('-').map(Number);
+        const startDate = new Date(year, mon - 1, 1);
+        const endDate = new Date(year, mon, 0, 23, 59, 59);
+
+        const bookings = await Booking.find({
+            bus: bus._id,
+            date: { $gte: startDate, $lte: endDate },
+            status: { $nin: ['Cancelled', 'Rejected'] }
+        });
+
+        const expenses = await Expense.find({
+            bus: bus._id,
+            owner: ownerId,
+            date: { $gte: startDate, $lte: endDate }
+        });
+
+        const daysInMonth = new Date(year, mon, 0).getDate();
+
+        // Build day-by-day breakdown
+        const days = Array.from({ length: daysInMonth }, (_, i) => {
+            const day = i + 1;
+            const dayStr = `${month}-${String(day).padStart(2, '0')}`;
+            const dayStart = new Date(year, mon - 1, day);
+            const dayEnd = new Date(year, mon - 1, day, 23, 59, 59);
+
+            const dayBookings = bookings.filter(b => {
+                const d = new Date(b.date);
+                return d >= dayStart && d <= dayEnd;
+            });
+            const dayExpenses = expenses.filter(e => {
+                const d = new Date(e.date);
+                return d >= dayStart && d <= dayEnd;
+            });
+
+            const income = dayBookings.reduce((s, b) => s + (b.amount || 0), 0);
+            const expense = dayExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+            // Per-day expense detail list
+            const expenseDetails = dayExpenses.map(e => ({
+                category: e.category || 'Other',
+                description: e.description || e.title || '',
+                amount: e.amount || 0
+            }));
+            // Per-day booking detail list
+            const bookingDetails = dayBookings.map(b => ({
+                pnr: b.pnrNumber || b.pnr || '',
+                passengers: b.passengers?.length || 1,
+                amount: b.amount || 0,
+                source: b.bookingSource || 'Online',
+                from: b.fromStop || b.from || '',
+                to: b.toStop || b.to || ''
+            }));
+
+            return {
+                day, date: dayStr, income, expense,
+                net: income - expense,
+                bookings: dayBookings.length,
+                expenseDetails,
+                bookingDetails
+            };
+        });
+
+        const totalIncome = bookings.reduce((s, b) => s + (b.amount || 0), 0);
+        const totalExpense = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+        // Seat stats
+        const onlineBooked = bookings.filter(b => b.bookingSource === 'Online' || b.paymentMethod === 'Online').length;
+        const offlineBooked = bookings.filter(b => b.bookingSource === 'Employee' || b.paymentMethod === 'Cash').length;
+        const totalPassengers = bookings.reduce((s, b) => s + (b.passengers?.length || 1), 0);
+
+        // Expense category summary for the whole month
+        const expenseByCategory = {};
+        expenses.forEach(e => {
+            const cat = e.category || 'Other';
+            expenseByCategory[cat] = (expenseByCategory[cat] || 0) + (e.amount || 0);
+        });
+
+        res.json({
+            month,
+            totalIncome,
+            totalExpense,
+            netIncome: totalIncome - totalExpense,
+            totalBookings: bookings.length,
+            totalPassengers,
+            onlineBooked,
+            offlineBooked,
+            totalSeats: bus.totalSeats,
+            expenseByCategory,
+            days
+        });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── POST /api/owner/buses/:busId/employees/:empId/accept ─────────────────────
+router.post('/buses/:busId/employees/:empId/accept', async (req, res) => {
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+        const emp = bus.employees.id(req.params.empId);
+        if (!emp) return res.status(404).json({ message: 'Employee not found' });
+        emp.status = 'Active';
+        await bus.save();
+        // Notify the driver if they have an account
+        if (emp.userId) {
+            await new Notification({
+                userId: emp.userId,
+                type: 'success',
+                title: 'Request Accepted',
+                message: `Your request to drive bus ${bus.busNumber} has been accepted.`
+            }).save();
+        }
+        res.json({ success: true, employee: emp });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── POST /api/owner/buses/:busId/employees/:empId/reject ─────────────────────
+router.post('/buses/:busId/employees/:empId/reject', async (req, res) => {
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+        const emp = bus.employees.id(req.params.empId);
+        if (!emp) return res.status(404).json({ message: 'Employee not found' });
+        emp.status = 'Rejected';
+        await bus.save();
+        if (emp.userId) {
+            await new Notification({
+                userId: emp.userId,
+                type: 'warning',
+                title: 'Request Declined',
+                message: `Your request to drive bus ${bus.busNumber} was not accepted.`
+            }).save();
+        }
+        res.json({ success: true, employee: emp });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── GET /api/owner/buses/:busId/attendance?month=YYYY-MM ─────────────────────
+router.get('/buses/:busId/attendance', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const month = req.query.month || new Date().toISOString().slice(0, 7);
+        const [year, mon] = month.split('-').map(Number);
+        const daysInMonth = new Date(year, mon, 0).getDate();
+
+        const records = await Attendance.find({
+            bus: bus._id,
+            date: { $regex: `^${month}` }
+        });
+
+        // Build summary per employee
+        const activeEmployees = bus.employees.filter(e => e.status === 'Active');
+        const summary = activeEmployees.map(emp => {
+            const empRecords = records.filter(r =>
+                r.employeeSubdocId === emp._id.toString() ||
+                (emp.userId && r.employee?.toString() === emp.userId.toString())
+            );
+
+            const days = Array.from({ length: daysInMonth }, (_, i) => {
+                const dateStr = `${month}-${String(i + 1).padStart(2, '0')}`;
+                const rec = empRecords.find(r => r.date === dateStr);
+                return {
+                    date: dateStr,
+                    present: rec ? rec.present : null, // null = not marked
+                    hoursWorked: rec?.hoursWorked || 0,
+                    overtimeHours: rec?.overtimeHours || 0,
+                    notes: rec?.notes || '',
+                    recordId: rec?._id || null
+                };
+            });
+
+            const presentDays = empRecords.filter(r => r.present).length;
+            const totalOvertimeHours = empRecords.reduce((s, r) => s + (r.overtimeHours || 0), 0);
+            const overtimeRate = emp.perDaySalary ? Math.round(emp.perDaySalary / 8) : 0;
+            const baseSalary = presentDays * (emp.perDaySalary || 0);
+            const overtimePay = Math.round(totalOvertimeHours * overtimeRate * 1.5);
+
+            return {
+                empId: emp._id,
+                name: emp.name,
+                email: emp.email,
+                phone: emp.phone,
+                driverCode: emp.driverCode,
+                perDaySalary: emp.perDaySalary,
+                overtimeRatePerHour: overtimeRate,
+                presentDays,
+                absentDays: daysInMonth - presentDays,
+                totalOvertimeHours,
+                baseSalary,
+                overtimePay,
+                totalDue: baseSalary + overtimePay,
+                days
+            };
+        });
+
+        res.json({ month, daysInMonth, employees: summary });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── POST /api/owner/buses/:busId/attendance ── Mark attendance ────────────────
+router.post('/buses/:busId/attendance', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        const { empId, date, present, hoursWorked, overtimeHours, notes, overtimeRatePerHour } = req.body;
+        if (!empId || !date) return res.status(400).json({ message: 'empId and date required' });
+
+        const emp = bus.employees.id(empId);
+        if (!emp) return res.status(404).json({ message: 'Employee not found' });
+
+        const filter = { bus: bus._id, employeeSubdocId: emp._id.toString(), date };
+        const update = {
+            owner: ownerId,
+            employeeName: emp.name,
+            employee: emp.userId || undefined,
+            present: present !== false,
+            hoursWorked: Number(hoursWorked) || 0,
+            overtimeHours: Number(overtimeHours) || 0,
+            dailySalary: emp.perDaySalary || 0,
+            overtimeRatePerHour: Number(overtimeRatePerHour) || Math.round((emp.perDaySalary || 0) / 8),
+            notes: notes || ''
+        };
+
+        const rec = await Attendance.findOneAndUpdate(filter, { $set: update }, { upsert: true, new: true });
+        res.json({ success: true, record: rec });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── GET /api/owner/buses/:busId/timetable ── Time-slot schedule & history ────
+router.get('/buses/:busId/timetable', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ message: 'Database not connected' });
+    try {
+        const ownerId = await resolveUserId(req.user);
+        const bus = await Bus.findOne({ _id: req.params.busId, owner: ownerId });
+        if (!bus) return res.status(404).json({ message: 'Bus not found' });
+
+        // Get recent bookings (last 60 days)
+        const since = new Date();
+        since.setDate(since.getDate() - 60);
+
+        const bookings = await Booking.find({
+            bus: bus._id,
+            date: { $gte: since }
+        })
+            .populate('user', 'name phone')
+            .sort({ date: -1 });
+
+        // Active drivers
+        const activeDrivers = bus.employees.filter(e => e.status === 'Active');
+
+        // Get attendance for the same period to show drivers on duty
+        const attendance = await Attendance.find({
+            bus: bus._id,
+            date: { $gte: since },
+            present: true
+        });
+
+        // Group bookings by date
+        const grouped = {};
+        for (const b of bookings) {
+            const dateKey = new Date(b.date).toISOString().split('T')[0];
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = {
+                    bookings: [],
+                    driversOnDuty: attendance
+                        .filter(a => new Date(a.date).toISOString().split('T')[0] === dateKey)
+                        .map(a => a.employeeName)
+                };
+            }
+            grouped[dateKey].bookings.push({
+                pnr: b.pnr,
+                from: b.fromStop,
+                to: b.toStop,
+                passengers: b.passengers?.length || 0,
+                amount: b.amount,
+                bookingSource: b.bookingSource,
+                paymentMethod: b.paymentMethod,
+                status: b.status,
+                user: b.user ? { name: b.user.name, phone: b.user.phone } : null
+            });
+        }
+
+        // Build timetable slots from schedule + route
+        const slots = [];
+        if (bus.schedule?.isScheduleActive && bus.route?.from && bus.route?.to) {
+            const start = bus.schedule.startTime || '00:00';
+            const end = bus.schedule.endTime || '23:59';
+            const interval = bus.schedule.loopIntervalMinutes || 60;
+            const [sh, sm] = start.split(':').map(Number);
+            const [eh, em] = end.split(':').map(Number);
+            let cur = sh * 60 + sm;
+            const endMin = eh * 60 + em;
+            while (cur <= endMin) {
+                const h = Math.floor(cur / 60), m = cur % 60;
+                const dep = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                const arrMin = cur + interval;
+                const ah = Math.floor(arrMin / 60), am = arrMin % 60;
+                const arr = `${String(ah % 24).padStart(2, '0')}:${String(am).padStart(2, '0')}`;
+                slots.push({
+                    departure: dep, arrival: arr,
+                    from: bus.route.from, to: bus.route.to,
+                    stops: bus.route.stops?.length || 0
+                });
+                if (!bus.schedule.loopEnabled) break;
+                cur += interval;
+            }
+        } else if (bus.departureTime) {
+            slots.push({
+                departure: bus.departureTime, arrival: bus.arrivalTime || '',
+                from: bus.route?.from || '', to: bus.route?.to || '',
+                stops: bus.route?.stops?.length || 0
+            });
+        }
+
+        res.json({
+            schedule: bus.schedule,
+            slots,
+            activeDrivers: activeDrivers.map(e => ({ id: e._id, name: e.name, driverCode: e.driverCode })),
+            history: grouped,
+            route: bus.route
+        });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

@@ -439,7 +439,7 @@ export const api = {
         return res.json();
     },
     updateBusSettings: async (busId: string, settings: any) => {
-        const res = await fetch(`${API_BASE_URL}/bookings/owner/bus/${busId}/settings`, {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/settings`, {
             method: 'PATCH',
             headers: getAuthHeaders(),
             body: JSON.stringify(settings)
@@ -559,6 +559,75 @@ export const api = {
             method: 'PATCH',
             headers: getAuthHeaders(),
             body: JSON.stringify({ status })
+        });
+        return res.json();
+    },
+
+    // ─── Bus Management ──────────────────────────────────────────────────────────
+    getBusFinancials: async (busId: string, month?: string) => {
+        const url = month
+            ? `${API_BASE_URL}/owner/buses/${busId}/financials?month=${month}`
+            : `${API_BASE_URL}/owner/buses/${busId}/financials`;
+        const res = await fetch(url, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getBusAttendance: async (busId: string, month?: string) => {
+        const url = month
+            ? `${API_BASE_URL}/owner/buses/${busId}/attendance?month=${month}`
+            : `${API_BASE_URL}/owner/buses/${busId}/attendance`;
+        const res = await fetch(url, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    markAttendance: async (busId: string, data: any) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/attendance`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    acceptDriver: async (busId: string, empId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}/accept`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    rejectDriver: async (busId: string, empId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}/reject`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        return res.json();
+    },
+    getBusTimetable: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/timetable`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    getBusEmployees: async (busId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, { headers: getAuthHeaders() });
+        return res.json();
+    },
+    addBusEmployee: async (busId: string, data: any) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    updateBusEmployee: async (busId: string, empId: string, data: any) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    removeBusEmployee: async (busId: string, empId: string) => {
+        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
         });
         return res.json();
     }
