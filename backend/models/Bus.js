@@ -125,6 +125,7 @@ const BusSchema = new mongoose.Schema({
 
     lastReturnTime: { type: Date },
     originLocation: { type: String },
+    lastVerifiedStopIdx: { type: Number, default: -1 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Bus', BusSchema);

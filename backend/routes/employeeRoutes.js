@@ -365,14 +365,37 @@ router.post('/set-origin', verifyToken, async (req, res) => {
 
 router.post('/stop-poll', verifyToken, async (req, res) => {
     const { busId, stopIndex, status } = req.body;
-    const io = req.app.get('io');
-    if (io) {
+    try {
         const bus = await Bus.findById(busId);
-        if (bus) {
+        if (!bus) return res.status(404).json({ message: "Bus not found" });
+
+        if (status === 'Arrived') {
+            bus.lastVerifiedStopIdx = stopIndex;
+            
+            // Auto-Archive if it's the last stop
+            if (bus.route?.stops && stopIndex === bus.route.stops.length - 1) {
+                bus.routeHistory.push({
+                    from: bus.route.from,
+                    to: bus.route.to,
+                    stops: bus.route.stops,
+                    savedAt: new Date()
+                });
+                bus.routeHistory = bus.routeHistory.slice(-25); // Keep last 25
+                bus.status = 'Inactive';
+                bus.lastVerifiedStopIdx = -1;
+            }
+            
+            await bus.save();
+        }
+
+        const io = req.app.get('io');
+        if (io) {
             io.to(`bus:${bus.busNumber}`).emit('stop:update', { stopIndex, status, busNumber: bus.busNumber });
         }
+        res.json({ success: true, lastVerifiedStopIdx: bus.lastVerifiedStopIdx });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
-    res.json({ success: true });
 });
 
 module.exports = router;

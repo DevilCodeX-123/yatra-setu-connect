@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { api } from "@/lib/api";
 import {
     ChevronLeft, Bell, Share2, MapPin, Bus, Navigation,
     Clock, Info, MoreVertical, LayoutGrid, ToggleLeft, ToggleRight,
@@ -7,7 +8,7 @@ import {
     Zap, Gauge, Map as MapIcon, ShieldCheck, Wifi, Battery,
     AlertTriangle, Navigation2, ChevronRight,
     ArrowRight, X, AlertOctagon, ShieldAlert,
-    Settings2, Radio
+    Settings2, Radio, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,9 +82,9 @@ export default function BusTracking() {
     const [isSearching, setIsSearching] = useState(false);
     const [isSOSPending, setIsSOSPending] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [eta, setEta] = useState(7);
-    const [speed, setSpeed] = useState(53);
-    const [occupancy, setOccupancy] = useState(24);
+    const [eta, setEta] = useState<number | string>("---");
+    const [speed, setSpeed] = useState<number | string>("---");
+    const [occupancy, setOccupancy] = useState<number | string>("---");
 
     // Adaptive Speed Logic States
     const BASELINE_SPEED = 50;
@@ -113,7 +114,92 @@ export default function BusTracking() {
     const [busLocation, setBusLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
     const [routeGeometry, setRouteGeometry] = useState<any[]>([]);
 
-    const busData = routesData[id as keyof typeof routesData] || routesData["default"];
+    // Time Helpers (Consolidated)
+    const timeToMins = (t: string) => {
+        if (!t || t === '---') return 0;
+        const parts = t.trim().split(' ');
+        if (parts.length === 2) {
+            let [time, modifier] = parts;
+            let [hrs, mins] = time.split(':').map(Number);
+            if (modifier === 'PM' && hrs < 12) hrs += 12;
+            if (modifier === 'AM' && hrs === 12) hrs = 0;
+            return hrs * 60 + mins;
+        } else {
+            let [hrs, mins] = t.split(':').map(Number);
+            return (hrs || 0) * 60 + (mins || 0);
+        }
+    };
+
+    const format12hr = (t: string) => {
+        if (!t || t === '---') return t;
+        const parts = t.trim().split(' ');
+        if (parts.length === 2) return t; // Already 12hr
+        let [hrs, mins] = t.split(':').map(Number);
+        const modifier = hrs >= 12 ? 'PM' : 'AM';
+        const displayHrs = hrs % 12 || 12;
+        return `${String(displayHrs).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${modifier}`;
+    };
+
+    const [liveBusData, setLiveBusData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchBus = async () => {
+            try {
+                const bus = await api.getBusById(id || "");
+                if (bus && !bus.message) {
+                    setLiveBusData(bus);
+                    if (bus.availableSeats !== undefined) setOccupancy(bus.availableSeats);
+                    setSpeed(0);
+                } else if (bus && bus.message) {
+                   toast.error("Bus Not Found", { description: "Falling back to demo route." });
+                }
+            } catch (err) {
+                console.error("Failed to fetch live bus data:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchBus();
+    }, [id]);
+
+    const busData = useMemo(() => {
+        if (liveBusData) {
+            const now = new Date();
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            const depTimeMins = timeToMins(liveBusData.departureTime || "08:00 AM");
+            const elapsed = nowMins - depTimeMins;
+
+            let cumulative = 0;
+            return {
+                origin: liveBusData.route?.from || "Unknown",
+                destination: liveBusData.route?.to || "Unknown",
+                coordinates: liveBusData.route?.stops?.map((s: any) => `${s.lng},${s.lat}`).join(';') || "77.0,28.0;77.5,28.5",
+                markers: liveBusData.route?.stops?.map((s: any) => ({ lat: s.lat, lon: s.lng, label: s.name })) || [],
+                stops: (liveBusData.route?.stops || []).map((s: any, idx: number, arr: any[]) => {
+                    if (idx > 0) cumulative += (s.minsFromPrev || 0);
+                    
+                    let status = "Upcoming";
+                    if (elapsed > cumulative) status = "Departed";
+                    else if (elapsed > (cumulative - (s.minsFromPrev || 0))) status = "In Transit";
+
+                    const arrivalStr = s.arrivalTime || "TBD";
+                    const departureStr = idx === 0 ? (liveBusData.departureTime || "08:00 AM") : arrivalStr;
+
+                    return {
+                        name: s.name,
+                        arrival: idx === 0 ? "---" : format12hr(arrivalStr),
+                        departure: idx === arr.length - 1 ? "---" : format12hr(departureStr),
+                        km: s.km || (idx * 20),
+                        platform: s.platform || (idx % 5 + 1).toString(),
+                        status
+                    };
+                })
+            };
+        }
+        return routesData[id as keyof typeof routesData] || routesData["default"];
+    }, [id, liveBusData]);
+
     const stations = busData.stops;
 
     const currentStationIndex = stations.findIndex(s => s.status === "In Transit");
@@ -140,72 +226,101 @@ export default function BusTracking() {
         fetchRoute();
     }, [busData.coordinates]);
 
-    // ===== 2. SIMULATION LOGIC (Live Tracking) =====
-    useEffect(() => {
-        // Start position
-        const pts = busData.markers.map(m => ({ lat: m.lat, lng: m.lon }));
-        const dest = pts[pts.length - 1];
+    // ===== 2. TIME-BASED SIMULATION & NOTIFICATIONS =====
+    const [notifiedStops, setNotifiedStops] = useState<Record<string, { pre: boolean, arrived: boolean }>>({});
 
-        if (!busLocation && pts.length > 0) {
-            setBusLocation(pts[0]);
-        }
+    useEffect(() => {
+        if (!liveBusData || !liveBusData.route?.stops) return;
+        
+        const pts = liveBusData.route.stops.map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, arrivalTime: s.arrivalTime, minsFromPrev: s.minsFromPrev || 0 }));
+        const depTimeMins = timeToMins(liveBusData.departureTime || "08:00 AM");
 
         const interval = setInterval(() => {
-            // Update Speed with slight fluctuation
-            setSpeed(prev => {
-                const delta = Math.floor(Math.random() * 5) - 2;
-                const newSpeed = Math.max(45, Math.min(65, prev + delta));
+            const now = new Date();
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            const elapsed = nowMins - depTimeMins;
 
-                // Adaptive Stability Check: 
-                // If current speed differs from calculation speed by > 8 km/h
-                // increment stability ticks. After ~40 ticks (~2 simulation mins),
-                // adopt the new speed for ETA calculation.
-                setCalculationSpeed(calcSpeed => {
-                    const diff = Math.abs(newSpeed - calcSpeed);
-                    if (diff > 8) {
-                        setSpeedStableTicks(t => {
-                            if (t >= 40) { // Stable for ~2 mins (40 * 3s = 120s)
-                                console.log(`Mappls: Speed stabilized at ${newSpeed}km/h. Updating ETA calc.`);
-                                return 0; // Reset
-                            }
-                            return t + 1;
+            // Find current segment
+            let cumulativeMins = 0;
+            let currentIdx = 0;
+            
+            for (let i = 0; i < pts.length; i++) {
+                if (i > 0) {
+                    // Derive travel time from arrival strings if possible for perfect sync
+                    const stopTimeMins = timeToMins(pts[i].arrivalTime);
+                    const prevStopTimeMins = i === 1 ? depTimeMins : timeToMins(pts[i-1].arrivalTime);
+                    const durationFromClock = stopTimeMins - prevStopTimeMins;
+                    cumulativeMins += durationFromClock > 0 ? durationFromClock : (pts[i].minsFromPrev || 1);
+                }
+                
+                // NOTIFICATION LOGIC
+                if (i > 0) {
+                    const stopName = pts[i].name;
+                    const timeToStop = cumulativeMins - elapsed;
+                    const stopStatus = notifiedStops[stopName] || { pre: false, arrived: false };
+
+                    // PRE-ARRIVAL NOTIFICATION
+                    const isDestination = i === pts.length - 1;
+                    const preArrivalThreshold = isDestination ? 10 : 5;
+                    
+                    if (timeToStop <= preArrivalThreshold && timeToStop > 0 && !stopStatus.pre) {
+                        toast(isDestination ? `Almost at your destination!` : `Arriving at ${stopName} soon!`, {
+                            description: `Expected in ${Math.ceil(timeToStop)} minutes.`,
+                            icon: <Clock className="w-4 h-4 text-emerald-500" />,
                         });
-                        // If we reached the limit, the next tick will use the new calcSpeed
-                        if (speedStableTicks >= 40) return newSpeed;
-                    } else {
-                        setSpeedStableTicks(0);
+                        setNotifiedStops(prev => ({ ...prev, [stopName]: { ...stopStatus, pre: true } }));
                     }
-                    return calcSpeed;
+
+                    // ARRIVAL NOTIFICATION (Verified by Driver)
+                    const isDriverVerified = (liveBusData.lastVerifiedStopIdx ?? -1) >= i;
+                    
+                    if (timeToStop <= 0 && isDriverVerified && !stopStatus.arrived) {
+                        toast.success(`Arrived at ${stopName}`, {
+                            description: isDestination 
+                                ? "The bus has reached your final destination. Wake up and get ready!" 
+                                : "The bus has reached the station.",
+                        });
+                        if (isDestination) setShowArrivalAlarm(true);
+                        setNotifiedStops(prev => ({ ...prev, [stopName]: { ...stopStatus, arrived: true } }));
+                    }
+                }
+
+                if (elapsed <= cumulativeMins) {
+                    currentIdx = i;
+                    break;
+                }
+                if (i === pts.length - 1) currentIdx = i;
+            }
+
+            // Update Position
+            if (currentIdx === 0) {
+                setBusLocation({ lat: pts[0].lat, lng: pts[0].lng });
+            } else if (elapsed >= cumulativeMins && currentIdx === pts.length - 1) {
+                setBusLocation({ lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lng });
+            } else {
+                const prevStop = pts[currentIdx - 1];
+                const activeStop = pts[currentIdx];
+                const segmentStartMins = cumulativeMins - activeStop.minsFromPrev;
+                const segmentProgress = (elapsed - segmentStartMins) / activeStop.minsFromPrev;
+                
+                setBusLocation({
+                    lat: prevStop.lat + (activeStop.lat - prevStop.lat) * segmentProgress,
+                    lng: prevStop.lng + (activeStop.lng - prevStop.lng) * segmentProgress,
                 });
+            }
 
-                return newSpeed;
+            // Update Speed & ETA
+            setSpeed(prev => {
+                const prevNum = typeof prev === 'number' ? prev : 50;
+                return Math.max(45, Math.min(65, prevNum + (Math.random() * 4 - 2)));
             });
+            const totalRemaining = cumulativeMins - elapsed;
+            setEta(Math.max(1, Math.round(totalRemaining > 0 ? totalRemaining : 0)));
 
-            // Move bus along the points
-            setBusLocation(prev => {
-                if (!prev) return pts[0];
-                const step = 0.0005;
-                const dLat = dest.lat - prev.lat;
-                const dLng = dest.lng - prev.lng;
-                const distance = Math.sqrt(dLat * dLat + dLng * dLng);
-
-                // Calculate Real-Time ETA based on Distance and Calculation Speed
-                const distMeters = getDistance(prev.lat, prev.lng, dest.lat, dest.lng);
-                const distKm = distMeters / 1000;
-                const timeHours = distKm / calculationSpeed;
-                const timeMins = Math.max(1, Math.round(timeHours * 60));
-                setEta(timeMins);
-
-                if (distance < step) return dest;
-                return {
-                    lat: prev.lat + (dLat / distance) * step,
-                    lng: prev.lng + (dLng / distance) * step,
-                };
-            });
-        }, 3000);
+        }, 5000);
 
         return () => clearInterval(interval);
-    }, [busData.markers, calculationSpeed, speedStableTicks]);
+    }, [liveBusData, notifiedStops]);
 
     // ===== 3. GPS MATCHING & PROXIMITY LOGIC =====
     useEffect(() => {
@@ -367,6 +482,14 @@ export default function BusTracking() {
         <Layout noFooter>
             <div className="w-full h-full bg-background text-foreground flex flex-col font-sans selection:bg-emerald-500/10 relative overflow-hidden">
                 <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative">
+                    {loading && (
+                        <div className="absolute inset-0 z-[300] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-4">
+                                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Live Data...</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* SOS Overlay */}
                     {isSOSPending && (
@@ -536,14 +659,14 @@ export default function BusTracking() {
                                     <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                     <span className="text-[8px] font-black text-muted-foreground tracking-wider opacity-60">Arrival In</span>
                                 </div>
-                                <p className="text-xl font-black text-foreground">{eta}<span className="text-[10px] text-muted-foreground ml-1 font-black opacity-40">MIN</span></p>
+                                <p className="text-xl font-black text-foreground">{eta}<span className="text-[10px] text-muted-foreground ml-1 font-black opacity-40">{typeof eta === 'number' ? ' MIN' : ''}</span></p>
                             </div>
                             <div className="bg-secondary rounded-[20px] p-3 shadow-sm border border-border flex flex-col items-center">
                                 <div className="flex items-center gap-1.5 mb-1">
                                     <Bus className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                                     <span className="text-[8px] font-black text-muted-foreground tracking-wider opacity-60">Vacant</span>
                                 </div>
-                                <p className="text-xl font-black text-foreground">{occupancy}<span className="text-[10px] text-muted-foreground ml-1 font-black opacity-40">SEATS</span></p>
+                                <p className="text-xl font-black text-foreground">{occupancy}<span className="text-[10px] text-muted-foreground ml-1 font-black opacity-40">{typeof occupancy === 'number' ? 'SEATS' : ''}</span></p>
                             </div>
                         </div>
                     </header>
@@ -656,9 +779,17 @@ export default function BusTracking() {
                                 <div
                                     className="absolute left-[3rem] top-0 w-[3px] bg-primary transition-all duration-1000 shadow-lg rounded-full z-10"
                                     style={{
-                                        height: currentStationIndex >= 0
-                                            ? `${((currentStationIndex + 0.5) / (stations.length - 1)) * 100}%`
-                                            : "0%"
+                                        height: (() => {
+                                            if (!liveBusData || !liveBusData.route?.stops) return "0%";
+                                            const pts = liveBusData.route.stops;
+                                            const depTimeMins = timeToMins(liveBusData.departureTime || "08:00 AM");
+                                            const now = new Date();
+                                            const elapsed = (now.getHours() * 60 + now.getMinutes()) - depTimeMins;
+                                            const totalMins = timeToMins(pts[pts.length - 1].arrivalTime) - depTimeMins;
+                                            if (totalMins <= 0) return "0%";
+                                            const progress = Math.min(100, Math.max(0, (elapsed / totalMins) * 100));
+                                            return `${progress}%`;
+                                        })()
                                     }}
                                 />
 
@@ -692,8 +823,11 @@ export default function BusTracking() {
                                                 <div className="flex-1 pl-6">
                                                     <div className="flex items-center justify-between gap-4">
                                                         <div className="flex-1">
-                                                            <h3 className={`text-sm font-black leading-tight ${isUpcoming ? "text-muted-foreground opacity-20" : "text-foreground"}`}>
+                                                            <h3 className={`text-sm font-black flex items-center gap-2 leading-tight ${isUpcoming ? "text-muted-foreground opacity-20" : "text-foreground"}`}>
                                                                 {station.name}
+                                                                {(liveBusData?.lastVerifiedStopIdx ?? -1) >= idx + 1 && (
+                                                                    <span className="px-1.5 py-0.5 bg-success/10 text-success text-[7px] font-black rounded border border-success/20 animate-pulse">VERIFIED</span>
+                                                                )}
                                                             </h3>
                                                             <div className="flex items-center gap-3 mt-1.5">
                                                                 <span className="text-[9px] text-muted-foreground font-black tracking-[0.2em] opacity-40 whitespace-nowrap">{station.km} KM MARK</span>

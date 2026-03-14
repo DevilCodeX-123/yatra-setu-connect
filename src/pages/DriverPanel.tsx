@@ -311,18 +311,30 @@ export default function DriverPanel() {
                 </div>
 
                 {/* Stops */}
-                {bus.route?.stops?.map((stop: any, idx: number) => (
-                  <div key={idx} className="relative flex gap-4 pl-10">
-                    <div className="absolute left-1.5 w-4 h-4 rounded-full bg-primary/20 border-2 border-primary -translate-x-1/2 mt-1" />
-                    <div className="flex-1 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-foreground">{stop.name}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground opacity-60">Arrival: {stop.arrivalTime || "--:--"}</p>
+                {bus.route?.stops?.map((stop: any, idx: number) => {
+                  const isArrived = (bus.lastVerifiedStopIdx ?? -1) >= idx;
+                  return (
+                    <div key={idx} className="relative flex gap-4 pl-10">
+                      <div className={`absolute left-1.5 w-4 h-4 rounded-full border-2 -translate-x-1/2 mt-1 ${isArrived ? 'bg-success border-success' : 'bg-primary/20 border-primary'}`} />
+                      <div className="flex-1 flex items-center justify-between">
+                        <div>
+                          <p className={`text-sm font-bold ${isArrived ? 'text-success' : 'text-foreground'}`}>{stop.name}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground opacity-60">Arrival: {stop.arrivalTime || "--:--"}</p>
+                        </div>
+                        {!isArrived && (
+                          <Button size="sm" variant="ghost" className="h-8 text-[10px] font-black text-success hover:bg-success/10 border border-success/20"
+                            onClick={() => {
+                              api.submitStopPoll(bus._id, idx, "Arrived");
+                              setBus((prev: any) => ({ ...prev, lastVerifiedStopIdx: idx }));
+                            }}>
+                            MARK ARRIVED
+                          </Button>
+                        )}
+                        {isArrived && <Check className="w-4 h-4 text-success" />}
                       </div>
-                      <Badge variant="secondary" className="font-mono text-[9px]">₹{stop.price}</Badge>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* To */}
                 <div className="relative flex gap-4 pl-10">

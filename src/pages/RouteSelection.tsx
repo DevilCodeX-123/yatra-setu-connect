@@ -145,6 +145,26 @@ export default function RouteSelection({ embedded = false, targetBusId = null }:
         setShowSuggestions(false);
     };
 
+    const loadRouteFromLibrary = (route: any) => {
+        if (!route.variants || route.variants.length === 0) return;
+        const mainVariant = route.variants[0];
+        const newStops = mainVariant.stops.map((s: any, i: number) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            name: s.name,
+            lat: s.lat,
+            lng: s.lng,
+            order: i,
+            priceFromPrev: s.priceFromPrev || 0,
+            minsFromPrev: s.minsFromPrev || 0
+        }));
+        setStops(newStops);
+        setRouteName(route.name);
+        setSearchQuery('');
+        setSuggestions([]);
+        setShowSuggestions(false);
+        toast.success(`Loaded route: ${route.name}`);
+    };
+
     const removeStop = (id: string) => {
         setStops(stops.filter(s => s.id !== id).map((s, i) => ({ ...s, order: i })));
     };
@@ -176,6 +196,8 @@ export default function RouteSelection({ embedded = false, targetBusId = null }:
         try {
             const res = await api.createOwnerRoute({
                 name: routeName,
+                from: stops[0].name,
+                to: stops[stops.length - 1].name,
                 stops: stops.map(s => ({ name: s.name, lat: s.lat, lng: s.lng, priceFromPrev: s.priceFromPrev, minsFromPrev: s.minsFromPrev }))
             });
             if (res.success) {
@@ -196,7 +218,7 @@ export default function RouteSelection({ embedded = false, targetBusId = null }:
 
     const handleBlockVariant = async (routeId: string, variantIdx: number, currentStatus: boolean) => {
         try {
-            const res = await api.blockRouteVariant(routeId, variantIdx, !currentStatus);
+            const res = await api.blockRouteVariant(routeId, variantIdx);
             if (res.success) fetchSavedRoutes();
         } catch (err) { toast.error("Update failed"); }
     };
@@ -248,12 +270,31 @@ export default function RouteSelection({ embedded = false, targetBusId = null }:
                                     <Input placeholder="Search city/location to add stop..." className="h-11 bg-secondary border-border rounded-xl font-bold text-xs"
                                         value={searchQuery} onChange={e => handleSearchInput(e.target.value)}
                                         onFocus={() => suggestions.length > 0 && setShowSuggestions(true)} />
-                                    {showSuggestions && suggestions.length > 0 && (
-                                        <div className="absolute z-50 w-full mt-2 bg-card rounded-xl shadow-xl border border-border p-2">
+                                    {showSuggestions && (suggestions.length > 0 || savedRoutes.some(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()))) && (
+                                        <div className="absolute z-50 w-full mt-2 bg-card rounded-xl shadow-xl border border-border p-2 max-h-[300px] overflow-y-auto">
+                                            {/* Saved Routes Section */}
+                                            {searchQuery.length >= 2 && savedRoutes.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase())).map((r, i) => (
+                                                <button key={`route-${i}`} onClick={() => loadRouteFromLibrary(r)} className="w-full p-3 text-left hover:bg-primary/10 rounded-lg flex items-center gap-3 transition-colors border-b border-border/50 last:border-0 group">
+                                                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                                        <BookOpen className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs font-black uppercase text-indigo-600 group-hover:text-indigo-700">LIBRARY: {r.name}</span>
+                                                        <span className="text-[10px] text-muted-foreground opacity-70 truncate">{r.from} → {r.to} ({r.variants?.[0]?.stops?.length || 0} stops)</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            
+                                            {/* Location Suggestions */}
                                             {suggestions.map((s, i) => (
-                                                <button key={i} onClick={() => addStopFromSuggestion(s)} className="w-full p-3 text-left hover:bg-muted rounded-lg flex flex-col gap-0.5 transition-colors">
-                                                    <span className="text-xs font-black">{s.placeName}</span>
-                                                    <span className="text-[10px] text-muted-foreground opacity-70 truncate">{s.placeAddress}</span>
+                                                <button key={`loc-${i}`} onClick={() => addStopFromSuggestion(s)} className="w-full p-3 text-left hover:bg-muted rounded-lg flex items-center gap-3 transition-colors">
+                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                        <MapIcon className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs font-black uppercase">{s.placeName}</span>
+                                                        <span className="text-[10px] text-muted-foreground opacity-70 truncate">{s.placeAddress}</span>
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -386,7 +427,7 @@ export default function RouteSelection({ embedded = false, targetBusId = null }:
                                         </div>
                                         <div className="px-3 py-2 rounded-xl bg-muted/30 border border-border">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-50 mb-1">Current Status</p>
-                                            <Badge variant={bus.status === 'Active' ? 'success' : 'secondary'} className="text-[8px] h-4 font-black"> {bus.status} </Badge>
+                                            <Badge variant={bus.status === 'Active' ? 'outline' : 'secondary'} className={`text-[8px] h-4 font-black ${bus.status === 'Active' ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : ''}`}> {bus.status} </Badge>
                                         </div>
                                         <Button variant="outline" className="w-full text-[10px] font-black h-9 rounded-xl border-primary text-primary hover:bg-primary/5"
                                             onClick={() => { setActiveTab('library'); setActivateBusId(bus._id); }}>
@@ -396,6 +437,100 @@ export default function RouteSelection({ embedded = false, targetBusId = null }:
                                 ))}
                             </div>
                         </CardContent>
+                    </Card>
+                </div>
+            )}
+            {/* ACTIVATION MODAL */}
+            {activating && activatingRoute && activatingVariant && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-background/60 backdrop-blur-xl" onClick={() => !activateLoading && setActivating(null)} />
+                    <Card className="relative w-full max-w-lg rounded-[40px] border-none shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 bg-card/80 backdrop-blur-2xl">
+                        <div className="p-6 border-b border-border/50 bg-gradient-to-br from-emerald-500/10 to-transparent">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                                        <Zap className="w-6 h-6 animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black tracking-tight text-emerald-900">GO LIVE PREP</h2>
+                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{activatingRoute.name} • {activatingVariant.label}</p>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => setActivating(null)} className="rounded-full hover:bg-emerald-100 h-9 w-9">
+                                    <X className="w-5 h-5" />
+                                </Button>
+                            </div>
+                        </div>
+
+                        <CardContent className="p-8 space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase text-muted-foreground ml-1">Select Bus to Assign</label>
+                                <Select value={activateBusId} onValueChange={setActivateBusId}>
+                                    <SelectTrigger className="h-14 rounded-2xl border-2 border-border/50 bg-background shadow-sm text-sm font-bold transition-all focus:border-emerald-500 ring-0 hover:bg-muted/50">
+                                        <SelectValue placeholder="Choose an available bus..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl border-border shadow-xl">
+                                        {buses.map(bus => (
+                                            <SelectItem key={bus._id} value={bus._id} className="rounded-xl py-3 px-4 focus:bg-emerald-50">
+                                                <div className="flex items-center gap-3">
+                                                    <Bus className={`w-4 h-4 ${bus.status === 'Active' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-xs uppercase">{bus.busNumber}</span>
+                                                        <span className="text-[9px] text-muted-foreground font-bold">{bus.name} • {bus.busType}</span>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase text-muted-foreground ml-1">Daily Departure Time</label>
+                                <div className="relative group">
+                                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500 transition-transform group-focus-within:scale-110" />
+                                    <Input 
+                                        type="time" 
+                                        value={activateStartTime} 
+                                        onChange={e => setActivateStartTime(e.target.value)}
+                                        className="h-14 pl-12 rounded-2xl border-2 border-border/50 bg-background shadow-sm text-sm font-bold transition-all focus:border-emerald-500 ring-0"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* ARRIVAL PREVIEW */}
+                            {activateStartTime && (
+                                <div className="p-5 rounded-3xl bg-emerald-50/50 border border-emerald-100 space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                                    <h4 className="text-[10px] font-black text-emerald-800 uppercase flex items-center gap-2">
+                                        <Activity className="w-3 h-3" /> Computed Schedule Preview
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-3 max-h-[120px] overflow-y-auto pr-2 thin-scrollbar">
+                                        {previewArrivalTimes.map((time, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-white border border-emerald-100/50">
+                                                <span className="text-[9px] font-black text-slate-500 truncate max-w-[70px] uppercase">
+                                                    {activatingVariant.stops[idx]?.name}
+                                                </span>
+                                                <Badge className="bg-emerald-600 text-[10px] font-black">{time}</Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+
+                        <div className="p-6 bg-emerald-50/30 border-t border-border/50 flex gap-3">
+                            <Button variant="outline" onClick={() => setActivating(null)} disabled={activateLoading} className="flex-1 h-12 rounded-2xl font-black text-xs border-emerald-100 hover:bg-emerald-50 text-emerald-800 uppercase tracking-tighter">
+                                Keep Editing
+                            </Button>
+                            <Button 
+                                onClick={handleActivateVariant} 
+                                disabled={!activateBusId || !activateStartTime || activateLoading}
+                                className="flex-[2] h-12 rounded-2xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-500/20 uppercase tracking-tight flex items-center justify-center gap-2"
+                            >
+                                {activateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                                Confirm & Launch Live
+                            </Button>
+                        </div>
                     </Card>
                 </div>
             )}

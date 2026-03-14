@@ -19,6 +19,8 @@ interface MapplsMapProps {
     busLocation?: { lat: number; lng: number };
     userLocation?: { lat: number; lng: number } | null;
     className?: string;
+    showPath?: boolean;
+    zoom?: number;
 }
 
 export default function MapplsMap({ markers = [], routePoints, busLocation, userLocation, className }: MapplsMapProps) {

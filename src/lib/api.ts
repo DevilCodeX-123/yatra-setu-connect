@@ -233,7 +233,7 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/owner-routes`, { headers: getAuthHeaders() });
         return res.json();
     },
-    addOwnerRoute: async (routeData: { from: string; to: string; stops: any[]; name?: string }) => {
+    createOwnerRoute: async (routeData: { from: string; to: string; stops: any[]; name?: string }) => {
         const res = await fetch(`${API_BASE_URL}/owner-routes`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -256,18 +256,18 @@ export const api = {
         });
         return res.json();
     },
-    blockOwnerRouteVariant: async (routeId: string, variantIdx: number) => {
+    blockRouteVariant: async (routeId: string, variantIdx: number) => {
         const res = await fetch(`${API_BASE_URL}/owner-routes/${routeId}/variant/${variantIdx}/block`, {
             method: 'PATCH',
             headers: getAuthHeaders()
         });
         return res.json();
     },
-    activateOwnerRoute: async (routeId: string, variantIdx: number, busId: string, startTime: string) => {
+    activateRouteVariant: async (routeId: string, variantIdx: number, data: { busId: string, startTime: string }) => {
         const res = await fetch(`${API_BASE_URL}/owner-routes/${routeId}/activate`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ variantIdx, busId, startTime })
+            body: JSON.stringify({ variantIdx, ...data })
         });
         return res.json();
     },
@@ -578,14 +578,6 @@ export const api = {
         const res = await fetch(url, { headers: getAuthHeaders() });
         return res.json();
     },
-    markAttendance: async (busId: string, data: any) => {
-        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/attendance`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(data)
-        });
-        return res.json();
-    },
     acceptDriver: async (busId: string, empId: string) => {
         const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees/${empId}/accept`, {
             method: 'POST',
@@ -602,10 +594,6 @@ export const api = {
     },
     getBusTimetable: async (busId: string) => {
         const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/timetable`, { headers: getAuthHeaders() });
-        return res.json();
-    },
-    getBusEmployees: async (busId: string) => {
-        const res = await fetch(`${API_BASE_URL}/owner/buses/${busId}/employees`, { headers: getAuthHeaders() });
         return res.json();
     },
     addBusEmployee: async (busId: string, data: any) => {

@@ -190,6 +190,7 @@ router.post('/:id/activate', verifyToken, requireAuth, requireRole('Owner'), asy
             'route.stops': stopsWithTimes.map(s => ({
                 name: s.name, lat: s.lat, lng: s.lng,
                 priceFromPrev: s.priceFromPrev,
+                minsFromPrev: s.minsFromPrev,
                 arrivalTime: s.arrivalTime
             })),
             date: new Date().toISOString().split('T')[0],
